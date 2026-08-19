@@ -24,9 +24,10 @@ const nameSchema = z.object({ name: z.string().min(1).max(120) });
 const currentSchema = z.object({ spaceId: z.uuid() });
 
 /**
- * The spaces API (docs/features/spaces.md), data and API only this session.
- * Machine-facing until the switcher lands, so failures are untranslated
- * developer/machine errors (F13), never serverErrors keys.
+ * The spaces API (docs/features/spaces.md). The switcher (session 3) made
+ * this a person-facing surface, so the failures a user can cause carry
+ * serverErrors codes (F13); only the worker-side erasure pass keeps
+ * untranslated developer errors.
  */
 @Controller('spaces')
 @UseGuards(BearerAuthGuard)

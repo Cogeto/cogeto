@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import en from '../locales/en/users.json';
+import { instanceNavFor } from '../components/InstanceShell';
 import { Nav } from '../components/Nav';
 
 /**
@@ -48,21 +49,30 @@ describe('users_warns_about_its_limits', () => {
 });
 
 describe('users_is_admin_only', () => {
-  const railFor = (isAdmin: boolean) =>
-    renderToStaticMarkup(
-      <Nav active="dashboard" showSystem={isAdmin} userName="Ana" orgName="Cogeto" />,
-    );
-
+  // The operator surfaces moved from the rail to the instance area
+  // (docs/features/spaces.md section 3): the space-scoped sidebar may hold
+  // only surfaces that change with the switcher, so the display half of the
+  // admin gate now lives in the instance area's nav. Same rule, new location;
+  // the server's AdminGuard stays the enforcement.
   it('hides the section from a member and shows it to an operator', () => {
-    expect(railFor(false)).not.toContain('/users');
-    expect(railFor(true)).toContain('/users');
+    expect(instanceNavFor(false)).not.toContain('users');
+    expect(instanceNavFor(true)).toContain('users');
   });
 
   it('sits with the other operator surfaces, not among the everyday ones', () => {
-    const admin = railFor(true);
+    const admin = instanceNavFor(true);
     // If Users ever renders while System does not, the admin gate has been
     // applied to one and not the other.
-    expect(admin).toContain('/system');
-    expect(admin).toContain('/audit');
+    expect(admin).toContain('system');
+    expect(admin).toContain('audit');
+  });
+
+  it('never returns to the space-scoped rail, whatever the role', () => {
+    const railFor = (isAdmin: boolean) =>
+      renderToStaticMarkup(
+        <Nav active="dashboard" showSystem={isAdmin} userName="Ana" orgName="Cogeto" />,
+      );
+    expect(railFor(true)).not.toContain('/users');
+    expect(railFor(false)).not.toContain('/users');
   });
 });

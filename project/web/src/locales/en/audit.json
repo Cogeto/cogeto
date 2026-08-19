@@ -14,7 +14,9 @@
     "action": "action…",
     "entityType": "entity type…",
     "from": "from",
-    "to": "to"
+    "to": "to",
+    "space": "Space",
+    "spaceAll": "All spaces"
   },
   "empty": {
     "title": "No entries match these filters",

@@ -23,6 +23,9 @@ export interface AuditQuery {
   actor?: string;
   action?: string;
   entityType?: string;
+  /** Narrow to one space's entries (docs/features/spaces.md section 4): the
+   * audit trail stays ONE instance-level trail; the space is an attribute. */
+  spaceId?: string;
   /** ISO timestamps bounding the range (inclusive from, exclusive to). */
   from?: string;
   to?: string;

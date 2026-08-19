@@ -1,0 +1,73 @@
+{
+  "switcher": {
+    "currentSpace": "Espace actuel : {{name}}",
+    "listLabel": "Espaces",
+    "searchPlaceholder": "Trouver un espace",
+    "searchLabel": "Trouver un espace",
+    "noMatches": "Aucun espace ne correspond à « {{query}} ».",
+    "currentMarker": "espace actuel",
+    "thisSpace": "cet espace",
+    "newSpace": "Nouvel espace",
+    "namePlaceholder": "Nom de l'espace",
+    "nameLabel": "Nom du nouvel espace",
+    "create": "Créer",
+    "creating": "Création…",
+    "renameLabel": "Renommer {{name}}",
+    "spaceSettings": "Paramètres de l'espace",
+    "switchFailed": "Le changement n'a pas eu lieu ; vous êtes toujours dans {{name}}.",
+    "createFailed": "L'espace n'a pas été créé.",
+    "renameFailed": "L'espace n'a pas été renommé."
+  },
+  "deleted": {
+    "title": "Cet espace a été supprimé",
+    "body": "L'espace dans lequel vous travailliez a été supprimé dans une autre session. Continuez dans l'espace par défaut.",
+    "cta": "Continuer"
+  },
+  "level": {
+    "space": "Ces paramètres ne s'appliquent que dans {{space}}, et seulement pour vous. Votre profil, l'apparence et le choix des modèles se trouvent dans les paramètres de l'instance, derrière l'icône d'engrenage."
+  },
+  "settings": {
+    "title": "Paramètres de l'espace",
+    "heading": "Cet espace",
+    "explainer": "Un espace est une partition scellée : rien de ce qu'il contient n'est jamais comparé, récupéré ni rapporté avec un autre espace.",
+    "nameLabel": "Nom",
+    "dangerHeading": "Supprimer cet espace",
+    "dangerExplainer": "La suppression d'un espace efface tout ce qu'il contient, pour tous les utilisateurs, par la procédure de suppression ordinaire : un reçu signé par source.",
+    "defaultUndeletable": "L'espace par défaut ne peut pas être supprimé. C'est là qu'arrive tout ce qui ne nomme aucun espace.",
+    "deleteButton": "Supprimer cet espace",
+    "planIntro": "La suppression de {{space}} effacera :",
+    "planEmpty": "L'espace ne contient encore rien ; seul l'espace lui-même sera retiré.",
+    "planLine": "{{kind}} : {{n}}",
+    "planReceipts": "Chaque source est effacée par la procédure de suppression ordinaire, avec un reçu signé chacune, matériel partagé compris. Les reçus restent vérifiables après la disparition de l'espace.",
+    "planFailed": "Le plan de suppression n'a pas pu être chargé.",
+    "confirmLabel": "Saisissez {{space}} pour confirmer",
+    "deleteConfirm": "Supprimer {{space}} définitivement",
+    "deleting": "Suppression…",
+    "deleteFailed": "L'espace n'a pas été supprimé.",
+    "sourceType": {
+      "user_note": "Notes",
+      "file": "Fichiers",
+      "chat_conversation": "Discussions",
+      "email": "E-mails",
+      "web": "Pages web",
+      "chat": "Captures de discussion"
+    },
+    "artifact": {
+      "projects": "Projets",
+      "entity_aliases": "Alias d'entités",
+      "import_runs": "Imports",
+      "research_runs": "Recherches",
+      "skill_runs": "Exécutions de compétences",
+      "findings_reports": "Rapports de constats",
+      "passport_exports": "Exports du passeport de mémoire",
+      "connectors": "Connecteurs",
+      "extraction_gates": "Paramètres du filtre d'extraction"
+    }
+  },
+  "firstRun": {
+    "title": "{{space}} est un nouvel espace, scellé et vide",
+    "body": "Tout ce qui est capturé ici reste ici : souvenirs, sources, constats et rapports de cet espace ne se mêlent jamais à un autre. Commencez une discussion ou ajoutez les premiers documents.",
+    "chatCta": "Commencer une discussion",
+    "sourcesCta": "Ajouter des sources"
+  }
+}

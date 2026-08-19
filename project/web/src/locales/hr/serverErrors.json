@@ -198,5 +198,11 @@
     "notExtractable": "'{{sourceType}}' nije vrsta izvora iz koje se izdvaja",
     "notFound": "za ovaj izvor nema konteksta"
   },
+  "spaces": {
+    "defaultUndeletable": "Zadani prostor ne može se izbrisati",
+    "nameRequired": "Prostor treba naziv",
+    "nameTooLong": "Naziv prostora može imati najviše {{max}} znakova",
+    "notFound": "Taj prostor više ne postoji"
+  },
   "too_many_streams": "previše istodobnih tokova razgovora (najviše {{max}})"
 }

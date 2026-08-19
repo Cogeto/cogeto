@@ -20,7 +20,8 @@
     "loading": "Chargement…",
     "loadingApp": "Chargement de Cogeto…",
     "saving": "Enregistrement…",
-    "saved": "Enregistré."
+    "saved": "Enregistré.",
+    "spacesFailed": "La liste des espaces n'a pas pu être chargée, rien ne peut donc encore s'afficher."
   },
   "memoryStatus": {
     "active": "actif",

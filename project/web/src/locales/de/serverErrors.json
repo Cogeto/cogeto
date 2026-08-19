@@ -194,5 +194,11 @@
     "notExtractable": "'{{sourceType}}' ist keine extrahierbare Quellenart",
     "notFound": "für diese Quelle gibt es keinen Kontext"
   },
+  "spaces": {
+    "defaultUndeletable": "Der Standard-Space kann nicht gelöscht werden",
+    "nameRequired": "Ein Space braucht einen Namen",
+    "nameTooLong": "Ein Space-Name darf höchstens {{max}} Zeichen lang sein",
+    "notFound": "Diesen Space gibt es nicht mehr"
+  },
   "too_many_streams": "zu viele gleichzeitige Chat-Streams (höchstens {{max}})"
 }

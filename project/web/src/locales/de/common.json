@@ -20,7 +20,8 @@
     "loading": "Wird geladen…",
     "loadingApp": "Cogeto wird geladen…",
     "saving": "Wird gespeichert…",
-    "saved": "Gespeichert."
+    "saved": "Gespeichert.",
+    "spacesFailed": "Die Liste der Spaces konnte nicht geladen werden, daher kann noch nichts angezeigt werden."
   },
   "memoryStatus": {
     "active": "aktiv",

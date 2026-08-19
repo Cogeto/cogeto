@@ -5,6 +5,7 @@ import type { Principal, SpaceDeletionPlanDto } from '@cogeto/shared';
 import {
   DRIZZLE,
   untranslatedError,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -107,8 +108,11 @@ export class SpaceErasureService {
   /** Refuses the two undeletable targets loudly; returns the row otherwise. */
   private async requireDeletable(spaceId: string): Promise<{ id: string; name: string }> {
     if (spaceId === DEFAULT_SPACE_ID) {
-      throw untranslatedError.badRequest(
-        'the default space cannot be deleted: it is the instance resolution anchor',
+      // A person reads this one (the space-settings danger zone), so it is a
+      // coded failure; the worker-side twin in run() stays untranslated.
+      throw userError.badRequest(
+        'spaces.defaultUndeletable',
+        'the default space cannot be deleted',
       );
     }
     const rows = await this.db
@@ -116,7 +120,7 @@ export class SpaceErasureService {
       .from(space)
       .where(eq(space.id, spaceId))
       .limit(1);
-    if (!rows[0]) throw untranslatedError.notFound(`space ${spaceId} not found`);
+    if (!rows[0]) throw userError.notFound('spaces.notFound', 'that space no longer exists');
     return rows[0];
   }
 

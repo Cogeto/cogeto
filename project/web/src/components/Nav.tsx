@@ -25,14 +25,21 @@ export type NavSection =
  * The rail. `key` is the section identifier (a route, never translated); the
  * label is looked up as `navigation:section.<key>` at render time so a language
  * change re-labels the rail without a reload.
+ *
+ * SPACE-SCOPED ONLY (docs/features/spaces.md section 3): everything here
+ * changes with the space switcher, and nothing else belongs here. Instance
+ * administration (providers, models, system, audit, users, and the
+ * instance-level parts of settings) lives in the instance area behind the
+ * navbar gear, because visually separating it is what teaches that spaces do
+ * not own it. Space settings are reached from the switcher's own menu.
  */
 const ENABLED: { key: NavSection; href: string }[] = [
   { key: 'dashboard', href: '/' },
+  { key: 'chat', href: '/chat' },
   // The Memories tab became Sources (V2.2 item 5.2): the read, audit and
   // resolve surface. The old flat list survives as the filtered fact search
   // on /memories, reachable from the Sources page rather than the rail.
   { key: 'sources', href: '/sources' },
-  { key: 'chat', href: '/chat' },
   { key: 'research', href: '/research' },
   { key: 'skills', href: '/skills' },
   { key: 'timeline', href: '/timeline' },
@@ -40,22 +47,11 @@ const ENABLED: { key: NavSection; href: string }[] = [
   // surface is named for what is actually on it. The route stays `/review` so
   // the digest's conflict deep-links and attention hrefs do not dangle.
   { key: 'review', href: '/review' },
-  // The findings report (V2.3 item 6.2): the signed artifact a QA lead
-  // forwards. Beside Contradictions because a report is a findings run.
-  { key: 'reports', href: '/reports' },
   { key: 'approvals', href: '/approvals' },
+  // The findings report (V2.3 item 6.2): the signed artifact a QA lead
+  // forwards. Beside Approvals because a report is a findings run.
+  { key: 'reports', href: '/reports' },
   { key: 'forgotten', href: '/forgotten' },
-  { key: 'audit', href: '/audit' },
-  // Erasing a departed person's material (issue #638). Operator surface, so
-  // it sits with the others and is hidden for everyone else.
-  { key: 'users', href: '/users' },
-  // The two admin configuration surfaces (V2.4 item 7.1). Beside System, and
-  // hidden for a non-admin exactly as System is; the server-side AdminGuard
-  // stays the enforcement.
-  { key: 'providers', href: '/providers' },
-  { key: 'models', href: '/models' },
-  { key: 'system', href: '/system' },
-  { key: 'settings', href: '/settings' },
 ];
 
 /** The noun the count badge announces, per section. */
@@ -76,7 +72,7 @@ const G = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
-const ICONS: Record<NavSection, ReactNode> = {
+export const ICONS: Record<NavSection, ReactNode> = {
   dashboard: (
     <svg viewBox="0 0 20 20" {...G}>
       <circle cx="10" cy="10" r="7" />
@@ -246,12 +242,13 @@ export function Nav({
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
   };
-  // The operator surfaces share one gate: System, Providers and Model
-  // assignment (V2.4 item 7.1), and now the activity trail (issue #633) — it
-  // is the organisation's trail, not the reader's own, so it is an operator
-  // surface and the server's AdminGuard is the enforcement.
-  const adminOnly = new Set<NavSection>(['system', 'providers', 'models', 'audit', 'users']);
-  const sections = ENABLED.filter((s) => !adminOnly.has(s.key) || showSystem);
+  // No admin filtering remains here: the operator surfaces (system,
+  // providers, models, audit, users) moved to the instance area, whose own
+  // nav applies the same role gate; the server-side AdminGuard stays the
+  // enforcement. `showSystem` is still accepted so call sites and the nav
+  // spec keep their shape.
+  void showSystem;
+  const sections = ENABLED;
   const demo = isDemoSession();
   return (
     <nav

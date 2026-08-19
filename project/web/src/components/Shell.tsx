@@ -7,10 +7,15 @@ import {
   fetchMe,
   fetchModelConfig,
   fetchPendingApprovals,
+  fetchSpaces,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { currentSpaceId } from '../space';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
+import { SpaceSwitcher } from './SpaceSwitcher';
+import { UserMenu } from './UserMenu';
+import { btnPrimary } from './ui';
 
 /** One uniform, fluid content width for every page: fills the screen up to
  * a roomy cap, then centers. Identical on every page — no per-page width. The
@@ -78,6 +83,17 @@ export function Shell({
     queryFn: () => fetchModelConfig(session),
     refetchInterval: 30_000,
   });
+  // The spaces list (docs/features/spaces.md): feeds the switcher, and the
+  // interval is what notices a space deleted in ANOTHER session, so this one
+  // can say so instead of quietly gating every read to nothing.
+  const { data: spaceList } = useQuery({
+    queryKey: ['spaces'],
+    queryFn: () => fetchSpaces(session),
+    refetchInterval: 30_000,
+  });
+  const boundSpace = currentSpaceId();
+  const currentSpaceGone =
+    spaceList != null && boundSpace != null && !spaceList.spaces.some((s) => s.id === boundSpace);
 
   return (
     // Full-height pages (chat) take the shell OUT of document flow entirely
@@ -105,19 +121,49 @@ export function Shell({
               directly above the conversation instead of hanging off to the left
 . Other pages fill the wide column, where it already aligns. */}
           <div
-            className={`flex items-center gap-2 py-3.5 ${
+            className={`flex items-center gap-2 py-2.5 ${
               fullHeight ? 'mx-auto w-full max-w-3xl px-4' : `${COL} px-6`
             }`}
           >
-            {/* A calm mono breadcrumb: Cogeto · <Page>, left-aligned with
-                the content column. */}
-            <h1 className="font-mono text-[0.72rem] uppercase tracking-[0.14em]">
-              <span className="text-slate-400">{t('productName')}</span>
-              <span className="mx-1.5 text-slate-300 dark:text-slate-600" aria-hidden="true">
-                ·
-              </span>
+            {/* The space switcher is the leftmost element on EVERY page
+                (docs/features/spaces.md section 3): the current space is the
+                single most important UI state in a sealed-partition product,
+                so it is visible at all times, followed by the calm mono page
+                breadcrumb. */}
+            <SpaceSwitcher session={session} />
+            <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">
+              ·
+            </span>
+            <h1 className="min-w-0 truncate font-mono text-[0.72rem] uppercase tracking-[0.14em]">
               <span className="font-semibold text-slate-700">{title}</span>
             </h1>
+            {/* The instance area's door and the identity chip, at the right
+                end: instance administration is deliberately OUTSIDE the
+                space-scoped sidebar, which is what teaches that no space owns
+                it. */}
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <a
+                href="/instance"
+                aria-label={t('navigation:instance.open')}
+                title={t('navigation:instance.open')}
+                className="grid h-8 w-8 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal dark:hover:bg-white/10"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  className="h-[18px] w-[18px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="10" cy="10" r="2.6" />
+                  <path d="M10 2.8v2.4M10 14.8v2.4M2.8 10h2.4M14.8 10h2.4M4.9 4.9l1.7 1.7M13.4 13.4l1.7 1.7M15.1 4.9l-1.7 1.7M6.6 13.4l-1.7 1.7" />
+                </svg>
+              </a>
+              <UserMenu userName={me?.name} orgName={me?.orgName} />
+            </div>
           </div>
         </header>
         {modelConfig?.configured === false && (
@@ -146,6 +192,39 @@ export function Shell({
           {children}
         </main>
       </div>
+      {/* A space deleted in ANOTHER session while this one had it selected:
+          say so and move deliberately, never leave the user in a view that
+          quietly gates every read to nothing (issue A5). The reload rebinds
+          to the server-resolved space, which has already fallen back to the
+          default. */}
+      {currentSpaceGone && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="space-gone-title"
+            aria-describedby="space-gone-body"
+            className="w-full max-w-sm rounded-lg border border-slate-200 bg-surface p-5 shadow-xl"
+          >
+            <h2 id="space-gone-title" className="text-sm font-semibold text-slate-800">
+              {t('spaces:deleted.title')}
+            </h2>
+            <p id="space-gone-body" className="mt-1.5 text-sm text-slate-600">
+              {t('spaces:deleted.body')}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                className={btnPrimary}
+                autoFocus
+                onClick={() => window.location.assign('/')}
+              >
+                {t('spaces:deleted.cta')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

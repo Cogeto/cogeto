@@ -111,8 +111,10 @@ import type {
   ApiErrorParams,
   ApiErrorPayload,
 } from '@cogeto/shared';
-import { readApiErrorPayload } from '@cogeto/shared';
+import { readApiErrorPayload, SPACE_HEADER } from '@cogeto/shared';
+import type { SpaceDto, SpaceListDto, SpaceDeletionPlanDto } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
+import { currentSpaceId } from './space';
 
 /** Fired on any 401 so the shell can drop the dead session and re-fetch config. */
 export const UNAUTHORIZED_EVENT = 'cogeto:unauthorized';
@@ -164,9 +166,29 @@ async function toError(path: string, response: Response): Promise<Error> {
   return new ApiError(`${path} -> HTTP ${response.status}`, response.status);
 }
 
+/**
+ * Every authenticated request carries the bearer token AND the caller's
+ * current space (docs/features/spaces.md): the server treats an absent
+ * header as the default space, so the one place that can guarantee a request
+ * never silently acts in the wrong space is this builder. Raw fetch call
+ * sites (multipart, DELETE, SSE) use it too; adding a header anywhere else
+ * is a bug.
+ */
+export function authHeaders(
+  session: Session,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const spaceId = currentSpaceId();
+  return {
+    authorization: `Bearer ${session.accessToken}`,
+    ...(spaceId ? { [SPACE_HEADER]: spaceId } : {}),
+    ...extra,
+  };
+}
+
 async function apiGet<T>(path: string, session?: Session): Promise<T> {
   const response = await fetch(path, {
-    headers: session ? { authorization: `Bearer ${session.accessToken}` } : {},
+    headers: session ? authHeaders(session) : {},
   });
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as T;
@@ -180,10 +202,7 @@ async function apiSend<T>(
 ): Promise<T> {
   const response = await fetch(path, {
     method,
-    headers: {
-      authorization: `Bearer ${session.accessToken}`,
-      'content-type': 'application/json',
-    },
+    headers: authHeaders(session, { 'content-type': 'application/json' }),
     body: JSON.stringify(body),
   });
   if (!response.ok) throw await toError(path, response);
@@ -221,7 +240,7 @@ export async function uploadFile(
   form.append('discard', String(flags.discard));
   const response = await fetch('/api/files', {
     method: 'POST',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
     body: form,
   });
   if (!response.ok) throw await toError('/api/files', response);
@@ -320,7 +339,7 @@ export async function createZipImport(session: Session, file: File): Promise<Imp
   form.append('file', file);
   const response = await fetch('/api/imports/zip', {
     method: 'POST',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
     body: form,
   });
   if (!response.ok) throw await toError('/api/imports/zip', response);
@@ -345,7 +364,7 @@ export async function stageImportItem(
   const path = `/api/imports/${runId}/items/${itemId}/file`;
   const response = await fetch(path, {
     method: 'POST',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
     body: form,
   });
   if (!response.ok) throw await toError(path, response);
@@ -472,7 +491,7 @@ export async function deleteSource(
   const path = `/api/sources/${sourceType}/${encodeURIComponent(sourceId)}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as DeletionRequestedDto;
@@ -510,7 +529,7 @@ export async function removeEntityAlias(
   const path = `/api/reconcile-aliases/${id}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as { removed: boolean };
@@ -553,7 +572,7 @@ export async function deleteProvider(session: Session, id: string): Promise<void
   const path = `/api/admin/providers/${id}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
 }
@@ -577,7 +596,7 @@ export async function removeAnswerOption(
   const path = `/api/admin/model-configuration/answer-options/${id}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as ModelConfigurationDto;
@@ -640,7 +659,7 @@ export async function removeEmailAllowlistEntry(session: Session, id: string): P
   const path = `/api/email/allowlist/${encodeURIComponent(id)}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
 }
@@ -686,7 +705,7 @@ export async function removeExtractionGateRule(session: Session, id: string): Pr
   const path = `/api/extraction-gate/rules/${encodeURIComponent(id)}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
 }
@@ -884,7 +903,7 @@ export async function removeConnector(
   const path = `/api/connectors/${id}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as { removed: boolean; credentialDestroyed: boolean };
@@ -896,6 +915,7 @@ export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<A
   if (params.actor?.trim()) search.set('actor', params.actor.trim());
   if (params.action?.trim()) search.set('action', params.action.trim());
   if (params.entityType?.trim()) search.set('entityType', params.entityType.trim());
+  if (params.spaceId) search.set('spaceId', params.spaceId);
   if (params.from) search.set('from', params.from);
   if (params.to) search.set('to', params.to);
   if (params.limit !== undefined) search.set('limit', String(params.limit));
@@ -1130,7 +1150,7 @@ export async function uploadChatAttachment(
   form.append('transient', String(transient));
   const response = await fetch('/api/chat/attachments', {
     method: 'POST',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
     body: form,
   });
   if (!response.ok) throw await toError('/api/chat/attachments', response);
@@ -1159,10 +1179,7 @@ export async function askChat(
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
-    headers: {
-      authorization: `Bearer ${session.accessToken}`,
-      'content-type': 'application/json',
-    },
+    headers: authHeaders(session, { 'content-type': 'application/json' }),
     body: JSON.stringify({
       content,
       conversationId,
@@ -1230,7 +1247,7 @@ export async function deleteProject(session: Session, id: string): Promise<{ rel
   const path = `/api/projects/${id}`;
   const response = await fetch(path, {
     method: 'DELETE',
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: authHeaders(session),
   });
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as { released: number };
@@ -1263,3 +1280,43 @@ export const requestErasure = (
 /** How the run finished; `pending` until the worker records its completion. */
 export const fetchErasureResult = (session: Session, userId: string): Promise<ErasureResultDto> =>
   apiGet(`/api/admin/erasure/${encodeURIComponent(userId)}/result`, session);
+
+// ── Spaces (docs/features/spaces.md) ─────────────────────────────────────────
+// The sealed partitions and the switcher's data. Every OTHER call in this
+// file implicitly acts in the current space through authHeaders; these are
+// the calls that manage the spaces themselves.
+
+/** Every space plus the caller's resolved current one (last used, else the
+ * default). The boot gate binds the module-level current space from this. */
+export const fetchSpaces = (session: Session): Promise<SpaceListDto> =>
+  apiGet('/api/spaces', session);
+
+/** Create a space; the server switches the creator into it immediately. */
+export const createSpace = (session: Session, name: string): Promise<SpaceDto> =>
+  apiPost('/api/spaces', { name }, session);
+
+export const renameSpace = (session: Session, id: string, name: string): Promise<SpaceDto> =>
+  apiSend('PATCH', `/api/spaces/${id}`, { name }, session);
+
+/** Persist the switch server-side; the caller reloads on success, which is
+ * what guarantees nothing stale from the previous space survives. */
+export const putCurrentSpace = (
+  session: Session,
+  spaceId: string,
+): Promise<{ currentSpaceId: string }> => apiPut('/api/spaces/current', { spaceId }, session);
+
+/** What deleting the space WOULD erase — the confirmation states these
+ * numbers. Admin-only on the server. */
+export const fetchSpaceDeletionPlan = (
+  session: Session,
+  id: string,
+): Promise<SpaceDeletionPlanDto> => apiGet(`/api/spaces/${id}/deletion-plan`, session);
+
+/** Deletes the space: the ordinary deletion saga per source, one receipt
+ * each, then the containers, then the row. Admin-only on the server. */
+export async function deleteSpace(session: Session, id: string): Promise<SpaceDeletionPlanDto> {
+  const path = `/api/spaces/${id}`;
+  const response = await fetch(path, { method: 'DELETE', headers: authHeaders(session) });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as SpaceDeletionPlanDto;
+}

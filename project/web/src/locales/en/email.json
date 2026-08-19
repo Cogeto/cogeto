@@ -42,5 +42,6 @@
     "wrong_recipient": "addressed to a different recipient",
     "message_too_large": "message exceeded the size cap",
     "attachments_too_large": "attachments exceeded the size cap"
-  }
+  },
+  "spaceNote": "Inbound email is captured into the default space for now; routing an address to a space is coming later."
 }

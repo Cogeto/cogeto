@@ -28,5 +28,14 @@
   },
   "liveSandbox": "Aktivno pokazno okruženje",
   "signOut": "Odjava",
-  "versionTitle": "Verzija sustava Cogeto"
+  "versionTitle": "Verzija sustava Cogeto",
+  "instance": {
+    "open": "Postavke instance",
+    "title": "Postavke instance",
+    "backTo": "Natrag u {{space}}",
+    "explainer": "Postavke cijele instalacije. Ništa ovdje ne pripada nijednom prostoru."
+  },
+  "userMenu": {
+    "open": "Račun"
+  }
 }

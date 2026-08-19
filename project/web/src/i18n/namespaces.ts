@@ -63,6 +63,9 @@ export const NAMESPACES = [
   /** Projects as workspaces (V2.5 item 8.3): the rail, assignment, the
    * retrieval lens, and the lifecycle confirmations. */
   'projects',
+  /** Spaces (docs/features/spaces.md): the switcher, the create and delete
+   * flows, space settings, and the empty-space first-run state. */
+  'spaces',
   /** Failure copy shown to a user. Never developer or log messages. */
   'errors',
   /** One key per server error code (F13). Generated from the throw sites by

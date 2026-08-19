@@ -1,0 +1,73 @@
+{
+  "switcher": {
+    "currentSpace": "Current space: {{name}}",
+    "listLabel": "Spaces",
+    "searchPlaceholder": "Find a space",
+    "searchLabel": "Find a space",
+    "noMatches": "No space matches \"{{query}}\".",
+    "currentMarker": "current space",
+    "thisSpace": "this space",
+    "newSpace": "New space",
+    "namePlaceholder": "Space name",
+    "nameLabel": "Name for the new space",
+    "create": "Create",
+    "creating": "Creating…",
+    "renameLabel": "Rename {{name}}",
+    "spaceSettings": "Space settings",
+    "switchFailed": "The switch did not happen; you are still in {{name}}.",
+    "createFailed": "The space was not created.",
+    "renameFailed": "The space was not renamed."
+  },
+  "deleted": {
+    "title": "This space was deleted",
+    "body": "The space you were working in was deleted in another session. Continue in the default space.",
+    "cta": "Continue"
+  },
+  "level": {
+    "space": "These settings apply only in {{space}}, and only to you. Your profile, appearance and model choices live in the instance area, behind the gear icon."
+  },
+  "settings": {
+    "title": "Space settings",
+    "heading": "This space",
+    "explainer": "A space is a sealed partition: nothing in it is ever compared with, retrieved into, or reported beside another space.",
+    "nameLabel": "Name",
+    "dangerHeading": "Delete this space",
+    "dangerExplainer": "Deleting a space erases everything inside it, for every user, through the ordinary deletion saga: one signed receipt per source.",
+    "defaultUndeletable": "The default space cannot be deleted. It is where anything that names no space arrives.",
+    "deleteButton": "Delete this space",
+    "planIntro": "Deleting {{space}} will erase:",
+    "planEmpty": "The space holds nothing yet; only the space itself will be removed.",
+    "planLine": "{{kind}}: {{n}}",
+    "planReceipts": "Every source is erased through the ordinary deletion saga with one signed receipt each, shared material included. The receipts remain verifiable after the space is gone.",
+    "planFailed": "The deletion plan could not be loaded.",
+    "confirmLabel": "Type {{space}} to confirm",
+    "deleteConfirm": "Delete {{space}} permanently",
+    "deleting": "Deleting…",
+    "deleteFailed": "The space was not deleted.",
+    "sourceType": {
+      "user_note": "Notes",
+      "file": "Files",
+      "chat_conversation": "Conversations",
+      "email": "Emails",
+      "web": "Web pages",
+      "chat": "Chat captures"
+    },
+    "artifact": {
+      "projects": "Projects",
+      "entity_aliases": "Entity aliases",
+      "import_runs": "Import runs",
+      "research_runs": "Research runs",
+      "skill_runs": "Skill runs",
+      "findings_reports": "Findings reports",
+      "passport_exports": "Passport exports",
+      "connectors": "Connectors",
+      "extraction_gates": "Extraction gate settings"
+    }
+  },
+  "firstRun": {
+    "title": "{{space}} is a new space, sealed and empty",
+    "body": "Everything captured here stays here: memory, sources, findings and reports in this space never mix with any other. Start a conversation or add the first documents.",
+    "chatCta": "Start a conversation",
+    "sourcesCta": "Add sources"
+  }
+}

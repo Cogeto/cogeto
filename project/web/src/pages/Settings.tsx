@@ -3,39 +3,30 @@ import { useConfirm } from '../components/confirm';
 import type { ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
-import type {
-  ContextSuggestionDto,
-  EmailAllowlistKind,
-  MemoryScope,
-  ModelConfigDto,
-  PreferredLanguage,
-} from '@cogeto/shared';
-import type { TFunction } from 'i18next';
-import { LANGUAGE_ENDONYMS, MEASURED_LANGUAGES, SUPPORTED_LANGUAGES } from '@cogeto/shared';
+import type { EmailAllowlistKind, MemoryScope } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import {
-  acceptContextSuggestion,
   addConnectorSubScope,
   addEmailAllowlistEntry,
   addEntityAlias,
   addExtractionGateRule,
   connectConfluence,
   disableConnector,
-  dismissContextSuggestion,
   enableConnector,
   fetchConnectorDetail,
   fetchConnectors,
   fetchEntityAliases,
-  fetchContextSuggestions,
   fetchEmailConfig,
   fetchExtractionGateConfig,
-  fetchInstancePublicKey,
-  fetchAnswerModel,
   fetchMe,
-  fetchModelConfig,
   fetchPassportDownload,
   fetchPassportExports,
   fetchSettings,
-  fetchUserContext,
+  fetchSpaces,
+  fetchSpaceDeletionPlan,
+  deleteSpace,
+  putCurrentSpace,
+  renameSpace,
   reconnectConfluence,
   removeConnector,
   removeEmailAllowlistEntry,
@@ -48,18 +39,18 @@ import {
   reingestConnectorItem,
   syncConnector,
   triggerPassportExport,
-  updateAnswerModel,
   updateConnectorSettings,
   updateConnectorSubScope,
   updateSettings,
-  updateUserContext,
   fetchProjects,
 } from '../api';
 import type { ConnectorDto, ConnectorSettingsDto, ConnectorState } from '../api';
 import type { Session } from '../auth/oidc';
-import { formatDate, formatLongDayMonth, localeTag } from '../i18n/format';
+import { currentSpaceId } from '../space';
+import { formatDate } from '../i18n/format';
 import { Shell } from '../components/Shell';
 import {
+  btnDanger,
   btnPrimary,
   btnSecondary,
   Drawer,
@@ -72,9 +63,6 @@ import {
 } from '../components/ui';
 import { timeAgo } from '../components/status';
 import type { Tone } from '../components/status';
-import { useTheme } from '../theme';
-import type { Theme } from '../theme';
-import { useAutoResearch } from '../research-pref';
 import { useApiErrorMessage } from '../i18n/api-error';
 
 /** Settings: only real, wired toggles — every control does something today. */
@@ -82,7 +70,8 @@ export function Settings({ session }: { session: Session }) {
   const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
-  const publicKey = useQuery({ queryKey: ['instance-key'], queryFn: fetchInstancePublicKey });
+  const spaceList = useQuery({ queryKey: ['spaces'], queryFn: () => fetchSpaces(session) });
+  const spaceName = spaceList.data?.spaces.find((s) => s.id === currentSpaceId())?.name ?? '';
 
   const [discard, setDiscard] = useState(false);
   const [scope, setScope] = useState<MemoryScope>('private');
@@ -106,7 +95,17 @@ export function Settings({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title={t('navigation:section.settings')} active="settings">
+    <Shell session={session} title={t('spaces:settings.title')} active="settings">
+      {/* The level, stated where the settings are shown (issue C4): everything
+          on this page is space-scoped, per user, and the page names the space
+          it governs. Identity, appearance and infrastructure live in the
+          instance area. */}
+      <p className="rounded-lg border border-slate-200 bg-slate-100/60 px-4 py-2.5 text-xs text-slate-500 dark:bg-white/5">
+        {t('spaces:level.space', { space: spaceName })}
+      </p>
+
+      <ThisSpaceSection session={session} />
+
       <section className="space-y-5 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <div>
           <SectionTitle>{t('capture.heading')}</SectionTitle>
@@ -164,15 +163,7 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
 
-      <ProfileContextSection session={session} />
-
-      <AppearanceSection />
-
-      <ResearchSection />
-
-      <AnswerModelSection session={session} />
-
-      <ModelConfigSection session={session} />
+      <ResearchSection session={session} />
 
       <EmailCaptureSection session={session} />
 
@@ -183,353 +174,221 @@ export function Settings({ session }: { session: Session }) {
       <EntityAliasesSection session={session} />
 
       <PassportSection session={session} />
-
-      <section className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
-        <SectionTitle>{t('signingKey.heading')}</SectionTitle>
-        <p className="text-xs text-slate-500">{t('signingKey.explainer')}</p>
-        {publicKey.data ? (
-          <pre className="overflow-x-auto rounded-md bg-slate-50 p-3 text-xs text-slate-600">
-            {publicKey.data.publicKeyPem}
-          </pre>
-        ) : (
-          <Skeleton className="h-16 w-full" />
-        )}
-        {publicKey.data && (
-          <p className="text-xs text-slate-400">
-            {t('signingKey.algorithm', { algorithm: publicKey.data.algorithm })}
-          </p>
-        )}
-      </section>
     </Shell>
   );
 }
 
-/** The browser's IANA zone list; falls back to a minimal set if unsupported. */
-function timeZoneOptions(): string[] {
-  try {
-    return Intl.supportedValuesOf('timeZone');
-  } catch {
-    return ['Europe/Zagreb', 'Europe/Berlin', 'Europe/London', 'UTC'];
-  }
-}
-
 /**
- * Profile and context: who the user is, their
- * timezone, and which language Cogeto speaks. Everything here is settings, not
- * memory: it shapes how answers are phrased and interpreted, and is never a
- * citable fact. Suggestions propose company/role values found
- * in the user's own memories; nothing applies without an explicit accept.
+ * This space (docs/features/spaces.md section 3): its name, its rename, and
+ * for an administrator the one irreversible act, behind a confirmation that
+ * states exactly what will be erased (the deletion-plan numbers from session
+ * 2) and requires typing the space's name. The default space is never
+ * deletable and the section says so instead of hiding the fact.
  */
-function ProfileContextSection({ session }: { session: Session }) {
-  const { t } = useTranslation('settings');
+function ThisSpaceSection({ session }: { session: Session }) {
+  const { t } = useTranslation('spaces');
   const queryClient = useQueryClient();
-  const context = useQuery({
-    queryKey: ['user-context'],
-    queryFn: () => fetchUserContext(session),
-  });
-  const suggestions = useQuery({
-    queryKey: ['context-suggestions'],
-    queryFn: () => fetchContextSuggestions(session),
-  });
+  const errorMessage = useApiErrorMessage(t);
+  const spaceList = useQuery({ queryKey: ['spaces'], queryFn: () => fetchSpaces(session) });
+  const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
+  const current = spaceList.data?.spaces.find((s) => s.id === currentSpaceId()) ?? null;
+  const isDefault = current?.id === DEFAULT_SPACE_ID;
 
-  const [displayName, setDisplayName] = useState('');
-  const [company, setCompany] = useState('');
-  const [roleTitle, setRoleTitle] = useState('');
-  const [aboutWork, setAboutWork] = useState('');
-  const [timezone, setTimezone] = useState('');
-  const [language, setLanguage] = useState<PreferredLanguage>('en');
-  const [strict, setStrict] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [name, setName] = useState('');
+  const [renameSaved, setRenameSaved] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
 
   useEffect(() => {
-    if (context.data) {
-      setDisplayName(context.data.displayName ?? '');
-      setCompany(context.data.company ?? '');
-      setRoleTitle(context.data.roleTitle ?? '');
-      setAboutWork(context.data.aboutWork ?? '');
-      setTimezone(context.data.timezone ?? '');
-      setLanguage(context.data.preferredLanguage);
-      setStrict(context.data.languageStrict);
-    }
-  }, [context.data]);
+    if (current) setName(current.name);
+  }, [current?.id, current?.name]);
 
-  const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['user-context'] });
-    await queryClient.invalidateQueries({ queryKey: ['context-suggestions'] });
-  };
-
-  const save = useMutation({
-    mutationFn: () =>
-      updateUserContext(session, {
-        displayName: displayName.trim() || null,
-        company: company.trim() || null,
-        roleTitle: roleTitle.trim() || null,
-        aboutWork: aboutWork.trim() || null,
-        timezone: timezone || null,
-        preferredLanguage: language,
-        languageStrict: strict,
-      }),
+  const rename = useMutation({
+    mutationFn: () => renameSpace(session, current!.id, name.trim()),
     onSuccess: async () => {
-      setSaved(true);
-      await refresh();
-      setTimeout(() => setSaved(false), 2500);
+      setRenameSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ['spaces'] });
+      setTimeout(() => setRenameSaved(false), 2500);
     },
   });
 
-  const accept = useMutation({
-    mutationFn: (s: ContextSuggestionDto) =>
-      acceptContextSuggestion(session, {
-        field: s.field,
-        value: s.value,
-        sourceMemoryId: s.sourceMemoryId,
-      }),
-    onSuccess: refresh,
-  });
-  const dismiss = useMutation({
-    mutationFn: (s: ContextSuggestionDto) =>
-      dismissContextSuggestion(session, {
-        field: s.field,
-        value: s.value,
-        sourceMemoryId: s.sourceMemoryId,
-      }),
-    onSuccess: refresh,
+  // The plan loads when the administrator arms the deletion, so the
+  // confirmation always states the numbers as of NOW, not of page load.
+  const plan = useQuery({
+    queryKey: ['space-deletion-plan', current?.id],
+    queryFn: () => fetchSpaceDeletionPlan(session, current!.id),
+    enabled: armed && current != null && !isDefault,
   });
 
-  const inputClass = 'w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-700';
+  const erase = useMutation({
+    mutationFn: async () => {
+      await deleteSpace(session, current!.id);
+      // The erased space cannot stay the persisted last-used one; land on the
+      // default space's dashboard, deliberately.
+      await putCurrentSpace(session, DEFAULT_SPACE_ID).catch(() => undefined);
+      window.location.assign('/');
+    },
+  });
+
+  if (!current) return null;
+  const confirmMatches = confirmName.trim() === current.name;
 
   return (
-    <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+    <section className="space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
-        <SectionTitle>{t('profile.heading')}</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">{t('profile.explainer')}</p>
+        <SectionTitle>{t('settings.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('settings.explainer')}</p>
       </div>
 
-      {context.isPending && <Skeleton className="h-40 w-full" />}
-      {context.data && (
-        <>
-          {(suggestions.data?.suggestions.length ?? 0) > 0 && (
-            <div className="space-y-2 rounded-md border border-brand-teal/40 bg-brand-teal/5 p-3">
-              {suggestions.data!.suggestions.map((s) => (
-                <div key={`${s.field}:${s.value}`} className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-slate-700">
-                    <Trans
-                      i18nKey={
-                        s.field === 'company'
-                          ? 'profile.suggestion.company'
-                          : 'profile.suggestion.role'
-                      }
-                      ns="settings"
-                      values={{
-                        value: s.value,
-                        source: s.sourceLabel,
-                        date: formatLongDayMonth(s.sourceDate),
-                      }}
-                      components={{ src: <span className="text-xs text-slate-400" /> }}
+      <form
+        className="flex flex-wrap items-center gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (name.trim() && name.trim() !== current.name) rename.mutate();
+        }}
+      >
+        <label className="flex items-center gap-3 text-sm text-slate-700">
+          <span className="font-medium">{t('settings.nameLabel')}</span>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            maxLength={120}
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-700"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={rename.isPending || name.trim() === '' || name.trim() === current.name}
+          className={btnSecondary}
+        >
+          {t('common:action.save')}
+        </button>
+        {renameSaved && (
+          <span className="text-xs text-brand-teal-ink dark:text-brand-teal">
+            {t('common:state.saved')}
+          </span>
+        )}
+        {rename.isError && (
+          <span className="text-xs text-red-700 dark:text-red-300">
+            {errorMessage(rename.error, 'switcher.renameFailed')}
+          </span>
+        )}
+      </form>
+
+      {me.data?.isAdmin === true && (
+        <div className="space-y-3 border-t border-slate-200 pt-4">
+          <SectionTitle as="h3">{t('settings.dangerHeading')}</SectionTitle>
+          {isDefault ? (
+            <p className="text-xs text-slate-500">{t('settings.defaultUndeletable')}</p>
+          ) : !armed ? (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500">{t('settings.dangerExplainer')}</p>
+              <button type="button" className={btnDanger} onClick={() => setArmed(true)}>
+                {t('settings.deleteButton')}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 rounded-md border border-red-200 bg-red-50/50 p-4 dark:border-red-500/30 dark:bg-red-500/5">
+              {plan.isPending && <SkeletonRows rows={2} />}
+              {plan.isError && (
+                <ErrorState onRetry={() => void plan.refetch()}>
+                  {errorMessage(plan.error, 'settings.planFailed')}
+                </ErrorState>
+              )}
+              {plan.data && (
+                <>
+                  <p className="text-sm font-medium text-slate-800">
+                    {t('settings.planIntro', { space: current.name })}
+                  </p>
+                  {plan.data.totalSources === 0 && plan.data.containers.length === 0 ? (
+                    <p className="text-sm text-slate-600">{t('settings.planEmpty')}</p>
+                  ) : (
+                    <ul className="list-inside list-disc space-y-0.5 text-sm text-slate-600">
+                      {plan.data.sources.map((entry) => (
+                        <li key={entry.sourceType}>
+                          {t('settings.planLine', {
+                            n: entry.count,
+                            kind: t(`settings.sourceType.${entry.sourceType}`, {
+                              defaultValue: entry.sourceType,
+                            }),
+                          })}
+                        </li>
+                      ))}
+                      {plan.data.containers.map((entry) => (
+                        <li key={entry.artifact}>
+                          {t('settings.planLine', {
+                            n: entry.count,
+                            kind: t(`settings.artifact.${entry.artifact}`, {
+                              defaultValue: entry.artifact,
+                            }),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-xs text-slate-500">{t('settings.planReceipts')}</p>
+                  <label className="block text-sm text-slate-700">
+                    <span className="font-medium">
+                      {t('settings.confirmLabel', { space: current.name })}
+                    </span>
+                    <input
+                      value={confirmName}
+                      onChange={(event) => setConfirmName(event.target.value)}
+                      placeholder={current.name}
+                      className="mt-1 w-full max-w-sm rounded-md border border-slate-300 px-2 py-1.5 text-sm"
                     />
-                  </span>
-                  <button
-                    type="button"
-                    className={btnSecondary}
-                    disabled={accept.isPending}
-                    onClick={() => accept.mutate(s)}
-                  >
-                    {t('profile.suggestion.accept')}
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs text-slate-400 underline hover:text-slate-600"
-                    disabled={dismiss.isPending}
-                    onClick={() => dismiss.mutate(s)}
-                  >
-                    {t('common:action.dismiss')}
-                  </button>
-                </div>
-              ))}
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={!confirmMatches || erase.isPending}
+                      onClick={() => erase.mutate()}
+                      className={btnDanger}
+                    >
+                      {erase.isPending
+                        ? t('settings.deleting')
+                        : t('settings.deleteConfirm', { space: current.name })}
+                    </button>
+                    <button
+                      type="button"
+                      className={btnSecondary}
+                      onClick={() => {
+                        setArmed(false);
+                        setConfirmName('');
+                      }}
+                    >
+                      {t('common:action.cancel')}
+                    </button>
+                    {erase.isError && (
+                      <span className="text-xs text-red-700 dark:text-red-300">
+                        {errorMessage(erase.error, 'settings.deleteFailed')}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm text-slate-700">
-              <span className="font-medium">{t('profile.name')}</span>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={t('profile.namePlaceholder')}
-                className={`mt-1 ${inputClass}`}
-                maxLength={120}
-              />
-            </label>
-            <label className="block text-sm text-slate-700">
-              <span className="font-medium">{t('profile.company')}</span>
-              <input
-                type="text"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                className={`mt-1 ${inputClass}`}
-                maxLength={160}
-              />
-            </label>
-            <label className="block text-sm text-slate-700">
-              <span className="font-medium">{t('profile.role')}</span>
-              <input
-                type="text"
-                value={roleTitle}
-                onChange={(e) => setRoleTitle(e.target.value)}
-                className={`mt-1 ${inputClass}`}
-                maxLength={120}
-              />
-            </label>
-            <label className="block text-sm text-slate-700">
-              <span className="font-medium">{t('profile.timezone')}</span>
-              <select
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className={`mt-1 ${inputClass}`}
-              >
-                <option value="">
-                  {t('profile.instanceDefaultZone', { zone: context.data.effectiveTimezone })}
-                </option>
-                {timeZoneOptions().map((zone) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm text-slate-700 sm:col-span-2">
-              <span className="font-medium">{t('profile.aboutWork')}</span>
-              <input
-                type="text"
-                value={aboutWork}
-                onChange={(e) => setAboutWork(e.target.value)}
-                placeholder={t('profile.aboutWorkPlaceholder')}
-                className={`mt-1 ${inputClass}`}
-                maxLength={240}
-              />
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center gap-3 text-sm text-slate-700">
-              <span className="font-medium">{t('profile.language')}</span>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as PreferredLanguage)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-              >
-                {/* A language is always listed in its own language, so someone
-                    who cannot read the current interface can still find theirs. */}
-                {SUPPORTED_LANGUAGES.map((code) => (
-                  <option key={code} value={code}>
-                    {LANGUAGE_ENDONYMS[code]}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-slate-400">{t('profile.languageHelp')}</span>
-            </label>
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={strict}
-                onChange={(e) => setStrict(e.target.checked)}
-                className="mt-1"
-              />
-              <span className="text-sm text-slate-700">
-                <span className="font-medium">{t('profile.strict.label')}</span>
-                <span className="block text-xs text-slate-400">{t('profile.strict.help')}</span>
-              </span>
-            </label>
-            {/* Interface language is NOT extraction quality (V2.0 item 3.5,
-                Issue C point 4). Only the measured languages have a golden
-                corpus and published per-language gates; the rest are interface
-                languages, and the product says so where the choice is made. */}
-            <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              {t('profile.qualityNote', {
-                measured: MEASURED_LANGUAGES.map((code) => LANGUAGE_ENDONYMS[code]).join(', '),
-                unmeasured: SUPPORTED_LANGUAGES.filter(
-                  (code) => !(MEASURED_LANGUAGES as readonly string[]).includes(code),
-                )
-                  .map((code) => LANGUAGE_ENDONYMS[code])
-                  .join(', '),
-              })}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={save.isPending}
-              onClick={() => save.mutate()}
-              className={btnPrimary}
-            >
-              {save.isPending ? t('common:state.saving') : t('common:action.save')}
-            </button>
-            {saved && (
-              <span className="text-xs text-brand-teal-ink dark:text-brand-teal">
-                {t('common:state.saved')}
-              </span>
-            )}
-            {save.isError && (
-              <span className="text-xs text-red-700 dark:text-red-300">{t('saveFailed')}</span>
-            )}
-          </div>
-        </>
+        </div>
       )}
     </section>
   );
 }
 
-/** Theme VALUES are persisted; only their display names are translated. */
-const THEMES: Theme[] = ['dark', 'light'];
-
 /**
- * Appearance: the per-device light/dark choice. Dark is the product
- * default; picking here writes localStorage and applies instantly on every
- * surface, and the pre-paint bootstrap in index.html honours it on the next load
- * with no flash. A segmented control, not a checkbox: two named, explicit states.
+ * Research: when on, a chat answer that would offer web research just runs it.
+ * No tap, no gate, no picking. Off by default. Stored per user PER SPACE (the
+ * settings split): research behaviour is content behaviour, so what auto-runs
+ * in one space says nothing about another.
  */
-function AppearanceSection() {
+function ResearchSection({ session }: { session: Session }) {
   const { t } = useTranslation('settings');
-  const { theme, setTheme } = useTheme();
-  return (
-    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
-      <div>
-        <SectionTitle>{t('appearance.heading')}</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">{t('appearance.explainer')}</p>
-      </div>
-      <div
-        role="group"
-        aria-label={t('appearance.themeLabel')}
-        className="flex w-fit gap-1 rounded-lg bg-slate-200/70 p-1"
-      >
-        {THEMES.map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={theme === value}
-            onClick={() => setTheme(value)}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
-              theme === value
-                ? 'bg-surface text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {t(`appearance.theme.${value}`)}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Research: when on, a chat answer that would offer web research
- * just runs it — no tap, no gate, no picking. Off by default; stored per device.
- */
-function ResearchSection() {
-  const { t } = useTranslation('settings');
-  const { autoResearch, setAutoResearch } = useAutoResearch();
+  const queryClient = useQueryClient();
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
+  const toggle = useMutation({
+    mutationFn: (on: boolean) => updateSettings(session, { autoResearch: on }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+  });
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
@@ -539,8 +398,9 @@ function ResearchSection() {
       <label className="flex items-start gap-3">
         <input
           type="checkbox"
-          checked={autoResearch}
-          onChange={(e) => setAutoResearch(e.target.checked)}
+          checked={settings.data?.autoResearch ?? false}
+          disabled={settings.isPending || toggle.isPending}
+          onChange={(e) => toggle.mutate(e.target.checked)}
           className="mt-1"
         />
         <span className="text-sm text-slate-700">
@@ -548,167 +408,8 @@ function ResearchSection() {
           <span className="block text-xs text-slate-400">{t('research.auto.help')}</span>
         </span>
       </label>
-    </section>
-  );
-}
-
-/**
- * The one model choice that is a user's own (V2.4 item 7.1): which model writes
- * the answers they read, from the set an administrator enabled.
- *
- * Deliberately the only one. Extraction and embeddings decide what gets
- * remembered and how it is found, and vision decides what gets read off a page:
- * those are instance decisions with an eval gate behind them, not preferences.
- * When an admin has enabled nothing, the section says so and offers nothing,
- * rather than showing an empty control.
- */
-function AnswerModelSection({ session }: { session: Session }) {
-  const { t } = useTranslation('providers');
-  const queryClient = useQueryClient();
-  const answerModel = useQuery({
-    queryKey: ['answer-model'],
-    queryFn: () => fetchAnswerModel(session),
-  });
-  const choose = useMutation({
-    mutationFn: (optionId: string | null) => updateAnswerModel(session, optionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['answer-model'] }),
-  });
-
-  const data = answerModel.data;
-  return (
-    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
-      <div>
-        <SectionTitle>{t('userChoice.heading')}</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">{t('userChoice.explainer')}</p>
-      </div>
-      {answerModel.isPending && <Skeleton className="h-10 w-full" />}
-      {data && data.options.length === 0 && (
-        <p className="text-xs text-slate-500">{t('userChoice.none')}</p>
-      )}
-      {data && data.options.length > 0 && (
-        <>
-          <label className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-            <span className="font-medium">{t('assignment.model')}</span>
-            <select
-              value={data.optionId ?? ''}
-              onChange={(event) => choose.mutate(event.target.value || null)}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-            >
-              <option value="">{t('userChoice.instanceDefault')}</option>
-              {data.options.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="text-xs text-slate-400">
-            {t('userChoice.current', { label: data.activeLabel })}
-          </p>
-        </>
-      )}
-    </section>
-  );
-}
-
-/**
- * Model configuration: READ-ONLY display of the active
- * provider configuration — the id the trust page joins on, the provider and
- * model per tier, redaction posture, and what leaves the instance. No key
- * input, no editing: keys are operator-set in the instance environment.
- */
-/**
- * What leaves the instance, in the reader's language (F13).
- *
- * The server names the case and the providers; the sentence is written here,
- * and the providers are joined by the reader's own language rules rather than
- * by an English "and". `externalCalls` stays the fallback for a case a newer
- * server knows and this interface does not.
- */
-function externalCallsSentence(t: TFunction, config: ModelConfigDto): string {
-  const key = {
-    unconfigured: 'models.externalCalls.unconfigured',
-    all_local: 'models.externalCalls.allLocal',
-    redacted: 'models.externalCalls.redacted',
-    external: 'models.externalCalls.external',
-  }[config.externalCallsKind] as string | undefined;
-  if (key === undefined) return config.externalCalls;
-  const providers = new Intl.ListFormat(localeTag(), { type: 'conjunction' }).format(
-    config.externalCallsProviders.map((id) => t(`models.providerLabel.${id}`)),
-  );
-  return t(key, { providers });
-}
-
-function ModelConfigSection({ session }: { session: Session }) {
-  const { t } = useTranslation('settings');
-  const config = useQuery({
-    queryKey: ['model-config'],
-    queryFn: () => fetchModelConfig(session),
-  });
-  // An admin sees ONE extra line: where this is actually changed. Everyone else
-  // sees the disclosure unchanged, because which company receives their text is
-  // not an operator detail (V2.4 item 7.1).
-  const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
-
-  return (
-    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
-      <div>
-        <SectionTitle>{t('models.heading')}</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">{t('models.explainer')}</p>
-      </div>
-      {config.isPending && <Skeleton className="h-24 w-full" />}
-      {config.data && (
-        <>
-          <div className="flex items-center gap-2 text-sm text-slate-700">
-            <span className="font-medium">{t('models.configuration')}</span>
-            <code className="rounded bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
-              {config.data.configurationId}
-            </code>
-            {!config.data.configured && (
-              <span className="text-xs text-amber-700 dark:text-amber-300">
-                {t('models.notConfigured')}
-              </span>
-            )}
-          </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            {/* Tier keys are the gateway's vocabulary; their labels are copy. */}
-            {(
-              [
-                ['pipeline', config.data.tiers.pipeline],
-                ['answer', config.data.tiers.answer],
-                ['embeddings', config.data.tiers.embeddings],
-              ] as const
-            ).map(([key, tier]) => (
-              <div key={key} className="contents">
-                <dt className="text-slate-500">{t(`models.tier.${key}`)}</dt>
-                <dd className="text-slate-700">
-                  {tier.provider}/{tier.model}
-                </dd>
-              </div>
-            ))}
-            <div className="contents">
-              <dt className="text-slate-500">{t('models.redaction')}</dt>
-              <dd className="text-slate-700">
-                {config.data.redactionEnabled
-                  ? t('capabilities:state.on')
-                  : t('capabilities:state.off')}
-              </dd>
-            </div>
-          </dl>
-          <p className="text-xs text-slate-500">{externalCallsSentence(t, config.data)}</p>
-          {me.data?.isAdmin === true && (
-            <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-3">
-              <a href="/models" className={btnSecondary}>
-                {t('models.manage')}
-                <span aria-hidden="true">→</span>
-              </a>
-              <span className="text-xs text-slate-400">{t('models.managedIn')}</span>
-            </div>
-          )}
-        </>
-      )}
-      {config.isError && (
-        <p className="text-xs text-red-700 dark:text-red-300">{t('models.error')}</p>
+      {toggle.isError && (
+        <p className="text-xs text-red-700 dark:text-red-300">{t('saveFailed')}</p>
       )}
     </section>
   );
@@ -897,6 +598,13 @@ function EmailCaptureSection({ session }: { session: Session }) {
         <SectionTitle>{t('heading')}</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
           <Trans i18nKey="explainer" ns="email" components={{ b: <strong /> }} />
+        </p>
+        {/* Honest interim (docs/features/spaces.md section 6): inbound mail
+            has no space header, so it lands in the DEFAULT space until
+            per-alias routing ships. Stated here rather than implied away,
+            because this page otherwise speaks for one space. */}
+        <p className="mt-1.5 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+          {t('spaceNote')}
         </p>
       </div>
 

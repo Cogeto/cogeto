@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { AdminUserDto, ErasurePreviewDto } from '@cogeto/shared';
 import { fetchAdminUsers, fetchErasurePreview, fetchErasureResult, requestErasure } from '../api';
 import type { Session } from '../auth/oidc';
-import { Shell } from '../components/Shell';
 import {
   btnDanger,
   btnSecondary,
@@ -272,7 +271,7 @@ export function Users({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title={t('navigation:section.users')} active="users">
+    <>
       <Card>
         <div className="mb-3">
           <SectionTitle>{t('heading')}</SectionTitle>
@@ -336,6 +335,6 @@ export function Users({ session }: { session: Session }) {
       </Card>
 
       {erasing && <EraseDrawer session={session} user={erasing} onClose={() => setErasing(null)} />}
-    </Shell>
+    </>
   );
 }

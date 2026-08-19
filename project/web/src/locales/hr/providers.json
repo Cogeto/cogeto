@@ -1,7 +1,4 @@
 {
-  "page": {
-    "title": "Pružatelji"
-  },
   "adminOnly": {
     "title": "Samo za administratore",
     "body": "Pružatelji modela određuju što ova instanca pamti i kamo se šalje njezin sadržaj, pa ih može mijenjati samo administrator."
@@ -83,7 +80,6 @@
     "submit": "Dodaj i testiraj"
   },
   "assignment": {
-    "title": "Dodjela modela",
     "heading": "Na čemu radi svaka razina",
     "explainer": "Četiri neovisna izbora. Mješovita je konfiguracija uobičajena: izdvajanje na jednoj krajnjoj točki, odgovori na drugoj.",
     "error": "Konfiguraciju nije bilo moguće učitati.",

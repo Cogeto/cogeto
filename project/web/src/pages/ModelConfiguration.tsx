@@ -22,7 +22,6 @@ import {
   resumeEmbeddingsRebuild,
 } from '../api';
 import type { Session } from '../auth/oidc';
-import { Shell } from '../components/Shell';
 import { ProviderMark } from '../components/ProviderMark';
 import {
   btnPrimary,
@@ -73,18 +72,16 @@ export function ModelConfiguration({ session }: { session: Session }) {
 
   if (me.data && !me.data.isAdmin) {
     return (
-      <Shell session={session} title={t('assignment.title')} active="models">
-        <EmptyState icon="🔒" title={t('adminOnly.title')}>
-          {t('adminOnly.body')}
-        </EmptyState>
-      </Shell>
+      <EmptyState icon="🔒" title={t('adminOnly.title')}>
+        {t('adminOnly.body')}
+      </EmptyState>
     );
   }
 
   const data = configuration.data;
 
   return (
-    <Shell session={session} title={t('assignment.title')} active="models">
+    <>
       <section className="space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <div>
           <SectionTitle>{t('assignment.heading')}</SectionTitle>
@@ -139,7 +136,7 @@ export function ModelConfiguration({ session }: { session: Session }) {
           </ul>
         </section>
       )}
-    </Shell>
+    </>
   );
 }
 

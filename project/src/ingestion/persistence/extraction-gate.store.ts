@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, resolveSpaceId } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -44,6 +44,10 @@ export const EXTRACTION_REFUSAL_RETENTION_CRONTAB = `55 3 * * * ${EXTRACTION_REF
 
 export interface GateDecisionInput {
   ownerId: string;
+  /** The SOURCE ROW'S space (migration 0062, the settings split): the gate
+   * that admits a source is the one configured in the space the source lives
+   * in. Absent resolves to the default space like every space column. */
+  spaceId?: string;
   sourceType: string;
   sourceId: string;
   /** The reading layer's detected format, when the reader stamped one. */
@@ -105,6 +109,7 @@ export class ExtractionGateStore {
    *   chat, email bodies, web pages) are untouched by class rules.
    */
   async decisionFor(tx: DbOrTx, input: GateDecisionInput): Promise<GateDecision> {
+    const spaceId = input.spaceId ?? DEFAULT_SPACE_ID;
     const [gates, rules] = await Promise.all([
       tx
         .select()
@@ -112,6 +117,7 @@ export class ExtractionGateStore {
         .where(
           and(
             eq(extractionGate.ownerId, input.ownerId),
+            eq(extractionGate.spaceId, spaceId),
             eq(extractionGate.sourceType, input.sourceType),
           ),
         )
@@ -122,6 +128,7 @@ export class ExtractionGateStore {
         .where(
           and(
             eq(extractionGateRule.ownerId, input.ownerId),
+            eq(extractionGateRule.spaceId, spaceId),
             eq(extractionGateRule.sourceType, input.sourceType),
           ),
         ),
@@ -158,23 +165,37 @@ export class ExtractionGateStore {
     });
   }
 
-  /** The owner's gate configuration plus the recent refusals, for the panel. */
+  /** The owner's gate configuration IN THE CALLER'S SPACE plus that space's
+   * recent refusals, for the panel (the settings split, migration 0062). */
   async configFor(principal: Principal): Promise<ExtractionGateConfig> {
+    const spaceId = resolveSpaceId(principal);
     const [gates, rules, recentRefusals] = await Promise.all([
       this.db
         .select()
         .from(extractionGate)
-        .where(eq(extractionGate.ownerId, principal.userId))
+        .where(
+          and(eq(extractionGate.ownerId, principal.userId), eq(extractionGate.spaceId, spaceId)),
+        )
         .orderBy(extractionGate.sourceType),
       this.db
         .select()
         .from(extractionGateRule)
-        .where(eq(extractionGateRule.ownerId, principal.userId))
+        .where(
+          and(
+            eq(extractionGateRule.ownerId, principal.userId),
+            eq(extractionGateRule.spaceId, spaceId),
+          ),
+        )
         .orderBy(extractionGateRule.sourceType, extractionGateRule.dimension),
       this.db
         .select()
         .from(extractionGateRefusal)
-        .where(eq(extractionGateRefusal.ownerId, principal.userId))
+        .where(
+          and(
+            eq(extractionGateRefusal.ownerId, principal.userId),
+            eq(extractionGateRefusal.spaceId, spaceId),
+          ),
+        )
         .orderBy(desc(extractionGateRefusal.refusedAt))
         .limit(RECENT_REFUSALS_LIMIT),
     ]);
@@ -190,6 +211,7 @@ export class ExtractionGateStore {
     sourceType: string,
     request: SetGateRequest,
   ): Promise<ExtractionGateRow> {
+    const spaceId = resolveSpaceId(principal);
     return this.db.transaction(async (tx) => {
       const existing = (
         await tx
@@ -198,6 +220,7 @@ export class ExtractionGateStore {
           .where(
             and(
               eq(extractionGate.ownerId, principal.userId),
+              eq(extractionGate.spaceId, spaceId),
               eq(extractionGate.sourceType, sourceType),
             ),
           )
@@ -225,7 +248,7 @@ export class ExtractionGateStore {
         : (
             await tx
               .insert(extractionGate)
-              .values({ ownerId: principal.userId, sourceType, ...next })
+              .values({ ownerId: principal.userId, spaceId, sourceType, ...next })
               .returning()
           )[0]!;
 
@@ -249,11 +272,13 @@ export class ExtractionGateStore {
 
   /** Idempotent rule insert, audited with structural detail only. */
   async addRule(principal: Principal, request: AddRuleRequest): Promise<ExtractionGateRuleRow> {
+    const spaceId = resolveSpaceId(principal);
     return this.db.transaction(async (tx) => {
       const inserted = await tx
         .insert(extractionGateRule)
         .values({
           ownerId: principal.userId,
+          spaceId,
           sourceType: request.sourceType,
           dimension: request.dimension,
           value: request.value,
@@ -273,6 +298,7 @@ export class ExtractionGateStore {
             .where(
               and(
                 eq(extractionGateRule.ownerId, principal.userId),
+                eq(extractionGateRule.spaceId, spaceId),
                 eq(extractionGateRule.sourceType, request.sourceType),
                 eq(extractionGateRule.dimension, request.dimension),
                 eq(extractionGateRule.value, request.value),

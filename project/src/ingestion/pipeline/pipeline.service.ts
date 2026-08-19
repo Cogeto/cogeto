@@ -207,6 +207,9 @@ export class IngestionPipeline {
     if (this.gate) {
       const decision = await this.gate.decisionFor(tx, {
         ownerId: source.ownerId,
+        // The gate that admits a source is the one configured in the space
+        // the source lives in (the settings split, migration 0062).
+        spaceId: source.spaceId,
         sourceType: payload.source_type,
         sourceId: payload.source_id,
         documentClass: source.documentClass,

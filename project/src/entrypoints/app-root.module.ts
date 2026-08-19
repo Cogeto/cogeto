@@ -7,6 +7,8 @@ import { ModelBudgetExceptionFilter } from './model-budget.filter';
 import {
   EntityAliasSpaceCleanup,
   EntityAliasSpaceCleanupModule,
+  ExtractionGateSpaceCleanup,
+  ExtractionGateSpaceCleanupModule,
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
@@ -457,6 +459,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
           imports: [
             ProjectSpaceCleanupModule,
             EntityAliasSpaceCleanupModule,
+            ExtractionGateSpaceCleanupModule,
             ImportSpaceCleanupModule,
             ResearchSpaceCleanupModule,
             SkillSpaceCleanupModule,
@@ -467,6 +470,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
           adapters: [
             ProjectSpaceCleanup,
             EntityAliasSpaceCleanup,
+            ExtractionGateSpaceCleanup,
             ImportSpaceCleanup,
             ResearchSpaceCleanup,
             SkillSpaceCleanup,

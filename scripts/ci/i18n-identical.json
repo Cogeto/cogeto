@@ -45,7 +45,9 @@
         "providers": ["form.label.label", "tier.embeddings", "tier.vision"],
         "sources": ["imports.s3.bucket", "imports.run.title", "origin.panel.version"],
         "system": ["job.echo"],
-        "users": ["column.person"]
+        "users": ["column.person"],
+        "spaces": ["settings.planLine", "switcher.listLabel", "settings.nameLabel"],
+        "audit": ["filter.space"]
       },
       "server": {
         "report": ["scope.import", "coverage.column.detail"]
@@ -103,7 +105,8 @@
         ],
         "system": ["health.check.migrations"],
         "audit": ["filter.action"],
-        "users": ["column.sources", "sourceType.user_note", "sourceType.chat_conversation"]
+        "users": ["column.sources", "sourceType.user_note", "sourceType.chat_conversation"],
+        "spaces": ["settings.sourceType.user_note"]
       },
       "server": {
         "report": [
@@ -125,7 +128,8 @@
         "forgotten": ["column.status", "receipt.field.status"],
         "providers": ["assignment.model"],
         "sources": ["kindLabel.web"],
-        "system": ["job.echo"]
+        "system": ["job.echo"],
+        "spaces": ["settings.planLine"]
       }
     }
   }

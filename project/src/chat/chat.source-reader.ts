@@ -48,7 +48,7 @@ export class ChatSourceReader implements SourceReader {
       spaceId: rows[0]!.spaceId,
       // The owner's default capture scope, explicitly — never the pipeline's
       // fallback (V2.0 item 3.7).
-      scope: await this.settings.defaultScopeFor(row.ownerId),
+      scope: await this.settings.defaultScopeFor(row.ownerId, rows[0]!.spaceId),
       // "Remember this" extracts the message itself — the one capture path
       // (the create_task normalization went with).
       content: row.content,

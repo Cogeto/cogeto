@@ -1,7 +1,4 @@
 {
-  "page": {
-    "title": "Anbieter"
-  },
   "adminOnly": {
     "title": "Nur für Administratoren",
     "body": "Modellanbieter bestimmen, was diese Instanz behält und wohin ihre Inhalte gesendet werden. Deshalb kann sie nur eine Administration ändern."
@@ -83,7 +80,6 @@
     "submit": "Hinzufügen und testen"
   },
   "assignment": {
-    "title": "Modellzuweisung",
     "heading": "Worauf jede Stufe läuft",
     "explainer": "Vier unabhängige Entscheidungen. Eine gemischte Konfiguration ist gewöhnlich: Extraktion auf dem einen Endpunkt, Antworten auf einem anderen.",
     "error": "Die Konfiguration konnte nicht geladen werden.",

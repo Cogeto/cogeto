@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { simpleParser } from 'mailparser';
 import type { AddressObject, ParsedMail } from 'mailparser';
-import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
+import { ALLOWED_UPLOAD_CONTENT_TYPES, DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { MemoryScope } from '@cogeto/shared';
 import {
   DRIZZLE,
@@ -183,7 +183,10 @@ export class EmailIntakeService {
     //     idempotent pipeline jobs absorb the re-delivery.
     const emailIds: string[] = [];
     for (const recipient of recipients) {
-      const scope = await this.settings.defaultScopeFor(recipient.userId);
+      // The DEFAULT space's default scope, explicitly: inbound mail lands in
+      // the default space this session (the store() comment below), so the
+      // default that governs it is that space's.
+      const scope = await this.settings.defaultScopeFor(recipient.userId, DEFAULT_SPACE_ID);
       const result = await this.store(
         raw,
         parsed,

@@ -211,6 +211,65 @@ amendments were:
   "unknown". Budgets and daily caps stay instance-wide; the usage scope
   carries the space for attribution only, never as a cap input.
 
+## 6b. Session 3 decisions (navigation and the settings split, 2026-08-19)
+
+Recorded with the session that implemented them, the way 6a's were:
+
+- **A space switch is a persisted choice followed by a full page reload** at
+  the same path with query parameters dropped (they name objects of the space
+  being left). Navigation in the SPA is full page loads already, and a reload
+  is the one mechanism that guarantees no query, no badge and no component
+  state can ever briefly show the previous space, which the overriding
+  constraint values above raw speed. The current space is BOUND once per page
+  load before anything renders (the boot gate), and every request carries it
+  through one header builder; a failed switch leaves the user where they were
+  and says so, and a space deleted in another session is detected by the
+  30-second spaces poll and answered with a deliberate dialog, never a
+  silently empty view.
+- **No unsaved-state prompt, ever.** Unsaved state cannot be detected
+  reliably across hand-rolled forms, so per the record's own preference the
+  switch never interrupts; the one materially valuable draft (the chat
+  composer) survives in sessionStorage PER SPACE and returns when the user
+  returns to the space it was typed in.
+- **Space settings are reached from the switcher's own menu** (and the space
+  is named on the page). The sidebar holds exactly the ten space-scoped
+  surfaces and nothing else; a settings entry there would have been an
+  eleventh, and the switcher menu is where every other workspace product
+  keeps this door.
+- **The instance area lives at `/instance/<section>`**, and every legacy path
+  (`/providers`, `/models`, `/system`, `/audit`, `/users`) renders the same
+  surface and is normalized to the canonical URL, so every pre-existing deep
+  link, banner and runbook step keeps resolving. The sidebar identity block
+  and Sign out stay in the space rail beside the new navbar avatar menu: the
+  rail footer is a pinned operator affordance (the version line's neighbour),
+  not a space surface.
+- **Capture defaults and the auto-research toggle are per user per space**
+  (migration 0062): `user_settings` keys on `(user_id, space_id)`, existing
+  rows became the default space's rows via the column DEFAULT (migrated,
+  never reset), and a missing row reads as the column defaults, which is what
+  makes a new space begin with sensible defaults. The settings row's space
+  foreign key CASCADES (the `user_space_state` precedent): a preference row
+  is per-user state about a space, never content, so it is not part of the
+  structural completeness proof that keeps every content foreign key
+  NO ACTION. The auto-research toggle moved server-side from per-device
+  localStorage, because the record scopes research behaviour to the space and
+  a device is not a space.
+- **The extraction gate is sealed with its space** (migration 0062): gate
+  rows and rules key on `(owner_id, space_id, source_type)`, the pipeline
+  chokepoint asks with the SOURCE row's space, and space deletion removes the
+  configuration through a new ingestion cleanup leg. This closes the
+  foundation session's stated deferral.
+- **Email routing stays a default-space affair this session** and the email
+  settings surface now SAYS so: the record's table wants it per space, but
+  intake has no principal and per-alias space routing is section 6's own
+  item. Reported as a code-versus-table disagreement rather than half-fixed.
+- **Audit keeps its one instance-level trail** with the session-2 space
+  attribute now filterable in the interface; the audit page deliberately
+  does not follow the switcher.
+- **Terminology:** Croatian says *prostor*, French says *espace*, German
+  keeps *Space* (the word German-speaking professionals use, and both
+  *Bereich* readings were already taken by scope and by Confluence spaces).
+
 ## 7. Decisions and non-goals
 
 Decided by the owner, 2026-08-19:

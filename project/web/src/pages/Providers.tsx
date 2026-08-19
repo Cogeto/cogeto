@@ -11,7 +11,6 @@ import {
   updateProvider,
 } from '../api';
 import type { Session } from '../auth/oidc';
-import { Shell } from '../components/Shell';
 import { ProviderMark } from '../components/ProviderMark';
 import {
   btnDanger,
@@ -51,16 +50,14 @@ export function Providers({ session }: { session: Session }) {
 
   if (me.data && !me.data.isAdmin) {
     return (
-      <Shell session={session} title={t('page.title')} active="providers">
-        <EmptyState icon="🔒" title={t('adminOnly.title')}>
-          {t('adminOnly.body')}
-        </EmptyState>
-      </Shell>
+      <EmptyState icon="🔒" title={t('adminOnly.title')}>
+        {t('adminOnly.body')}
+      </EmptyState>
     );
   }
 
   return (
-    <Shell session={session} title={t('page.title')} active="providers">
+    <>
       <section className="space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -97,7 +94,7 @@ export function Providers({ session }: { session: Session }) {
           ))}
         </ul>
       </section>
-    </Shell>
+    </>
   );
 }
 

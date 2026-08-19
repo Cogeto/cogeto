@@ -1,0 +1,73 @@
+{
+  "switcher": {
+    "currentSpace": "Trenutačni prostor: {{name}}",
+    "listLabel": "Prostori",
+    "searchPlaceholder": "Pronađi prostor",
+    "searchLabel": "Pronađi prostor",
+    "noMatches": "Nijedan prostor ne odgovara upitu \"{{query}}\".",
+    "currentMarker": "trenutačni prostor",
+    "thisSpace": "ovaj prostor",
+    "newSpace": "Novi prostor",
+    "namePlaceholder": "Naziv prostora",
+    "nameLabel": "Naziv novog prostora",
+    "create": "Stvori",
+    "creating": "Stvaranje…",
+    "renameLabel": "Preimenuj {{name}}",
+    "spaceSettings": "Postavke prostora",
+    "switchFailed": "Prebacivanje nije uspjelo; i dalje ste u prostoru {{name}}.",
+    "createFailed": "Prostor nije stvoren.",
+    "renameFailed": "Prostor nije preimenovan."
+  },
+  "deleted": {
+    "title": "Ovaj prostor je izbrisan",
+    "body": "Prostor u kojem ste radili izbrisan je u drugoj sesiji. Nastavite u zadanom prostoru.",
+    "cta": "Nastavi"
+  },
+  "level": {
+    "space": "Ove postavke vrijede samo u prostoru {{space}}, i samo za vas. Vaš profil, izgled i odabir modela nalaze se u postavkama instance, iza ikone zupčanika."
+  },
+  "settings": {
+    "title": "Postavke prostora",
+    "heading": "Ovaj prostor",
+    "explainer": "Prostor je zapečaćena particija: ništa u njemu nikada se ne uspoređuje, ne dohvaća niti izvještava zajedno s drugim prostorom.",
+    "nameLabel": "Naziv",
+    "dangerHeading": "Izbriši ovaj prostor",
+    "dangerExplainer": "Brisanje prostora briše sve u njemu, za sve korisnike, kroz uobičajenu proceduru brisanja: jedna potpisana potvrda po izvoru.",
+    "defaultUndeletable": "Zadani prostor ne može se izbrisati. U njega stiže sve što ne imenuje nijedan prostor.",
+    "deleteButton": "Izbriši ovaj prostor",
+    "planIntro": "Brisanjem prostora {{space}} izbrisat će se:",
+    "planEmpty": "Prostor još ne sadrži ništa; uklonit će se samo sam prostor.",
+    "planLine": "{{kind}}: {{n}}",
+    "planReceipts": "Svaki izvor briše se kroz uobičajenu proceduru brisanja s jednom potpisanom potvrdom, uključujući dijeljeni sadržaj. Potvrde ostaju provjerljive i nakon što prostor nestane.",
+    "planFailed": "Plan brisanja nije bilo moguće učitati.",
+    "confirmLabel": "Upišite {{space}} za potvrdu",
+    "deleteConfirm": "Trajno izbriši {{space}}",
+    "deleting": "Brisanje…",
+    "deleteFailed": "Prostor nije izbrisan.",
+    "sourceType": {
+      "user_note": "Bilješke",
+      "file": "Datoteke",
+      "chat_conversation": "Razgovori",
+      "email": "E-poruke",
+      "web": "Web-stranice",
+      "chat": "Zapisi iz razgovora"
+    },
+    "artifact": {
+      "projects": "Projekti",
+      "entity_aliases": "Aliasi entiteta",
+      "import_runs": "Uvozi",
+      "research_runs": "Istraživanja",
+      "skill_runs": "Izvođenja vještina",
+      "findings_reports": "Izvještaji o nalazima",
+      "passport_exports": "Izvozi putovnice pamćenja",
+      "connectors": "Konektori",
+      "extraction_gates": "Postavke filtra izdvajanja"
+    }
+  },
+  "firstRun": {
+    "title": "{{space}} je novi prostor, zapečaćen i prazan",
+    "body": "Sve što se ovdje spremi ostaje ovdje: sjećanja, izvori, nalazi i izvještaji u ovom prostoru nikada se ne miješaju s drugima. Započnite razgovor ili dodajte prve dokumente.",
+    "chatCta": "Započni razgovor",
+    "sourcesCta": "Dodaj izvore"
+  }
+}

@@ -93,5 +93,8 @@
     "heading": "Clé de signature de l’instance",
     "explainer": "Chaque reçu de suppression est signé avec la clé privée de cette instance (spécification §11.1). Toute personne peut vérifier un reçu ou le registre Oublié avec la clé publique ci-dessous. Cela prouve indépendamment de Cogeto qu’une suppression a bien eu lieu.",
     "algorithm": "Algorithme : {{algorithm}}"
+  },
+  "level": {
+    "instance": "Ces paramètres s'appliquent partout : ils vous décrivent, vous et cette installation, et non un espace. Ce qui est capturé, extrait et répondu se règle par espace, dans les paramètres de l'espace."
   }
 }

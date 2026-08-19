@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { asc, eq } from 'drizzle-orm';
 import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { Principal, SpaceDto } from '@cogeto/shared';
-import { DRIZZLE, untranslatedError, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { space, userSpaceState } from './persistence/tables';
 import type { SpaceRow } from './persistence/tables';
@@ -50,7 +50,7 @@ export class SpaceService {
   async rename(principal: Principal, id: string, rawName: string): Promise<SpaceDto> {
     const name = validName(rawName);
     const [row] = await this.db.update(space).set({ name }).where(eq(space.id, id)).returning();
-    if (!row) throw untranslatedError.notFound(`space ${id} not found`);
+    if (!row) throw userError.notFound('spaces.notFound', 'that space no longer exists');
     await writeAudit(this.db, {
       actor: `user:${principal.userId}`,
       action: 'space.renamed',
@@ -94,7 +94,7 @@ export class SpaceService {
       .from(space)
       .where(eq(space.id, spaceId))
       .limit(1);
-    if (!exists[0]) throw untranslatedError.notFound(`space ${spaceId} not found`);
+    if (!exists[0]) throw userError.notFound('spaces.notFound', 'that space no longer exists');
     await this.db
       .insert(userSpaceState)
       .values({ userId: principal.userId, lastSpaceId: spaceId, updatedAt: new Date() })
@@ -108,9 +108,11 @@ export class SpaceService {
 
 function validName(raw: string): string {
   const name = raw.trim();
-  if (!name) throw untranslatedError.badRequest('a space needs a name');
+  if (!name) throw userError.badRequest('spaces.nameRequired', 'a space needs a name');
   if (name.length > MAX_NAME_LENGTH) {
-    throw untranslatedError.badRequest(`a space name is at most ${MAX_NAME_LENGTH} characters`);
+    throw userError.badRequest('spaces.nameTooLong', 'a space name is at most {{max}} characters', {
+      max: MAX_NAME_LENGTH,
+    });
   }
   return name;
 }

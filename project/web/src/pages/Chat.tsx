@@ -32,11 +32,14 @@ import {
   fetchProjects,
   fetchResearchRun,
   fetchResearchRuns,
+  fetchSettings,
   proposeResearch,
   rememberChatMessage,
+  updateSettings,
   uploadChatAttachment,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { currentSpaceId } from '../space';
 import { AttachmentCard, TransientMeaningLine } from '../components/AttachmentCard';
 import { ChatMarkdown } from '../components/ChatMarkdown';
 import { CitationRef, SourceFootnote } from '../components/CitationChip';
@@ -58,7 +61,6 @@ import { formatFileSize } from '../i18n/format';
 import { dragHasFiles, stageAttachments } from '../components/attachments-model';
 import type { PendingFile } from '../components/attachments-model';
 import { UnsourcedChip } from '../components/UnsourcedChip';
-import { getAutoResearch, setAutoResearch } from '../research-pref';
 import { validateUploadFile } from '../upload-validation';
 import { useApiErrorMessage } from '../i18n/api-error';
 
@@ -297,9 +299,16 @@ function ResearchOfferChip({
   onProposed: (run: ResearchRunDto) => void;
 }) {
   const { t } = useTranslation('chat');
+  const queryClient = useQueryClient();
   const propose = useMutation({
     mutationFn: () => proposeResearch(session, offer.topic, conversationId ?? undefined),
     onSuccess: (run) => onProposed(run),
+  });
+  // "Don't ask again" flips the per-space auto-research setting (the settings
+  // split): from now on, IN THIS SPACE, research runs without the tap.
+  const alwaysOn = useMutation({
+    mutationFn: () => updateSettings(session, { autoResearch: true }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -317,9 +326,9 @@ function ResearchOfferChip({
         <button
           type="button"
           onClick={() => {
-            // "Don't ask again": from now on, research runs automatically — and
-            // this one runs now too. Disable in Settings.
-            setAutoResearch(true);
+            // "Don't ask again": from now on, research runs automatically in
+            // this space, and this one runs now too. Disable in Settings.
+            alwaysOn.mutate();
             propose.mutate();
           }}
           className="text-xs text-slate-400 underline underline-offset-2 transition-colors hover:text-slate-600"
@@ -679,6 +688,17 @@ export function Chat({ session }: { session: Session }) {
     const initial = initialConversationId(conversations, link.conversationId);
     if (initial) setActiveId(initial);
   }, [activeId, conversations, link.conversationId]);
+  // The per-space auto-research setting (the settings split): read through a
+  // ref because the consumer is a stream-event handler, which must see the
+  // value as of the event, not as of the closure's render.
+  const { data: userSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetchSettings(session),
+  });
+  const autoResearchRef = useRef(false);
+  useEffect(() => {
+    autoResearchRef.current = userSettings?.autoResearch ?? false;
+  }, [userSettings]);
 
   // The first-run state: no model provider configured. Shares the shell
   // banner's cache key; sending, attaching and capture are disabled with the
@@ -719,10 +739,30 @@ export function Chat({ session }: { session: Session }) {
   }
 
   // A ?q= param prefills the box — the timeline's "Explain in chat" hand-off
-  // lands here with the question ready to send (never auto-sent).
-  const [draft, setDraft] = useState(
-    () => new URLSearchParams(window.location.search).get('q') ?? '',
-  );
+  // lands here with the question ready to send (never auto-sent). Otherwise
+  // an unsent draft survives the page in sessionStorage, PER SPACE: a space
+  // switch is a reload without a prompt (docs/features/spaces.md section 3),
+  // and the typed words come back when the user returns to the space they
+  // were typing in. Cleared on send.
+  const draftKey = `cogeto-draft:${currentSpaceId() ?? 'default'}`;
+  const [draft, setDraftState] = useState(() => {
+    const prefill = new URLSearchParams(window.location.search).get('q');
+    if (prefill) return prefill;
+    try {
+      return sessionStorage.getItem(draftKey) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const setDraft = (value: string) => {
+    setDraftState(value);
+    try {
+      if (value) sessionStorage.setItem(draftKey, value);
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // Non-fatal: the draft just won't survive this page.
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   /** Specific failure copy: rate limit / daily budget / timeout. */
@@ -999,7 +1039,7 @@ export function Chat({ session }: { session: Session }) {
               // the tap is implicit: propose + run it immediately;
               // otherwise show the one-tap offer. (Concluding turns never re-offer.)
               const nextOffer = opts.suppressOffer ? null : (event.researchOffer ?? null);
-              if (nextOffer && getAutoResearch()) {
+              if (nextOffer && autoResearchRef.current) {
                 setOffer(null);
                 void proposeResearch(session, nextOffer.topic, conversationId ?? undefined)
                   .then((run) => setInlineRun(run))

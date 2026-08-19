@@ -3221,3 +3221,45 @@ ambiguity branches over 47 turn(s): dominant=16 silent=5 fan_out=4 none=22 · fa
 | who_is_ana | PASS | 71% | PASS | PASS | PASS |  |  |  |  |  | PASS | FAIL |
 
 ambiguity branches over 47 turn(s): dominant=16 silent=5 fan_out=4 none=22 · fan-out rate 8.5%
+
+## 2026-08-19, chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0009 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | ambiguity | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| ambiguity_cap_en |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| ambiguity_fanout_cold_en | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| ambiguity_fanout_cold_hr | PASS |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS | PASS |
+| ambiguity_followup_en | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| ambiguity_fragment_en | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| ambiguity_fragment_hr | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| ambiguity_silent_en |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS | PASS |
+| ambiguity_silent_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS | PASS |
+| ambiguity_weak_dominance_en | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| atlas_scope |  | 83% |  | PASS | PASS |  |  |  |  |  | PASS | PASS |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS |  | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | PASS |  |  |  | PASS |
+| followup_focus_after_digression_en | PASS |  |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| followup_two_visual_subjects_en | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS |  | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS |  | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| previously_decided |  | 100% |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS |  | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS |  | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS |  | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | FAIL |  |  | PASS |  | FAIL |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  |  | PASS |
+| who_is_ana | PASS | 71% | PASS | PASS | PASS |  |  |  |  |  | PASS | FAIL |
+
+ambiguity branches over 47 turn(s): dominant=16 silent=5 fan_out=4 none=22 · fan-out rate 8.5%
