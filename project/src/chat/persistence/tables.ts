@@ -9,6 +9,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { AmbiguityDecisionDto, ChatLensDto } from '@cogeto/shared';
 
 /**
@@ -31,6 +32,11 @@ export const conversation = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The space the conversation lives in (docs/features/spaces.md,
+     * migration 0060). Messages and attachments inherit it through their
+     * conversation FK; chat-derived memories are stamped with it by the
+     * reader. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     /** NULL until auto-titled after the first exchange, or renamed by the user. */
     title: text('title'),
     /** A manual rename wins forever — the auto-titler never touches it again. */

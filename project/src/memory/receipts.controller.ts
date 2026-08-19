@@ -8,7 +8,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type {
   ChainVerificationDto,
   IntegrityStatusDto,
@@ -37,8 +38,11 @@ export const RECEIPTS_ADMIN_ROLE = Symbol('RECEIPTS_ADMIN_ROLE');
  * database freeze trigger (migration 0010) backs the same rule below the API.
  *
  * Scoping: the ledger shows the caller's own receipts
- * (counts_json.requested_by, which sits inside the signed payload); chain
- * verification always walks ALL confirmed receipts — integrity is instance-wide.
+ * (counts_json.requested_by, which sits inside the signed payload) in the
+ * caller's current SPACE; chain verification walks that space's whole chain.
+ * The chain is per space (docs/features/spaces.md section 5 as amended): a
+ * space's chain is the whole a receipt in it can reference, so the space walk
+ * verifies everything those receipts can prove.
  */
 @Controller('receipts')
 @UseGuards(BearerAuthGuard)
@@ -61,9 +65,11 @@ export class ReceiptsController {
   ) {}
 
   /**
-   * Verify the chain. The WALK is always instance-wide — one ledger, one chain,
-   * and a per-user subset of a hash chain verifies nothing — but what comes back
-   * is scoped to what the caller is entitled to (V2.0 item 3.7).
+   * Verify the chain. The WALK is always space-wide — one chain per space
+   * (docs/features/spaces.md section 5 as amended), and a per-user subset of
+   * a hash chain still verifies nothing, so the walk covers the whole chain
+   * the caller's current space owns — but what comes back is scoped to what
+   * the caller is entitled to (V2.0 item 3.7).
    *
    * Before this, any authenticated user got the instance-wide confirmed and
    * pending counts plus the first failure string, which names a receipt id: the
@@ -79,14 +85,15 @@ export class ReceiptsController {
    */
   @Get('verify')
   async verify(@Req() request: AuthenticatedRequest): Promise<ChainVerificationDto> {
+    const spaceId = resolveSpaceId(request.principal);
     const confirmed = await this.db
       .select()
       .from(deletionReceipt)
-      .where(eq(deletionReceipt.status, 'confirmed'));
+      .where(and(eq(deletionReceipt.status, 'confirmed'), eq(deletionReceipt.spaceId, spaceId)));
     const pending = await this.db
       .select({ id: deletionReceipt.id, countsJson: deletionReceipt.countsJson })
       .from(deletionReceipt)
-      .where(eq(deletionReceipt.status, 'pending'));
+      .where(and(eq(deletionReceipt.status, 'pending'), eq(deletionReceipt.spaceId, spaceId)));
 
     const receipts: ConfirmedReceipt[] = confirmed.map((row) => ({
       id: row.id,
@@ -119,13 +126,19 @@ export class ReceiptsController {
     };
   }
 
-  /** The caller's receipts, newest first (enumeration time). */
+  /** The caller's receipts in their current space, newest first
+   * (enumeration time). */
   @Get()
   async list(@Req() request: AuthenticatedRequest): Promise<ReceiptListItem[]> {
     const rows = await this.db
       .select()
       .from(deletionReceipt)
-      .where(sql`counts_json->>'requested_by' = ${request.principal.userId}`)
+      .where(
+        and(
+          eq(deletionReceipt.spaceId, resolveSpaceId(request.principal)),
+          sql`counts_json->>'requested_by' = ${request.principal.userId}`,
+        ),
+      )
       .orderBy(desc(sql`counts_json->>'enumerated_at'`))
       .limit(200);
     const alerting = await this.alertingReceiptIds();
@@ -147,7 +160,12 @@ export class ReceiptsController {
     if (!row || counts?.requested_by !== request.principal.userId) {
       throw userError.notFound('receipt.notFound', 'receipt {{id}} not found', { id });
     }
-    const [alerting, chainTip] = await Promise.all([this.alertingReceiptIds(), this.chainTip()]);
+    // The anchor is computed within the RECEIPT'S OWN space: its chain is
+    // the only chain it can reference (docs/features/spaces.md).
+    const [alerting, chainTip] = await Promise.all([
+      this.alertingReceiptIds(),
+      this.chainTip(row.spaceId),
+    ]);
     return {
       ...this.toListItem(row, alerting),
       countsJson: row.countsJson,
@@ -163,17 +181,22 @@ export class ReceiptsController {
   }
 
   /**
-   * The chain tip: the newest confirmed receipt — the one whose hash no
-   * other confirmed receipt references as prev_hash — plus the confirmed count.
+   * The SPACE'S chain tip: the newest confirmed receipt in the space, the one
+   * whose hash no other confirmed receipt in the space references as
+   * prev_hash, plus the space's confirmed count. Exactly one tip exists on a
+   * healthy chain (the saga refuses to extend past a fork), so more than one
+   * reads as no tip rather than an arbitrary pick.
    */
-  private async chainTip(): Promise<{ hash: string | null; confirmedCount: number }> {
+  private async chainTip(
+    spaceId: string,
+  ): Promise<{ hash: string | null; confirmedCount: number }> {
     const confirmed = await this.db
       .select({ hash: deletionReceipt.hash, prevHash: deletionReceipt.prevHash })
       .from(deletionReceipt)
-      .where(eq(deletionReceipt.status, 'confirmed'));
+      .where(and(eq(deletionReceipt.status, 'confirmed'), eq(deletionReceipt.spaceId, spaceId)));
     const referenced = new Set(confirmed.map((r) => r.prevHash).filter((h): h is string => !!h));
-    const tip = confirmed.find((r) => r.hash && !referenced.has(r.hash));
-    return { hash: tip?.hash ?? null, confirmedCount: confirmed.length };
+    const tips = confirmed.filter((r) => r.hash && !referenced.has(r.hash));
+    return { hash: tips.length === 1 ? tips[0]!.hash : null, confirmedCount: confirmed.length };
   }
 
   private toListItem(

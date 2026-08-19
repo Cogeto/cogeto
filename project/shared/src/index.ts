@@ -7,6 +7,7 @@ export * from './files';
 export * from './jobs';
 export * from './approvals';
 export * from './settings';
+export * from './spaces';
 export * from './audit';
 export * from './memory';
 export * from './model-config';

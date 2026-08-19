@@ -84,7 +84,9 @@ the set can be checked. One aggregate receipt would verify as a whole or not at
 all, and a partial failure would leave the entire attestation `pending`. The
 set is bracketed in the audit trail by `user.erasure_requested` and
 `user.erased`, so the evidence is one audited run plus N individually
-verifiable receipts, each already linked into the instance's one chain.
+verifiable receipts, each linked into the chain of the space its source
+lived in (an erasure spans the subject's spaces; each receipt joins its own
+space's chain).
 
 The operator procedure is [runbook §4d](../operator-runbook.md#4d-erasing-a-departed-users-data).
 
@@ -96,13 +98,21 @@ image. The signed payload is canonicalized
 deterministically (sorted keys at every depth, stable array order) and hashed with
 SHA-256; the signature covers that hash.
 
-Receipts are **hash-chained**: each links to the previous confirmed receipt via
-`prev_hash`, back to a fixed genesis constant. Crucially, **linkage defines the
-chain order, never timestamps**, confirmation serializes on an advisory lock and
-finds the tip as "the confirmed receipt no other confirmed receipt links to," so
-clock skew cannot fork or reorder the chain, and more than one tip is treated as
-corruption and refused. A golden-hash test pins the canonicalization forever so
-the format cannot drift.
+Receipts are **hash-chained, one chain per space**
+([docs/features/spaces.md](../features/spaces.md) section 5 as amended): each
+receipt links via `prev_hash` to the previous confirmed receipt **within its
+space**, back to a fixed genesis constant that is the same for every space
+(chains are distinguished by the receipt's `space_id` column, which sits
+beside the hashed payload, never inside it). Each space owns its own genesis,
+its own sequence and its own tip, so a space's receipts verify standalone,
+which is what the per-space passport exports. The pre-spaces chain is the
+default space's chain, byte-identical: every historical receipt verifies
+exactly as it did. Crucially, **linkage defines the chain order, never
+timestamps**, confirmation serializes on a per-space advisory lock and finds
+the tip as "the confirmed receipt no other confirmed receipt in the space
+links to," so clock skew cannot fork or reorder a chain, and more than one
+tip within a space is treated as corruption and refused. A golden-hash test
+pins the canonicalization forever so the format cannot drift.
 
 Receipts are also **permanent**: a database trigger forbids `DELETE` outright and
 allows `UPDATE` only while a receipt is still `pending` (the one legal transition,
@@ -171,7 +181,7 @@ fires, no receipt is written and the API returns a null `receiptId`.
 
 A nightly integrity sweep re-derives every confirmed receipt's identifiers from
 its `counts_json` and verifies they are still absent: no memory rows, no Qdrant
-points, no objects, and re-verifies the whole hash chain. Any reappearance
+points, no objects, and re-verifies every space's hash chain. Any reappearance
 becomes a persistent `integrity_alert`. It is **never auto-deleted or
 auto-repaired**: an identifier that came back after a signed promise means a human
 must find out how (a restored backup, a manual write, an index rebuild), and an
@@ -181,9 +191,11 @@ surface in `GET /api/health` and the System view.
 ## How you verify it
 
 - **Verify the whole chain:** `GET /api/receipts/verify` walks genesis to tip,
- recomputing every hash and checking every signature. The walk is instance-wide
- for every caller, because a subset of a hash chain verifies nothing; the counts
- it returns are the caller's own unless they hold the admin role, and the
+ recomputing every hash and checking every signature. The walk covers the whole
+ chain of the caller's current space, because a subset of a hash chain verifies
+ nothing and the space's chain is the whole that a space's receipts can
+ reference; the nightly sweep verifies every space's chain. The counts it
+ returns are the caller's own unless they hold the admin role, and the
  first-failure string is admin-only (V2.0 item 3.7). So "the chain your receipts
  sit in verifies" is answerable by any user, and the instance's totals are not.
 - **Verify one exported receipt independently:** `GET /api/instance/public-key`

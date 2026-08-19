@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { MemoryScope, NoteProcessingState, Principal } from '@cogeto/shared';
 import {
   DailyCounters,
@@ -45,7 +46,10 @@ export class NotesService {
     const created = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(note)
-        .values({ ownerId: principal.userId, content, scope })
+        // The caller's current space is stamped in the same transaction that
+        // creates the source (docs/features/spaces.md): an un-spaced source
+        // cannot be created.
+        .values({ ownerId: principal.userId, content, scope, spaceId: resolveSpaceId(principal) })
         .returning();
       const inserted = row as NoteRow;
       await withTransactionalEnqueue(
@@ -65,12 +69,20 @@ export class NotesService {
     return created;
   }
 
-  /** Owner-only read — the source drawer behind every memory's source link. */
+  /** Owner-only read — the source drawer behind every memory's source link.
+   * Space-scoped like every read (docs/features/spaces.md): a note in
+   * another space is not found, even for its owner. */
   async getNoteForOwner(principal: Principal, noteId: string): Promise<NoteRow | null> {
     const rows = await this.db
       .select()
       .from(note)
-      .where(and(eq(note.id, noteId), eq(note.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(note.id, noteId),
+          eq(note.ownerId, principal.userId),
+          eq(note.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }

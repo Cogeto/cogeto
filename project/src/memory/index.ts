@@ -115,6 +115,7 @@ export {
   hydrateFileSourceRefs,
   countFileSourceRefs,
   checksumsKnownForOwner,
+  fileKeySpaces,
 } from './file-store';
 export { toListItem } from './list-item';
 /**

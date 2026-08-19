@@ -135,6 +135,14 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   project: 'projects',
   project_assignment: 'projects',
 
+  // Spaces (migration 0060, docs/features/spaces.md): the sealed-partition
+  // record and the per-user last-used pointer. The wall itself is the
+  // `space_id` gate dimension on the content-bearing roots, owned by their
+  // modules; these two rows are the partition's NAME and the login-time
+  // resolution, nothing more.
+  space: 'spaces',
+  user_space_state: 'spaces',
+
   app_user: 'identity',
   // Connector credential material, sealed under the instance master key
   // (V2.5 item 8.1): the plan places credential storage inside the identity
@@ -273,6 +281,9 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   MEMORY_ELIGIBILITY_HOOK: 'memory',
 
   SOURCE_READERS: 'ingestion',
+  // The per-space passport manifest's space-name lookup (V3 spaces session
+  // 1): passport defines the port, spaces implements it, the roots bind it.
+  SPACE_NAME_RESOLVER: 'passport',
   // The generation binding the checked-pair ledger records (V2.3 item 6.1),
   // handed in by the root: the module names what it needs, never reads env.
   RECONCILE_MODEL_CONFIG: 'ingestion',

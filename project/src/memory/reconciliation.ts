@@ -1,6 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { resolveSpaceId } from '@cogeto/shared';
 import type {
   Principal,
   RelationDetector,
@@ -603,6 +604,10 @@ export class MemoryReconciliation {
           eq(memoryRelation.kind, 'contradicts'),
           eq(a.ownerId, principal.userId),
           eq(b.ownerId, principal.userId),
+          // Both parties live in one space by construction (pairing is
+          // space-scoped); the caller sees only their current space's queue.
+          eq(a.spaceId, resolveSpaceId(principal)),
+          eq(b.spaceId, resolveSpaceId(principal)),
         ),
       )
       .orderBy(desc(memoryRelation.detectedAt), memoryRelation.id);
@@ -637,6 +642,8 @@ export class MemoryReconciliation {
           eq(memoryRelation.kind, 'contradicts'),
           eq(a.ownerId, principal.userId),
           eq(b.ownerId, principal.userId),
+          eq(a.spaceId, resolveSpaceId(principal)),
+          eq(b.spaceId, resolveSpaceId(principal)),
           or(
             and(eq(a.sourceType, sourceType), eq(a.sourceId, sourceId)),
             and(eq(b.sourceType, sourceType), eq(b.sourceId, sourceId)),
@@ -678,6 +685,8 @@ export class MemoryReconciliation {
           eq(memoryRelation.kind, 'contradicts'),
           eq(a.ownerId, principal.userId),
           eq(b.ownerId, principal.userId),
+          eq(a.spaceId, resolveSpaceId(principal)),
+          eq(b.spaceId, resolveSpaceId(principal)),
           or(inPage(a), inPage(b)),
         ),
       );
@@ -735,6 +744,8 @@ export class MemoryReconciliation {
           eq(memoryRelation.kind, 'contradicts'),
           eq(a.ownerId, principal.userId),
           eq(b.ownerId, principal.userId),
+          eq(a.spaceId, resolveSpaceId(principal)),
+          eq(b.spaceId, resolveSpaceId(principal)),
           options.includeResolved ? undefined : isNull(memoryRelation.resolvedAt),
           or(touches(a), touches(b)),
         ),
@@ -768,6 +779,8 @@ export class MemoryReconciliation {
           eq(memoryRelation.kind, 'contradicts'),
           eq(a.ownerId, principal.userId),
           eq(b.ownerId, principal.userId),
+          eq(a.spaceId, resolveSpaceId(principal)),
+          eq(b.spaceId, resolveSpaceId(principal)),
           or(eq(memoryRelation.aMemoryId, memoryId), eq(memoryRelation.bMemoryId, memoryId)),
         ),
       )

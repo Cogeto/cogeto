@@ -555,6 +555,26 @@ near it. In the same wave the **activity trail became administrative only**
 (issue #633): content was always owner-gated, but the actions were not, so any
 member could enumerate who did what to whose material by identifier.
 
+**V3 spaces, session 1 of 4, delivered the foundation** (migration 0060, the
+new `spaces` module; decision record
+[`docs/features/spaces.md`](docs/features/spaces.md), frozen and amended
+before code). A space is a fully sealed partition: `space_id` is the **third
+hard dimension of the access gate** beside owner and scope, inside
+`visibleToPrincipal`, `buildGateFilter` and the Qdrant payload, so an
+un-spaced read is unrepresentable; every content-bearing root carries a
+non-null `space_id` with the default space as the schema-level DEFAULT, and a
+single-space instance is byte-identical to the product before the feature.
+The caller's space rides the Principal (the `x-cogeto-space` header, absent
+means the default space); a worker job's space is stamped on its subject row
+in the enqueue transaction and fabricated principals carry it. **The receipt
+chain is per space** (each space its own genesis, sequence and tip under one
+unchanged genesis constant; the pre-spaces chain is the default space's chain
+byte-identically) and **the passport exports one space** (manifest 2.1), so a
+space's receipts verify standalone, which is what the passport promises.
+Projects stay a lens and never a gate; the structural proof is
+`spaces/spaces-are-a-gate.spec.ts` beside the projects sibling. The switcher
+UI, settings split, email routing and space deletion are later sessions.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

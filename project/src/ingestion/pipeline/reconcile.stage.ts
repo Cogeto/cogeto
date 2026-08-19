@@ -247,11 +247,14 @@ export const RECONCILE_MODEL_CONFIG = Symbol('RECONCILE_MODEL_CONFIG');
 /**
  * Reconciliation acts on the owner's own memory, so the gated primitives run
  * with the owner as principal — the same gates as any read (0003 ruling 2).
- * Only userId participates in the gates; the identity fields are blank
- * because no display identity exists on the slow path.
+ * Only userId and spaceId participate in the gates; the identity fields are
+ * blank because no display identity exists on the slow path. The space is the
+ * SUBJECT ROW'S space (docs/features/spaces.md): reconciliation never pairs
+ * across spaces, and carrying the row's space through the gate is what
+ * enforces it in every candidate read.
  */
-function ownerPrincipal(ownerId: string): Principal {
-  return { userId: ownerId, name: '', email: null, orgId: '', orgName: '', roles: [] };
+function ownerPrincipal(ownerId: string, spaceId?: string): Principal {
+  return { userId: ownerId, name: '', email: null, orgId: '', orgName: '', roles: [], spaceId };
 }
 
 interface Candidate {
@@ -344,7 +347,7 @@ export class ReconciliationService {
       // Re-runs and dreaming batches skip facts something already settled.
       if (fact.status !== 'active' && fact.status !== 'uncertain') continue;
       summary.considered += 1;
-      const aliasIndex = await this.aliasIndexFor(fact.ownerId);
+      const aliasIndex = await this.aliasIndexFor(fact.ownerId, fact.spaceId);
 
       const candidates = await this.gatherCandidates(
         fact,
@@ -632,7 +635,7 @@ export class ReconciliationService {
       const counterpartId =
         relation.aMemoryId === loser.id ? relation.bMemoryId : relation.aMemoryId;
       const counterpartRows = await this.memoryStore.getManyForPrincipal(
-        ownerPrincipal(winner.ownerId),
+        ownerPrincipal(winner.ownerId, winner.spaceId),
         [counterpartId],
         { includeSensitive: true },
       );
@@ -684,7 +687,7 @@ export class ReconciliationService {
   private async revisionLinkBetween(winner: MemoryRow, loser: MemoryRow): Promise<string | null> {
     if (!this.revisions) return null;
     if (winner.sourceType === loser.sourceType && winner.sourceId === loser.sourceId) return null;
-    const links = await this.revisions.forSource(ownerPrincipal(winner.ownerId), {
+    const links = await this.revisions.forSource(ownerPrincipal(winner.ownerId, winner.spaceId), {
       sourceType: winner.sourceType,
       sourceId: winner.sourceId,
     });
@@ -718,15 +721,16 @@ export class ReconciliationService {
       .map(({ candidate }) => candidate);
   }
 
-  private async aliasIndexFor(ownerId: string): Promise<EntityAliasIndex> {
+  private async aliasIndexFor(ownerId: string, spaceId: string): Promise<EntityAliasIndex> {
     if (!this.aliases) return EMPTY_ALIAS_INDEX;
-    const cached = this.aliasCache.get(ownerId);
+    const key = `${ownerId}:${spaceId}`;
+    const cached = this.aliasCache.get(key);
     if (cached) return cached;
-    const index = await this.aliases.indexForOwner(ownerId);
+    const index = await this.aliases.indexForOwner(ownerId, spaceId);
     // Per-call staleness is fine: aliases change rarely and the next batch
     // reloads. Bounded: cleared once it holds more than a handful of owners.
     if (this.aliasCache.size > 16) this.aliasCache.clear();
-    this.aliasCache.set(ownerId, index);
+    this.aliasCache.set(key, index);
     return index;
   }
 
@@ -745,7 +749,7 @@ export class ReconciliationService {
     exclude: 'same_batch' | 'same_source',
     aliasIndex: EntityAliasIndex,
   ): Promise<Candidate[]> {
-    const principal = ownerPrincipal(fact.ownerId);
+    const principal = ownerPrincipal(fact.ownerId, fact.spaceId);
     const readOpts = { includeSensitive: fact.sensitive };
     const eligibleStatuses = [
       ...new Set([...DEDUP_CANDIDATE_STATUSES, ...CONTRADICTION_CANDIDATE_STATUSES]),

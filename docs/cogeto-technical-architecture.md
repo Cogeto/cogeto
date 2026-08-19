@@ -175,11 +175,11 @@ Temporal modes are explicit rather than inferred from phrasing: `previous`, `poi
 
 Access control is enforced inside the query and never applied to results after fetching.
 
-**SQL side.** One predicate: the owner is the caller, or the scope is shared, together with the sensitive rule.
+**SQL side.** One predicate: the owner is the caller, or the scope is shared, together with the sensitive rule, and the row's space is the caller's current space.
 
-**Vector side.** The same predicate expressed as Qdrant payload pre filters, using the payload copy each point carries.
+**Vector side.** The same predicate expressed as Qdrant payload pre filters, using the payload copy each point carries, space included.
 
-Scope, `private` or `shared`, decides who may see a fact. The `sensitive` flag is an orthogonal axis deciding how carefully the system surfaces a fact, so any combination of the two is valid. Both are hard gates rather than ranking adjustments.
+Scope, `private` or `shared`, decides who may see a fact. The `sensitive` flag is an orthogonal axis deciding how carefully the system surfaces a fact, so any combination of the two is valid. Both are hard gates rather than ranking adjustments. Since V3 session 1, the SPACE is the third hard dimension beside them (docs/features/spaces.md): every content-bearing row lives in exactly one space, the gates carry the dimension in both stores, and no read ever spans two spaces. Within a space, owner and scope decide visibility exactly as before; projects remain a lens, never a gate.
 
 Scope is assigned deterministically, never inferred from content. Uploads take an explicit choice defaulting to the user setting. Chat capture is private and stamped explicitly. Mail intake follows the recipient default and per sender routing rules. Connectors inherit the source system's own permissions: a team readable space maps to shared, a personal or individually restricted item maps to that user's private context, and an item restricted to a subset of users is skipped and reported in the sync summary. Scope and sensitivity are editable per source and per fact, re stamp both stores, and write an audit entry.
 

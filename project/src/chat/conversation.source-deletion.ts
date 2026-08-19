@@ -27,6 +27,16 @@ export class ConversationSourceDeletion implements SourceDeletion {
     return rows[0]?.ownerId ?? null;
   }
 
+  /** The space the conversation row carries (docs/features/spaces.md):
+   * stamps the deletion receipt onto its space's chain. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx
+      .select({ spaceId: conversation.spaceId })
+      .from(conversation)
+      .where(eq(conversation.id, sourceId));
+    return rows[0]?.spaceId ?? null;
+  }
+
   /** Every message in the thread — the saga folds their chat-derived
    * memories into the enumeration and counts the messages on the receipt. */
   async enumerateCascade(tx: Tx, sourceId: string): Promise<SourceCascade> {

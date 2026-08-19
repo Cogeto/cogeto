@@ -1,0 +1,22 @@
+/**
+ * Spaces (docs/features/spaces.md): fully sealed partitions of an instance.
+ * Data and API contract only in this session; the switcher is a later one.
+ */
+
+export interface SpaceDto {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/** GET /api/spaces: every space (every instance user sees every space, by
+ * owner decision) plus the caller's resolved current space — their last used
+ * space, falling back to the default space. */
+export interface SpaceListDto {
+  spaces: SpaceDto[];
+  currentSpaceId: string;
+}
+
+/** The request header carrying the caller's current space. Absent means the
+ * default space; a malformed value is refused. */
+export const SPACE_HEADER = 'x-cogeto-space';

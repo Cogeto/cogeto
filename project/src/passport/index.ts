@@ -14,5 +14,10 @@ export {
   PASSPORT_RETENTION_CRONTAB,
 } from './passport.store';
 export { PASSPORT_OPTIONS, PASSPORT_EXPORT_RETENTION_HOURS } from './passport.options';
+// The space display-name port (docs/features/spaces.md): the composition root
+// binds the spaces module's implementation so the per-space manifest can name
+// the space it exports.
+export { SPACE_NAME_RESOLVER } from './space-name.port';
+export type { SpaceNameResolver } from './space-name.port';
 // Format + assembler exposed for the eval/verify harness and the schema tests.
 export { manifestSchema, sha256Hex } from './passport-format';

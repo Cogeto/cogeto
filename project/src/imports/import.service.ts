@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type {
   ConfirmImportRequest,
   FolderManifestRequest,
@@ -342,7 +343,13 @@ export class ImportService {
     const runs = await this.db
       .select()
       .from(importRun)
-      .where(eq(importRun.ownerId, principal.userId))
+      // One space's runs, never across the wall (docs/features/spaces.md).
+      .where(
+        and(
+          eq(importRun.ownerId, principal.userId),
+          eq(importRun.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .orderBy(sql`${importRun.createdAt} DESC`)
       .limit(Math.min(limit, 50));
     return Promise.all(runs.map((run) => this.toRunDto(run)));
@@ -371,6 +378,9 @@ export class ImportService {
       .values({
         ownerId: principal.userId,
         orgId: principal.orgId,
+        // The caller's current space: every document this run ingests lands
+        // in it (docs/features/spaces.md).
+        spaceId: resolveSpaceId(principal),
         kind,
         optionsJson: { sourceLabel: sourceLabel ?? undefined },
       })
@@ -387,7 +397,15 @@ export class ImportService {
   private async classify(principal: Principal, runId: string): Promise<void> {
     const items = await this.itemsOf(runId);
     const hashes = items.map((item) => item.contentHash).filter((h): h is string => h !== null);
-    const known = await checksumsKnownForOwner(this.db, principal.userId, hashes);
+    // Duplicate detection is per space (docs/features/spaces.md section 5):
+    // the same document already ingested in ANOTHER space is not a duplicate
+    // here, by design.
+    const known = await checksumsKnownForOwner(
+      this.db,
+      principal.userId,
+      hashes,
+      resolveSpaceId(principal),
+    );
     const byName = await this.predecessorsByName(principal);
     for (const item of items) {
       if (item.state !== 'listed') continue;
@@ -504,7 +522,15 @@ export class ImportService {
     const rows = await this.db
       .select()
       .from(importRun)
-      .where(and(eq(importRun.id, runId), eq(importRun.ownerId, principal.userId)))
+      // The space is part of visibility: a run in another space reads as
+      // not found, for the same user included (docs/features/spaces.md).
+      .where(
+        and(
+          eq(importRun.id, runId),
+          eq(importRun.ownerId, principal.userId),
+          eq(importRun.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     if (!rows[0])
       throw userError.notFound('import.runNotFound', 'import {{id}} not found', { id: runId });
@@ -549,7 +575,12 @@ export class ImportService {
    * uploads — capped, stated, and only run while building a manifest.
    */
   private async predecessorsByName(principal: Principal): Promise<Map<string, string>> {
-    const refs = await listFileSourceRefs(this.db, principal.userId, { limit: 200 });
+    // Revision candidates never cross a space (docs/features/spaces.md): a
+    // same-named file in another space is a different document by definition.
+    const refs = await listFileSourceRefs(this.db, principal.userId, {
+      limit: 200,
+      spaceId: resolveSpaceId(principal),
+    });
     // Newest wins for a name seen twice: a chain re-imports link to the tip.
     const out = new Map<string, string>();
     const stats = await Promise.all(

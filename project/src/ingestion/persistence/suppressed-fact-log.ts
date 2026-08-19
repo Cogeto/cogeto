@@ -30,6 +30,10 @@ export interface SuppressedFactEntry {
   ownerId: string;
   scope: MemoryScope;
   sensitive: boolean;
+  /** The source's space (docs/features/spaces.md), inherited at write time
+   * exactly like owner and scope: an entry is gated as the fact it explains.
+   * Absent (legacy harnesses) falls to the schema-level default space. */
+  spaceId?: string;
   sourceType: string;
   sourceId: string;
   factContent: string;
@@ -195,6 +199,7 @@ export class SuppressedFactLog {
         ownerId: suppressedFactLog.ownerId,
         scope: suppressedFactLog.scope,
         sensitive: suppressedFactLog.sensitive,
+        spaceId: suppressedFactLog.spaceId,
       },
       principal,
       // The owner's own sensitive entries are included; a PEER's never are,
@@ -247,6 +252,7 @@ export async function suppressedCountsForSources(
             ownerId: suppressedFactLog.ownerId,
             scope: suppressedFactLog.scope,
             sensitive: suppressedFactLog.sensitive,
+            spaceId: suppressedFactLog.spaceId,
           },
           principal,
           { includeSensitive: true },
@@ -278,6 +284,7 @@ export async function sourceRefsWithSuppressed(
           ownerId: suppressedFactLog.ownerId,
           scope: suppressedFactLog.scope,
           sensitive: suppressedFactLog.sensitive,
+          spaceId: suppressedFactLog.spaceId,
         },
         principal,
         { includeSensitive: true },

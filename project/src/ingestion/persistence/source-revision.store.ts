@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, userError, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -37,6 +38,11 @@ export class SourceRevisionStore {
     db: DbOrTx,
     entry: {
       ownerId: string;
+      /** The space both endpoints live in (docs/features/spaces.md): callers
+       * nominate candidates within one container, which lives in one space,
+       * so a link can only ever join same-space sources. Absent (legacy
+       * harnesses) falls to the schema-level default space. */
+      spaceId?: string;
       successor: RevisionRef;
       predecessor: RevisionRef;
       status: 'auto' | 'proposed';
@@ -47,6 +53,7 @@ export class SourceRevisionStore {
       .insert(sourceRevision)
       .values({
         ownerId: entry.ownerId,
+        ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
         successorType: entry.successor.sourceType,
         successorId: entry.successor.sourceId,
         predecessorType: entry.predecessor.sourceType,
@@ -116,6 +123,7 @@ export class SourceRevisionStore {
         .insert(sourceRevision)
         .values({
           ownerId: principal.userId,
+          spaceId: resolveSpaceId(principal),
           successorType: successor.sourceType,
           successorId: successor.sourceId,
           predecessorType: predecessor.sourceType,

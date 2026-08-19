@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { AmbiguityDecisionDto, MemoryStatus, Principal } from '@cogeto/shared';
-import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
+import { resolveSpaceId, TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
 import { DEFAULT_INSTANCE_TIMEZONE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { EMPTY_ALIAS_INDEX, EntityAliasStore, listOpenDormantFlags } from '../ingestion/index';
@@ -246,7 +246,12 @@ export class RetrievalService {
     queryText: string,
   ): Promise<AmbiguityDecisionDto> {
     const aliases = this.db
-      ? await new EntityAliasStore(this.db).indexForOwner(principal.userId)
+      ? await new EntityAliasStore(this.db).indexForOwner(
+          principal.userId,
+          // Aliases are space-scoped (docs/features/spaces.md): clustering in
+          // one space must never fold names under another space's vocabulary.
+          resolveSpaceId(principal),
+        )
       : EMPTY_ALIAS_INDEX;
     const keyOf: EntityKeyOf = (name) => aliases.keyOf(name);
     const clusters = clusterBySubject(

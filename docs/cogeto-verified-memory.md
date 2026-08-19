@@ -83,7 +83,7 @@ Nothing is deleted as a side effect of these transitions. A superseded fact stay
 
 Access is enforced inside the query, in both stores, and never applied to results after fetching. An unscoped read is not expressible in the retrieval path.
 
-**Scope** is `private` or `shared` and decides who may see a fact. The **sensitive** flag is an orthogonal axis deciding how carefully a fact is surfaced. Both are hard gates rather than ranking adjustments, and any combination of the two is valid: a shared fact can be sensitive, a private fact can be ordinary.
+**Scope** is `private` or `shared` and decides who may see a fact. The **sensitive** flag is an orthogonal axis deciding how carefully a fact is surfaced. Both are hard gates rather than ranking adjustments, and any combination of the two is valid: a shared fact can be sensitive, a private fact can be ordinary. Since V3 session 1 the **space** is the third hard gate beside them (docs/features/spaces.md): every fact lives in exactly one space, and no read, reconciliation or feature of any kind operates across two.
 
 Scope is a permission, not a judgement, so Cogeto never infers it from content. It comes from an explicit choice, from a rule someone wrote, or from a system that already knows:
 

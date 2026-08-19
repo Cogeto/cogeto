@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { FindingsReportCountsDto, Principal } from '@cogeto/shared';
-import { FINDINGS_REPORT_VERSION, isRegisteredSourceType } from '@cogeto/shared';
+import { FINDINGS_REPORT_VERSION, isRegisteredSourceType, resolveSpaceId } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
@@ -765,20 +765,26 @@ export class ReportAssembler {
     let stalled = false;
     const push = (s: ScopeSource) => out.set(keyOf(s.sourceType, s.sourceId), s);
 
+    // A run enumerates ONE space (docs/features/spaces.md): the run row's
+    // space rides the fabricated principal into every family listing.
+    const spaced = (cursor: Date | undefined) => ({
+      ...pageOpts(cursor),
+      spaceId: resolveSpaceId(principal),
+    });
     stalled =
       (await this.drain(
-        (cursor) => listNoteSources(this.db, principal.userId, pageOpts(cursor)),
+        (cursor) => listNoteSources(this.db, principal.userId, spaced(cursor)),
         (row) =>
           push({ sourceType: 'user_note', sourceId: row.sourceId, name: row.name, at: row.at }),
       )) || stalled;
     stalled =
       (await this.drain(
-        (cursor) => listEmailSources(this.db, principal.userId, pageOpts(cursor)),
+        (cursor) => listEmailSources(this.db, principal.userId, spaced(cursor)),
         (row) => push({ sourceType: 'email', sourceId: row.sourceId, name: row.name, at: row.at }),
       )) || stalled;
     stalled =
       (await this.drain(
-        (cursor) => listWebSources(this.db, principal.userId, pageOpts(cursor)),
+        (cursor) => listWebSources(this.db, principal.userId, spaced(cursor)),
         (row) => push({ sourceType: 'web', sourceId: row.sourceId, name: row.name, at: row.at }),
       )) || stalled;
     // Chat captures enumerate from their facts' provenance.
@@ -809,7 +815,12 @@ export class ReportAssembler {
     stalled =
       (await this.drain(
         async (cursor) => {
-          const rows = await listFileSourceRefs(this.db, principal.userId, pageOpts(cursor));
+          const rows = await listFileSourceRefs(this.db, principal.userId, {
+            ...pageOpts(cursor),
+            // The run's space rides the fabricated principal
+            // (docs/features/spaces.md): a report enumerates one space.
+            spaceId: resolveSpaceId(principal),
+          });
           return rows.map((r) => ({ sourceId: r.objectKey, name: null, at: r.at }));
         },
         (row) => push({ sourceType: 'file', sourceId: row.sourceId, name: row.name, at: row.at }),
@@ -864,16 +875,24 @@ export class ReportAssembler {
       return outcomes.has(sourceId);
     }
     if (sourceType === 'user_note') {
-      return (await hydrateNoteSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (
+        await hydrateNoteSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+      ).has(sourceId);
     }
     if (sourceType === 'email') {
-      return (await hydrateEmailSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (
+        await hydrateEmailSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+      ).has(sourceId);
     }
     if (sourceType === 'web') {
-      return (await hydrateWebSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (
+        await hydrateWebSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+      ).has(sourceId);
     }
     if (sourceType === 'chat') {
-      return (await hydrateChatSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (
+        await hydrateChatSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+      ).has(sourceId);
     }
     return false;
   }
@@ -885,25 +904,35 @@ export class ReportAssembler {
   ): Promise<string | null> {
     if (sourceType === 'user_note') {
       return (
-        (await hydrateNoteSources(this.db, principal.userId, [sourceId])).get(sourceId)?.name ??
-        null
+        (
+          await hydrateNoteSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+        ).get(sourceId)?.name ?? null
       );
     }
     if (sourceType === 'email') {
       return (
-        (await hydrateEmailSources(this.db, principal.userId, [sourceId])).get(sourceId)?.name ??
-        null
+        (
+          await hydrateEmailSources(
+            this.db,
+            principal.userId,
+            [sourceId],
+            resolveSpaceId(principal),
+          )
+        ).get(sourceId)?.name ?? null
       );
     }
     if (sourceType === 'web') {
       return (
-        (await hydrateWebSources(this.db, principal.userId, [sourceId])).get(sourceId)?.name ?? null
+        (
+          await hydrateWebSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+        ).get(sourceId)?.name ?? null
       );
     }
     if (sourceType === 'chat') {
       return (
-        (await hydrateChatSources(this.db, principal.userId, [sourceId])).get(sourceId)?.name ??
-        null
+        (
+          await hydrateChatSources(this.db, principal.userId, [sourceId], resolveSpaceId(principal))
+        ).get(sourceId)?.name ?? null
       );
     }
     return null;

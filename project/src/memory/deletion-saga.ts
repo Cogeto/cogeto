@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
 import type { MemoryScope, Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
@@ -85,6 +85,15 @@ export interface SourceDeletion {
   readonly sourceType: SourceType;
   /** Owner of the source row (locked FOR UPDATE), or null when absent. */
   ownerOf(tx: Tx, sourceId: string): Promise<string | null>;
+  /**
+   * The space stamped on the source row (docs/features/spaces.md), or null
+   * when the row is absent. The saga stamps it on the deletion receipt so
+   * the receipt joins its SPACE'S chain; the derived memory rows carry the
+   * same space and are the fallback when the source row is already gone.
+   * Optional only for legacy test harnesses — every registered adapter
+   * implements it.
+   */
+  spaceOf?(tx: Tx, sourceId: string): Promise<string | null>;
   /** Deletes the source row inside the saga's enumeration transaction. */
   deleteSource(tx: Tx, sourceId: string): Promise<void>;
   /**
@@ -767,6 +776,19 @@ export class DeletionSaga {
 
         const memoryIds = rows.map((r) => r.id);
 
+        // Which space's chain this deletion's receipt joins
+        // (docs/features/spaces.md section 5 as amended). Resolved HERE,
+        // while the source row still exists: the source row's space, else
+        // the space its derived memories carry (stamped from the source, so
+        // the two can only agree), else the default space — reachable only
+        // by legacy harness adapters that predate spaceOf, since every real
+        // path has a row or a memory.
+        const spaceId =
+          fileRow?.spaceId ??
+          (adapter?.spaceOf ? await adapter.spaceOf(tx, sourceId) : null) ??
+          rows[0]?.spaceId ??
+          DEFAULT_SPACE_ID;
+
         // Contradiction lift: surviving partners of
         // unresolved relations touching a doomed row are restored to their
         // recorded prior status — an accusation whose evidence is being erased
@@ -998,7 +1020,7 @@ export class DeletionSaga {
 
         const [receipt] = await tx
           .insert(deletionReceipt)
-          .values({ sourceType, sourceId, countsJson: counts, status: 'pending' })
+          .values({ sourceType, sourceId, spaceId, countsJson: counts, status: 'pending' })
           .returning({ id: deletionReceipt.id });
         const receiptId = receipt!.id;
 
@@ -1241,8 +1263,14 @@ export class DeletionExecutor {
     // Step three — confirmation with chain hash + signature. The advisory
     // lock serializes concurrent confirmations so the chain cannot fork;
     // linkage (not timestamps) defines chain order (see receipt-chain.ts).
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('cogeto_deletion_receipt_chain'))`);
-    const prevHash = await this.chainTip(tx);
+    // The lock and the tip are PER SPACE (docs/features/spaces.md section 5
+    // as amended): each space owns its own chain, so two spaces confirm
+    // concurrently and a receipt links only to the previous receipt within
+    // its space.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${'cogeto_deletion_receipt_chain:' + receipt.spaceId}))`,
+    );
+    const prevHash = await this.chainTip(tx, receipt.spaceId);
     const now = new Date();
     const iso = now.toISOString();
     const hash = hashReceiptPayload({
@@ -1284,24 +1312,30 @@ export class DeletionExecutor {
   }
 
   /**
-   * The current chain tip: the confirmed receipt whose hash no other confirmed
-   * receipt links to; GENESIS when the chain is empty. More than one tip means
-   * a corrupted chain — refuse to extend it.
+   * The SPACE'S current chain tip: the confirmed receipt in this space whose
+   * hash no other confirmed receipt in this space links to; GENESIS when the
+   * space's chain is empty (every space starts at its own genesis, which is
+   * the same constant — chains are distinguished by the space column, never
+   * by the constant). More than one tip means a corrupted chain — refuse to
+   * extend it.
    */
-  private async chainTip(tx: Tx): Promise<string> {
+  private async chainTip(tx: Tx, spaceId: string): Promise<string> {
     const result = await tx.execute(sql`
       SELECT r.hash FROM deletion_receipt r
       WHERE r.status = 'confirmed'
+        AND r.space_id = ${spaceId}
         AND NOT EXISTS (
           SELECT 1 FROM deletion_receipt r2
-          WHERE r2.status = 'confirmed' AND r2.prev_hash = r.hash
+          WHERE r2.status = 'confirmed'
+            AND r2.space_id = ${spaceId}
+            AND r2.prev_hash = r.hash
         )
     `);
     const tips = result.rows as { hash: string }[];
     if (tips.length === 0) return GENESIS_HASH;
     if (tips.length > 1) {
       throw new Error(
-        `deletion receipt chain has ${tips.length} tips, refusing to extend a corrupted chain`,
+        `deletion receipt chain for space ${spaceId} has ${tips.length} tips, refusing to extend a corrupted chain`,
       );
     }
     return tips[0]!.hash;

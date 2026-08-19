@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, lte } from 'drizzle-orm';
 import type { PassportExportDto } from '@cogeto/shared';
-import { PASSPORT_VERSION } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, PASSPORT_VERSION } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { passportExport } from './persistence/tables';
@@ -24,18 +24,26 @@ export const PASSPORT_RETENTION_CRONTAB = `30 * * * * ${PASSPORT_RETENTION_JOB_T
 export class PassportExportStore {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
-  /** Create a pending request inside the caller's transaction (with the enqueue). */
+  /** Create a pending request inside the caller's transaction (with the enqueue).
+   * `spaceId` is the ONE space the export covers (docs/features/spaces.md):
+   * stamped here so the worker reconstructs the space with the row. */
   async createInTx(
     tx: Tx,
     userId: string,
     orgId: string | undefined,
     includeOriginals: boolean,
+    /** The space this export covers (docs/features/spaces.md): the passport
+     * exports one space. Optional with the default space so pre-spaces
+     * harness calls keep their meaning; the service always passes the
+     * caller's resolved space. */
+    spaceId: string = DEFAULT_SPACE_ID,
   ): Promise<PassportExportRow> {
     const [row] = await tx
       .insert(passportExport)
       .values({
         userId,
         orgId: orgId ?? null,
+        spaceId,
         passportVersion: PASSPORT_VERSION,
         includeOriginals,
       })
@@ -63,11 +71,18 @@ export class PassportExportStore {
     return rows[0] ?? null;
   }
 
-  async listForOwner(userId: string): Promise<PassportExportRow[]> {
+  /** The owner's exports, optionally narrowed to one space (the surface
+   * shows the caller's current space; omitting the space keeps the full
+   * owner view for callers that predate spaces). */
+  async listForOwner(userId: string, spaceId?: string): Promise<PassportExportRow[]> {
     return this.db
       .select()
       .from(passportExport)
-      .where(eq(passportExport.userId, userId))
+      .where(
+        spaceId
+          ? and(eq(passportExport.userId, userId), eq(passportExport.spaceId, spaceId))
+          : eq(passportExport.userId, userId),
+      )
       .orderBy(desc(passportExport.createdAt))
       .limit(50);
   }

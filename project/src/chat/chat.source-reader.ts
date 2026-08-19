@@ -4,7 +4,7 @@ import { DRIZZLE } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { UserSettingsService } from '../settings/index';
-import { chatMessage } from './persistence/tables';
+import { chatMessage, conversation } from './persistence/tables';
 
 /**
  * Ingestion's stage-1 port for source_type 'chat': the pipeline
@@ -32,16 +32,20 @@ export class ChatSourceReader implements SourceReader {
 
   async load(sourceId: string): Promise<SourceItem | null> {
     const rows = await this.db
-      .select()
+      .select({ message: chatMessage, spaceId: conversation.spaceId })
       .from(chatMessage)
+      .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
       .where(and(eq(chatMessage.id, sourceId), eq(chatMessage.role, 'user')))
       .limit(1);
-    const row = rows[0];
+    const row = rows[0]?.message;
     if (!row) return null;
     return {
       sourceType: this.sourceType,
       sourceId: row.id,
       ownerId: row.ownerId,
+      // A message inherits its CONVERSATION's space (docs/features/spaces.md):
+      // the container carries the dimension, the derived facts inherit it.
+      spaceId: rows[0]!.spaceId,
       // The owner's default capture scope, explicitly — never the pipeline's
       // fallback (V2.0 item 3.7).
       scope: await this.settings.defaultScopeFor(row.ownerId),

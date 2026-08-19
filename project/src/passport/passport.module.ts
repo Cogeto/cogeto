@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
 import { PassportController } from './passport.controller';
 import { PassportService } from './passport.service';
 import { PassportExportStore } from './passport.store';
 import { PassportExportExecutor } from './passport-export.executor';
 import { PASSPORT_OPTIONS } from './passport.options';
 import type { PassportOptions } from './passport.options';
+import { SPACE_NAME_RESOLVER } from './space-name.port';
+import type { SpaceNameResolver } from './space-name.port';
 
 /**
  * passport — the Memory Passport (spec §11.4): a complete, documented,
@@ -18,7 +20,13 @@ import type { PassportOptions } from './passport.options';
 @Module({})
 export class PassportModule {
   static register(
-    options: PassportOptions & { imports?: ModuleMetadata['imports'] },
+    options: PassportOptions & {
+      imports?: ModuleMetadata['imports'];
+      /** The spaces module's name lookup for the per-space manifest, bound by
+       * the composition root (the ProjectPolicySource precedent). Absent, the
+       * manifest carries `name: null` and the space id stays the identity. */
+      spaceNames?: Type<SpaceNameResolver>;
+    },
   ): DynamicModule {
     return {
       module: PassportModule,
@@ -28,6 +36,9 @@ export class PassportModule {
       controllers: [PassportController],
       providers: [
         { provide: PASSPORT_OPTIONS, useValue: options },
+        ...(options.spaceNames
+          ? [{ provide: SPACE_NAME_RESOLVER, useExisting: options.spaceNames }]
+          : []),
         PassportService,
         PassportExportStore,
         PassportExportExecutor,
