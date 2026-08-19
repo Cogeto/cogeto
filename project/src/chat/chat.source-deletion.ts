@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import type { Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceDeletion } from '../memory/index';
+import type { OwnedSourceRef, SpaceSourceRef, SourceDeletion } from '../memory/index';
 import { chatMessage, conversation } from './persistence/tables';
 
 /**
@@ -52,6 +52,12 @@ export class ChatSourceDeletion implements SourceDeletion {
    * decided to retain.
    */
   async listForOwner(): Promise<OwnedSourceRef[]> {
+    return [];
+  }
+
+  /** Empty by the SAME declaration (docs/features/spaces.md section 5): a
+   * space's messages are reached exactly once, through its conversations. */
+  async listForSpace(): Promise<SpaceSourceRef[]> {
     return [];
   }
 }

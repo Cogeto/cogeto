@@ -48,7 +48,11 @@ export class PassportExportCascade implements DerivedCascade {
     return 0;
   }
 
-  async expireForOwner(tx: Tx, ownerId: string): Promise<{ count: number; objectKeys: string[] }> {
+  async expireForOwner(
+    tx: Tx,
+    ownerId: string,
+    spaceId?: string,
+  ): Promise<{ count: number; objectKeys: string[] }> {
     // `pending` exports are in flight: the worker is assembling them from reads
     // that may already have seen the doomed rows, so they are expired too
     // rather than raced. The worker's markReady on an expired row is harmless
@@ -60,6 +64,11 @@ export class PassportExportCascade implements DerivedCascade {
       .where(
         and(
           eq(passportExport.userId, ownerId),
+          // A passport exports ONE space (format 2.1), so only the deletion's
+          // space's exports can hold the doomed rows; another space's export
+          // stays valid by the seal itself (docs/features/spaces.md). Absent
+          // (legacy harnesses) expires across spaces as before.
+          ...(spaceId ? [eq(passportExport.spaceId, spaceId)] : []),
           inArray(passportExport.status, ['ready', 'pending']),
         ),
       )
@@ -88,6 +97,7 @@ export class PassportExportCascade implements DerivedCascade {
       detail: { count: rows.length, reason: 'source deletion' },
       orgId: (await this.directory?.orgOf(ownerId)) ?? undefined,
       ownerId,
+      spaceId,
     });
 
     return { count: rows.length, objectKeys };

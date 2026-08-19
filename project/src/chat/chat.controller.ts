@@ -28,7 +28,7 @@ import type {
   ConversationSearchHitDto,
   NoteStatusDto,
 } from '@cogeto/shared';
-import { MAX_CHAT_ATTACHMENTS } from '@cogeto/shared';
+import { MAX_CHAT_ATTACHMENTS, resolveSpaceId } from '@cogeto/shared';
 import {
   DRIZZLE,
   parseOrBadRequest,
@@ -281,7 +281,11 @@ export class ChatController {
     @Req() request: AuthenticatedRequest,
     @Param('memoryId', ParseUUIDPipe) memoryId: string,
   ): Promise<CitingAnswerDto[]> {
-    const rows = await answersCiting(this.db, request.principal.userId, memoryId);
+    // The caller's space, explicitly: the fallback default would read the
+    // wrong partition for anyone working in another space.
+    const rows = await answersCiting(this.db, request.principal.userId, memoryId, {
+      spaceId: resolveSpaceId(request.principal),
+    });
     return rows.map((row) => ({
       messageId: row.messageId,
       conversationId: row.conversationId,

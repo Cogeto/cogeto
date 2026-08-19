@@ -41,6 +41,8 @@ import type {
   MemoryStore,
   OwnerErasureService,
 } from '../memory/index';
+import { SPACE_ERASE_JOB_TYPE } from '../spaces/index';
+import type { SpaceErasureService } from '../spaces/index';
 import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/index';
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
@@ -76,6 +78,8 @@ export interface WorkerTaskDeps {
   deletionExecutor: DeletionExecutor;
   /** Owner erasure's pass (issue #632). */
   ownerErasure: OwnerErasureService;
+  /** Space deletion's pass (docs/features/spaces.md section 5). */
+  spaceErasure: SpaceErasureService;
   integritySweep: IntegritySweep;
   dreaming: DreamingService;
   reconcileRepair: ReconcileRepair;
@@ -478,6 +482,33 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
           failed: result.failed.length,
         },
         'owner erasure pass completed',
+      );
+    },
+
+    // Space deletion (docs/features/spaces.md section 5): the owner-erasure
+    // shape — a PLAIN, re-runnable pass, one ordinary saga transaction per
+    // source, then the container cleanups, then the space row, whose delete
+    // succeeding is the completeness proof. A failed pass (a leftover found)
+    // throws and graphile retries it.
+    [SPACE_ERASE_JOB_TYPE]: async (rawPayload) => {
+      const payload = rawPayload as {
+        source_id?: unknown;
+        actor?: unknown;
+        org_id?: unknown;
+      };
+      const spaceId = payload.source_id;
+      if (typeof spaceId !== 'string' || !spaceId) return;
+      const actor = typeof payload.actor === 'string' ? payload.actor : 'space_erasure';
+      const orgId = typeof payload.org_id === 'string' ? payload.org_id : '';
+      const result = await deps.spaceErasure.run(spaceId, actor, orgId);
+      deps.log(
+        {
+          source_id: spaceId,
+          erased: result.erased.length,
+          failed: result.failed.length,
+          spaceRowDeleted: result.spaceRowDeleted,
+        },
+        'space erasure pass completed',
       );
     },
 

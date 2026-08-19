@@ -34,3 +34,5 @@ export type {
 } from './connector-descriptor';
 export { CONNECTOR_STATES } from './domain/lifecycle';
 export type { ConnectorState } from './domain/lifecycle';
+// Space deletion's connectors leg (docs/features/spaces.md section 5).
+export { ConnectorSpaceCleanup, ConnectorSpaceCleanupModule } from './connector-space-cleanup';

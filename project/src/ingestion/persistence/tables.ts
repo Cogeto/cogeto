@@ -197,6 +197,10 @@ export const extractionGateRefusal = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The refused source's space (docs/features/spaces.md, migration 0061):
+     * the badge scan is limit-bounded per owner, so without the column one
+     * space's refusals would consume another's window. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     sourceType: text('source_type').notNull(),
     sourceId: text('source_id').notNull(),
     reason: text('reason').$type<ExtractionRefusalReason>().notNull(),
@@ -400,6 +404,13 @@ export const checkedPair = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The pair's ONE space (docs/features/spaces.md, migration 0061): two
+     * facts in different spaces are not a pair at all, so a ledger row's
+     * space is the space both members share, asserted at record time. The
+     * uniqueness key is over globally unique memory ids, so a coincidence in
+     * another space structurally cannot suppress a pairing; this column makes
+     * the partition explicit and the rows attributable. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     aMemoryId: uuid('a_memory_id').notNull(),
     bMemoryId: uuid('b_memory_id').notNull(),
     family: text('family').$type<'dedup' | 'contradiction'>().notNull(),

@@ -202,6 +202,7 @@ export class ConnectorsController {
         ownerId: row.ownerId,
         orgId: row.orgId,
         connectorId: row.id,
+        spaceId: row.spaceId,
         material: {
           accessToken: parsed.accessToken,
           refreshToken: parsed.refreshToken,
@@ -383,6 +384,7 @@ export class ConnectorsController {
         detail: { naturalKey: parsed.naturalKey },
         orgId: row.orgId,
         ownerId: row.ownerId,
+        spaceId: row.spaceId,
       });
       await withTransactionalEnqueue(
         tx,
@@ -514,6 +516,7 @@ export class ConnectorsController {
         ownerId: row.ownerId,
         orgId: row.orgId,
         actor,
+        spaceId: row.spaceId,
       });
       await this.store.remove(tx, row, actor);
     });

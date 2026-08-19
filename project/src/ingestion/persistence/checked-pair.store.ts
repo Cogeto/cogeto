@@ -34,6 +34,11 @@ export interface RecordedVerdict {
 
 export interface VerdictToRecord {
   ownerId: string;
+  /** The pair's ONE space (docs/features/spaces.md): two facts in different
+   * spaces are not a pair at all, so the caller asserts both members share
+   * this space before recording. Required, never defaulted: a ledger row
+   * whose space is guessed is a ledger row that can lie. */
+  spaceId: string;
   family: CheckedPairFamily;
   verdict: string;
   direction?: 'a_over_b' | 'b_over_a' | null;
@@ -101,6 +106,7 @@ export class CheckedPairStore {
       .insert(checkedPair)
       .values({
         ownerId: entry.ownerId,
+        spaceId: entry.spaceId,
         aMemoryId: a,
         bMemoryId: b,
         family: entry.family,

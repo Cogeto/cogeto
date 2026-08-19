@@ -1,4 +1,5 @@
-import { index, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 
 /**
  * Tables owned by the files module (migration 0041, V2.1 item 4.1).
@@ -29,6 +30,10 @@ export const fileReadReport = pgTable(
     /** The object key, which IS the file source id (1:1, F1 handoff). */
     objectKey: text('object_key').primaryKey(),
     ownerId: text('owner_id').notNull(),
+    /** The file's space (docs/features/spaces.md, migration 0061): the badge
+     * scan is limit-bounded per owner, so without the column one space's
+     * reports would consume another's window. Stamped from the file row. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     /** The reader that ran, or null when none could be selected. */
     format: text('format'),
     /** read | truncated | empty | unsupported_format | read_failed. */

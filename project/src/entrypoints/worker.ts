@@ -38,6 +38,7 @@ import {
   resumeEmbeddingRebuildOnBoot,
   SWEEP_CRONTAB,
 } from '../memory/index';
+import { SpaceErasureService } from '../spaces/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
 import { ReportExportExecutor, REPORT_RETENTION_CRONTAB } from '../reports/index';
@@ -206,6 +207,7 @@ async function main(): Promise<void> {
     memoryStore: context.get(MemoryStore),
     deletionExecutor: context.get(DeletionExecutor),
     ownerErasure: context.get(OwnerErasureService),
+    spaceErasure: context.get(SpaceErasureService),
     integritySweep: context.get(IntegritySweep),
     dreaming: context.get(DreamingService),
     reconcileRepair: context.get(ReconcileRepair),

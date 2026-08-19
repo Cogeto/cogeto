@@ -544,6 +544,7 @@ export class FilesService {
         detail: { reason: 'capability_available' },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
     });
     return { queued: true };
@@ -660,6 +661,7 @@ export class FilesService {
       // The FILE's owner, not the caller: the detail gate serves the person
       // whose artifact left, which is the point of recording it.
       ownerId: metadata.ownerId,
+      spaceId: resolveSpaceId(principal),
     });
     return { url, expiresInSeconds: this.options.downloadUrlTtlSeconds };
   }

@@ -20,3 +20,18 @@ export interface SpaceListDto {
 /** The request header carrying the caller's current space. Absent means the
  * default space; a malformed value is refused. */
 export const SPACE_HEADER = 'x-cogeto-space';
+
+/**
+ * GET /api/spaces/:id/deletion-plan and the DELETE response (session 2): what
+ * deleting the space WOULD erase, the numbers the confirmation surface
+ * states. Sources are erased through the ordinary deletion saga, one receipt
+ * per source; containers are the space-scoped records (projects, aliases,
+ * runs, reports, exports, connectors) removed with the partition.
+ */
+export interface SpaceDeletionPlanDto {
+  spaceId: string;
+  name: string;
+  sources: { sourceType: string; count: number }[];
+  totalSources: number;
+  containers: { artifact: string; count: number }[];
+}

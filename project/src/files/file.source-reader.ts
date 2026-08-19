@@ -89,6 +89,7 @@ export class FileSourceReader implements SourceReader {
   private async readAndRecord(
     sourceId: string,
     ownerId: string,
+    spaceId: string | undefined,
     bytes: Buffer,
     contentType: string | null,
     filename: string | null,
@@ -99,7 +100,10 @@ export class FileSourceReader implements SourceReader {
     const laddered = new LadderedDocumentReader(this.parseCaps, this.visionGateway, this.counters);
     try {
       const result = await laddered.read(ownerId, bytes, contentType, filename);
-      await this.reports?.record(sourceId, ownerId, result.report, this.logger);
+      await this.reports?.record(sourceId, ownerId, result.report, {
+        spaceId,
+        logger: this.logger,
+      });
       return result;
     } catch (error) {
       if (error instanceof PermanentExtractionError) {
@@ -110,7 +114,7 @@ export class FileSourceReader implements SourceReader {
             ...emptyReport(error.format, error.outcome),
             reasonCode: error.reasonCode,
           },
-          this.logger,
+          { spaceId, logger: this.logger },
         );
       }
       throw error;
@@ -145,6 +149,7 @@ export class FileSourceReader implements SourceReader {
     const { text, segments, report } = await this.readAndRecord(
       sourceId,
       metadata.ownerId,
+      metadata.spaceId,
       object.body,
       object.contentType,
       storedFilename,
@@ -196,6 +201,7 @@ export class FileSourceReader implements SourceReader {
     const { text, segments, report } = await this.readAndRecord(
       sourceId,
       md['owner-id'] ?? '',
+      md['space-id'] ?? undefined,
       object.body,
       object.contentType,
       discardFilename,

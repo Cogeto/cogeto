@@ -31,6 +31,15 @@ interface UsageStore {
    * — the same places `userId` is set, and by the same mechanism.
    */
   orgId?: string;
+  /**
+   * The space the attributed work happens in (docs/features/spaces.md,
+   * session 2). Attribution only, exactly like `orgId`: the model-egress
+   * audit entry stamps it so an administrator can filter egress by space.
+   * It NEVER affects a cap — budgets and daily caps are instance-wide spend
+   * protection by owner decision, and the space a job belongs to is recorded
+   * on its subject row, which is where this value comes from in workers.
+   */
+  spaceId?: string;
   taskFamily?: string;
 }
 
@@ -46,11 +55,12 @@ export function runWithUsageContext<T>(fn: () => T, initial: UsageStore = {}): T
  * the worker's task wrapper from the job payload). `orgId` is optional because
  * the worker learns the principal from a payload key and not from a Principal.
  */
-export function setUsageUser(userId: string, orgId?: string): void {
+export function setUsageUser(userId: string, orgId?: string, spaceId?: string): void {
   const store = storage.getStore();
   if (!store) return;
   store.userId = userId;
   if (orgId) store.orgId = orgId;
+  if (spaceId) store.spaceId = spaceId;
 }
 
 /** Label the current scope's work ('ingestion', 'chat', 'dreaming', …). */
@@ -67,6 +77,11 @@ export function currentUsageUserId(): string | undefined {
 /** The attributed user's org, for audit stamping. */
 export function currentUsageOrgId(): string | undefined {
   return storage.getStore()?.orgId;
+}
+
+/** The attributed work's space, for audit stamping. Never a cap input. */
+export function currentUsageSpaceId(): string | undefined {
+  return storage.getStore()?.spaceId;
 }
 
 /** The current scope's task family, if one was set. */

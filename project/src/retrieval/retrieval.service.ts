@@ -391,6 +391,11 @@ export class RetrievalService {
         ? this.memoryStore.entitySearch(principal, widenNames, {
             topK: PROFILE_CEILING,
             includeSensitive: opts.includeSensitive,
+            // The widen arm predates the lens and used to drop it, which was
+            // the one arm the contract above did not cover: an out-of-project
+            // fact could re-enter through exactly the widest signal and even
+            // found a fan-out cluster. The lens rides EVERY arm.
+            sourceRefs: opts.lens,
           })
         : Promise.resolve([]),
     ]);

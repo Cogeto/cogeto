@@ -8,9 +8,11 @@ import {
   UserContextService,
 } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
-import { SpaceNameModule, SpaceNameSource } from '../spaces/index';
+import { SpaceNameModule, SpaceNameSource, SpacesModule } from '../spaces/index';
 import { MemoryModule } from '../memory/index';
 import {
+  EntityAliasSpaceCleanup,
+  EntityAliasSpaceCleanupModule,
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
@@ -25,11 +27,18 @@ import {
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
-import { SKILL_ADVANCE_JOB_TYPE, SkillsModule } from '../skills/index';
+import {
+  SKILL_ADVANCE_JOB_TYPE,
+  SkillsModule,
+  SkillSpaceCleanup,
+  SkillSpaceCleanupModule,
+} from '../skills/index';
 import {
   RESEARCH_SYNTHESIS_OPTIONS,
   ResearchModule,
   ResearchSourcePortsModule,
+  ResearchSpaceCleanup,
+  ResearchSpaceCleanupModule,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
@@ -58,13 +67,23 @@ import {
   PassportCascadeModule,
   PassportExportCascade,
   PassportModule,
+  PassportSpaceCleanup,
+  PassportSpaceCleanupModule,
   PASSPORT_EXPORT_RETENTION_HOURS,
 } from '../passport/index';
-import { ImportItemCascade, ImportItemCascadeModule, ImportsModule } from '../imports/index';
+import {
+  ImportItemCascade,
+  ImportItemCascadeModule,
+  ImportsModule,
+  ImportSpaceCleanup,
+  ImportSpaceCleanupModule,
+} from '../imports/index';
 import {
   ConnectorItemCascade,
   ConnectorItemCascadeModule,
   ConnectorsModule,
+  ConnectorSpaceCleanup,
+  ConnectorSpaceCleanupModule,
 } from '../connectors/index';
 import {
   ConfluenceModule,
@@ -78,11 +97,15 @@ import {
   ProjectPolicyModule,
   ProjectPolicySource,
   ProjectsModule,
+  ProjectSpaceCleanup,
+  ProjectSpaceCleanupModule,
 } from '../projects/index';
 import {
   FindingsReportCascade,
   FindingsReportCascadeModule,
   ReportsModule,
+  ReportSpaceCleanup,
+  ReportSpaceCleanupModule,
   REPORT_RETENTION_HOURS,
 } from '../reports/index';
 import {
@@ -437,6 +460,34 @@ export function createWorkerRootModule(
         // The per-space manifest names the space it exports; the worker is
         // where assembly runs, so the binding matters most here.
         spaceNames: SpaceNameSource,
+      }),
+      // Space deletion (docs/features/spaces.md section 5, session 2): the
+      // erasure pass runs HERE, through the ordinary saga per source plus
+      // the container cleanups each owning module implements.
+      SpacesModule.register({
+        imports: [memoryModule],
+        cleanups: {
+          imports: [
+            ProjectSpaceCleanupModule,
+            EntityAliasSpaceCleanupModule,
+            ImportSpaceCleanupModule,
+            ResearchSpaceCleanupModule,
+            SkillSpaceCleanupModule,
+            ReportSpaceCleanupModule,
+            PassportSpaceCleanupModule,
+            ConnectorSpaceCleanupModule,
+          ],
+          adapters: [
+            ProjectSpaceCleanup,
+            EntityAliasSpaceCleanup,
+            ImportSpaceCleanup,
+            ResearchSpaceCleanup,
+            SkillSpaceCleanup,
+            ReportSpaceCleanup,
+            PassportSpaceCleanup,
+            ConnectorSpaceCleanup,
+          ],
+        },
       }),
     ],
     providers: [

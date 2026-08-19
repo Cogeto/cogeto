@@ -126,6 +126,7 @@ export async function restoreFromContradiction(
     detail: { from: 'contradicted', to: priorStatus },
     ownerId: row.ownerId,
     orgId,
+    spaceId: row.spaceId,
   });
   await vectors?.setPayload(row.id, { status: priorStatus });
 }
@@ -339,6 +340,7 @@ export class MemoryReconciliation {
         detail: { a: incoming.id, b: existing.id, undoes: ancestral.resolution },
         ownerId: incoming.ownerId,
         orgId: await this.orgFor(incoming.ownerId),
+        spaceId: incoming.spaceId,
       });
       return { action: 'contradiction_reopened', relationId: reopened.id };
     }
@@ -381,6 +383,7 @@ export class MemoryReconciliation {
       detail: { a: incoming.id, b: existing.id, detectedBy },
       ownerId: incoming.ownerId,
       orgId: await this.orgFor(incoming.ownerId),
+      spaceId: incoming.spaceId,
     });
     return { action: 'contradiction_created', relationId: relation.id };
   }
@@ -452,6 +455,7 @@ export class MemoryReconciliation {
         detail: { resolution: 'revision', superseded: cause.supersededId },
         ownerId: counterpart.ownerId,
         orgId: await this.orgFor(counterpart.ownerId),
+        spaceId: counterpart.spaceId,
       });
     }
     return { outcome: 'resolved_by_revision', relationId: relation.id };
@@ -855,6 +859,7 @@ export class MemoryReconciliation {
         detail: { resolution, a: rowA.id, b: rowB.id },
         ownerId: principal.userId,
         orgId: principal.orgId,
+        spaceId: rowA.spaceId,
       });
       return { relation: resolved as MemoryRelationRow, alreadyResolved: false };
     });
@@ -998,6 +1003,17 @@ export class MemoryReconciliation {
     if (rows.length !== 2) {
       throw userError.notFound('relation.memoryGone', 'a memory in this pair no longer exists');
     }
+    // Two facts in different spaces are not a pair at all
+    // (docs/features/spaces.md): every pair action — merge, contradiction,
+    // supersession, follow — funnels through this lock, so the wall holds at
+    // the aggregate even if a caller upstream of the gated candidate reads
+    // were ever broken. A developer error, never a user-visible one, because
+    // no reachable request can construct the state.
+    if (rows[0]!.spaceId !== rows[1]!.spaceId) {
+      throw new Error(
+        `memories ${idOne} and ${idTwo} live in different spaces and can never form a pair`,
+      );
+    }
     return [rows[0]!, rows[1]!];
   }
 
@@ -1127,6 +1143,7 @@ export class MemoryReconciliation {
       detail: { ...detail, validUntil: validUntil.toISOString() },
       ownerId: loser.ownerId,
       orgId: await this.orgFor(loser.ownerId),
+      spaceId: loser.spaceId,
     });
     await this.vectors?.setPayload(loser.id, {
       status: 'replaced',

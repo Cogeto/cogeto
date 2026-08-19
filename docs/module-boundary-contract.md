@@ -154,7 +154,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Twenty-six job types. Each is declared **once**, as an exported constant, in the
+Twenty-seven job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -170,6 +170,7 @@ imports every constant rather than spelling any of them.
 | `deletion.execute` | `memory` | `DELETION_JOB_TYPE` | per-source |
 | `deletion_sweep` | `memory` | `SWEEP_JOB_TYPE` | recurring |
 | `memory.erase_owner` | `memory` | `OWNER_ERASURE_JOB_TYPE` | per-subject (plain, re-runnable: owner erasure runs the ordinary saga once per source, so it must NOT use `idempotentTask`, whose single transaction would collapse the per-source all-or-nothing guarantee into one transaction over the whole corpus; re-running erases what is left and retains what it retained) |
+| `space.erase` | `spaces` | `SPACE_ERASE_JOB_TYPE` | per-space (V3 spaces session 2: the owner-erasure shape exactly, one ordinary saga transaction per source, then the container cleanups, then the space row, whose NO ACTION foreign keys make the final delete the completeness proof; re-running erases what is left, and a leftover fails the pass loudly instead of surviving) |
 | `approval.execute` | `agents` | `APPROVAL_EXECUTE_JOB_TYPE` | per-source |
 | `approval_expiry` | `agents` | `APPROVAL_EXPIRY_JOB_TYPE` | recurring |
 | `research.conclude` | `research` | `RESEARCH_CONCLUDE_JOB_TYPE` | per-source |
@@ -303,7 +304,8 @@ defined by the module that *consumes* the implementation) are marked.
 | `research` | `RESEARCH_OPTIONS`, `RESEARCH_SYNTHESIS_OPTIONS`, `RESEARCH_CONCLUDE_WIRING` |
 | `skills` | `SKILL_ENGINE_OPTIONS` |
 | `model-gateway` | `MODEL_CONFIG_VIEW` |
-| `passport` | `PASSPORT_OPTIONS` |
+| `passport` | `PASSPORT_OPTIONS`, `SPACE_NAME_RESOLVER` (port, V3 spaces session 1: the per-space manifest's space-name lookup; `spaces` implements it, the roots bind it) |
+| `spaces` | `SPACE_CLEANUPS` (port, V3 spaces session 2: space deletion's container cleanups. Spaces defines it, each container-owning module implements it over its own tables, the roots bind the array, the `DERIVED_CASCADES` shape one module over) |
 | `reports` | `REPORT_OPTIONS` (composition-root options: signing key dir, retention, the vendored font/brand/trust-score paths, and the model configuration in force) |
 | `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES`, `CONNECTOR_HEALTH` (port, V2.5 item 8.1: the connector fleet's capability entry; the connectors platform implements it, the app root binds it through operations' registration options) |
 | `connectors` | `CONNECTORS_OPTIONS` (composition-root options: the instance master key for the sealed webhook signing secret, and the ingress bounds) |

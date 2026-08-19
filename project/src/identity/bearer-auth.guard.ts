@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { SPACE_HEADER } from '@cogeto/shared';
+import { resolveSpaceId, SPACE_HEADER } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { setUsageUser, untranslatedError } from '../infrastructure/index';
 import { IdentityService } from './identity.service';
@@ -50,7 +50,14 @@ export class BearerAuthGuard implements CanActivate {
     // Attribute this request's model calls to the principal: fills
     // in the per-request usage scope opened by the app's middleware, so the
     // gateway budget decorator can meter/cap by user without a seam change.
-    setUsageUser(request.principal.userId, request.principal.orgId);
+    // The space rides the scope for ATTRIBUTION only (the model-egress audit
+    // entry); caps stay instance-wide by owner decision. Resolved here so an
+    // absent header attributes to the default space, which is what it is.
+    setUsageUser(
+      request.principal.userId,
+      request.principal.orgId,
+      resolveSpaceId(request.principal),
+    );
     return true;
   }
 }

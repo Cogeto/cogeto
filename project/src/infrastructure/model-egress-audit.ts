@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from './db';
 import { writeAudit } from './audit';
-import { currentUsageTaskFamily, currentUsageOrgId, currentUsageUserId } from './usage-context';
+import {
+  currentUsageTaskFamily,
+  currentUsageOrgId,
+  currentUsageSpaceId,
+  currentUsageUserId,
+} from './usage-context';
 
 /** One model call, as the trail records it. Structural metadata only. */
 export interface ModelEgressEntry {
@@ -67,6 +72,10 @@ export class DbModelEgressAudit implements ModelEgressAudit {
       },
       orgId: currentUsageOrgId(),
       ownerId: userId,
+      // The space whose work caused the egress (docs/features/spaces.md,
+      // session 2): rides the same usage scope as the user, so spend stays
+      // attributable per space while the caps themselves remain instance-wide.
+      spaceId: currentUsageSpaceId(),
     });
   }
 }

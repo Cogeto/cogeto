@@ -59,6 +59,7 @@ export class SkillRunService {
         detail: { skill_id: skill.id, skill_version: skill.version },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row!.spaceId,
       });
       return row!;
     });
@@ -218,7 +219,7 @@ export class SkillRunService {
   async auditRun(
     actor: string,
     action: string,
-    run: Pick<SkillRunRow, 'id' | 'ownerId'>,
+    run: Pick<SkillRunRow, 'id' | 'ownerId' | 'spaceId'>,
     detail: Record<string, unknown> = {},
     orgId?: string,
   ): Promise<void> {
@@ -230,6 +231,7 @@ export class SkillRunService {
       detail,
       ...(orgId ? { orgId } : {}),
       ownerId: run.ownerId,
+      spaceId: run.spaceId,
     });
   }
 

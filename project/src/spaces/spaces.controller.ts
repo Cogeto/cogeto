@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -13,9 +14,11 @@ import {
 import { z } from 'zod';
 import type { SpaceDto, SpaceListDto } from '@cogeto/shared';
 import { parseOrBadRequest } from '../infrastructure/index';
-import { BearerAuthGuard } from '../identity/index';
+import { AdminGuard, BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { SpaceService } from './space.service';
+import { SpaceErasureService } from './space-erasure.service';
+import type { SpaceDeletionPlan } from './space-erasure.service';
 
 const nameSchema = z.object({ name: z.string().min(1).max(120) });
 const currentSchema = z.object({ spaceId: z.uuid() });
@@ -28,7 +31,10 @@ const currentSchema = z.object({ spaceId: z.uuid() });
 @Controller('spaces')
 @UseGuards(BearerAuthGuard)
 export class SpacesController {
-  constructor(private readonly spaces: SpaceService) {}
+  constructor(
+    private readonly spaces: SpaceService,
+    private readonly erasure: SpaceErasureService,
+  ) {}
 
   @Get()
   async list(@Req() request: AuthenticatedRequest): Promise<SpaceListDto> {
@@ -67,5 +73,31 @@ export class SpacesController {
   ): Promise<SpaceDto> {
     const parsed = parseOrBadRequest(nameSchema, body);
     return this.spaces.rename(request.principal, id, parsed.name);
+  }
+
+  /** What deleting the space WOULD erase: the numbers the next session's
+   * confirmation surface states (docs/features/spaces.md section 5). */
+  @Get(':id/deletion-plan')
+  @UseGuards(AdminGuard)
+  async deletionPlan(@Param('id', ParseUUIDPipe) id: string): Promise<SpaceDeletionPlan> {
+    return this.erasure.plan(id);
+  }
+
+  /**
+   * Delete the space: enumerate its sources and run the ORDINARY deletion
+   * saga per source in the worker, one receipt per source, then remove its
+   * containers and the row itself. ADMINISTRATOR-ONLY, because a space seals
+   * content, not people — it holds every user's material, and deleting it is
+   * an instance-shaping act like erasing a departed user. Returns the plan
+   * (the honest numbers at the moment of the request); the erasure itself is
+   * the enqueued worker pass.
+   */
+  @Delete(':id')
+  @UseGuards(AdminGuard)
+  async remove(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SpaceDeletionPlan> {
+    return this.erasure.request(request.principal, id);
   }
 }

@@ -154,6 +154,7 @@ export async function loadDuplicateGroups(db: Db): Promise<DuplicateGroup[]> {
   const { rows } = await db.execute<{
     object_key: string;
     owner_id: string;
+    space_id: string;
     checksum: string;
     scope: string;
     sensitive: boolean;
@@ -162,13 +163,16 @@ export async function loadDuplicateGroups(db: Db): Promise<DuplicateGroup[]> {
     cited: number;
   }>(sql`
     WITH duplicated AS (
-      SELECT owner_id, checksum, scope, sensitive
+      -- space_id in the grouping key (docs/features/spaces.md): dedup is PER
+      -- SPACE by design, so the same file uploaded into two spaces is two
+      -- independent sources and NEVER a duplicate pair this plan may collapse.
+      SELECT owner_id, space_id, checksum, scope, sensitive
         FROM file_metadata
        WHERE checksum IS NOT NULL
-       GROUP BY 1, 2, 3, 4
+       GROUP BY 1, 2, 3, 4, 5
       HAVING count(*) > 1
     )
-    SELECT f.object_key, f.owner_id, f.checksum, f.scope::text AS scope,
+    SELECT f.object_key, f.owner_id, f.space_id, f.checksum, f.scope::text AS scope,
            f.sensitive, f.upload_date,
            (SELECT count(*)::int FROM memory m
              WHERE m.source_type = 'file' AND m.source_id = f.object_key) AS facts,
@@ -179,14 +183,20 @@ export async function loadDuplicateGroups(db: Db): Promise<DuplicateGroup[]> {
                AND c.content LIKE '%{{cite:' || m.id || '}}%') AS cited
       FROM file_metadata f
       JOIN duplicated d
-        ON d.owner_id = f.owner_id AND d.checksum = f.checksum
+        ON d.owner_id = f.owner_id AND d.space_id = f.space_id AND d.checksum = f.checksum
        AND d.scope = f.scope AND d.sensitive = f.sensitive
      ORDER BY f.owner_id, f.checksum, f.upload_date, f.object_key
   `);
 
   const byGroup = new Map<string, DuplicateGroup>();
   for (const row of rows) {
-    const key = JSON.stringify([row.owner_id, row.checksum, row.scope, row.sensitive]);
+    const key = JSON.stringify([
+      row.owner_id,
+      row.space_id,
+      row.checksum,
+      row.scope,
+      row.sensitive,
+    ]);
     const group = byGroup.get(key) ?? {
       checksum: row.checksum,
       scope: row.scope,

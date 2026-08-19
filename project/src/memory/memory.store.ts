@@ -762,6 +762,7 @@ export class MemoryStore {
       detail: { from: row.status, to },
       ownerId: row.ownerId,
       orgId: await this.orgFor(row.ownerId),
+      spaceId: row.spaceId,
     });
     // Keep the Qdrant payload copy honest (spec §4.2), point op last: a failure
     // rolls the row back and the caller retries — the two stores converge.
@@ -880,6 +881,7 @@ export class MemoryStore {
         detail: { sensitive },
         ownerId: row.ownerId,
         orgId: principal.orgId,
+        spaceId: row.spaceId,
       });
       await this.requireVectors().setPayload(memoryId, { sensitive });
       return updated as MemoryRow;
@@ -914,6 +916,7 @@ export class MemoryStore {
         detail: { from: row.scope, to: scope },
         ownerId: row.ownerId,
         orgId: principal.orgId,
+        spaceId: row.spaceId,
       });
       await this.requireVectors().setPayload(memoryId, { scope });
       return updated as MemoryRow;
@@ -981,6 +984,7 @@ export class MemoryStore {
       detail: { successor: result.successor.id },
       ownerId: old.ownerId,
       orgId: principal.orgId,
+      spaceId: old.spaceId,
     });
     await withTransactionalEnqueue(
       tx,
@@ -1028,6 +1032,7 @@ export class MemoryStore {
         detail: { sourceType: row.sourceType, sourceId: row.sourceId, status: row.status },
         ownerId: row.ownerId,
         orgId: principal.orgId,
+        spaceId: row.spaceId,
       });
       await this.requireVectors().deletePoints([memoryId]);
       return row;
@@ -1108,6 +1113,7 @@ export class MemoryStore {
       detail: { supersededBy: successor.id, validUntil: successorValidFrom.toISOString() },
       ownerId: old.ownerId,
       orgId: await this.orgFor(old.ownerId),
+      spaceId: old.spaceId,
     });
     // Payload copy honesty (spec §4.2): the predecessor's point now says replaced.
     // requireVectors like the toggles — never a silent skip.
@@ -1423,6 +1429,12 @@ export class MemoryStore {
       // are private; the getManyForPrincipal re-check below still enforces
       // the scope + sensitive gates as defence in depth).
       ownerId: principal.userId,
+      // The same truncation argument across the caller's own SPACES
+      // (docs/features/spaces.md, session 2): a busy space's events must not
+      // evict a quiet space's from the window. Entries written before the
+      // attribute existed ride along unstamped and are still sealed by the
+      // gated re-read below.
+      spaceId: resolveSpaceId(principal),
       limit: limit * 2,
     });
     const visible = new Map(
@@ -1621,6 +1633,7 @@ export class MemoryStore {
       },
       ownerId,
       orgId: await this.orgFor(ownerId),
+      spaceId: created.spaceId,
     });
     return created;
   }

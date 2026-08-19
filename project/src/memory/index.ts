@@ -23,6 +23,7 @@ export type {
   IngestionGuard,
   IngestionCancellation,
   OwnedSourceRef,
+  SpaceSourceRef,
   RetentionReason,
   ReceiptCounts,
 } from './deletion-saga';
@@ -31,12 +32,21 @@ export { parseReceiptCounts, countedRemovals } from './deletion-saga';
  * user's private material through the ordinary saga. */
 export { OwnerErasureService, OWNER_ERASURE_JOB_TYPE } from './owner-erasure.service';
 export type { OwnerErasurePlan, OwnerErasureResult } from './owner-erasure.service';
+/** Space deletion's file enumeration (docs/features/spaces.md section 5):
+ * `file` has no SourceDeletion adapter, so the spaces module reaches the one
+ * space-wide listing through the barrel, like owner erasure's owner twin. */
+export { listAllFileSourcesForSpace } from './file-store';
 export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
 export type { ConfirmedReceipt } from './domain/receipt-chain';
 export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB, SWEEP_OPTIONS } from './integrity-sweep';
 export type { IntegrityStatus } from './integrity-sweep';
 export { createIntegritySweep } from './factory';
 export { MemoryObjectStore } from './persistence/object-store';
+/** The vector index handle, for bare (non-Nest) compositions and specs that
+ * build the deletion machinery by hand — the object store's exact sibling.
+ * The GATE is untouched by this export: the one SQL funnel and the one
+ * vector funnel stay inside MemoryStore (spaces-are-a-gate.spec.ts). */
+export { MemoryVectorStore } from './persistence/vector-store';
 export { MemoryFileStore } from './file-store';
 export { seedObjectFixture, seedOrphanPoint } from './dev-seed';
 export {

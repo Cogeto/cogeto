@@ -129,3 +129,8 @@ export { revisionCountsForSuccessors } from './persistence/source-revision.store
 export { SourceRevisionCascade, SourceRevisionCascadeModule } from './source-revision-cascade';
 export { PROJECT_POLICY } from './project-policy.port';
 export type { ProjectExtractionPolicy, ProjectPolicyPort } from './project-policy.port';
+// Space deletion's alias leg (docs/features/spaces.md section 5).
+export {
+  EntityAliasSpaceCleanup,
+  EntityAliasSpaceCleanupModule,
+} from './entity-alias-space-cleanup';

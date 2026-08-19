@@ -181,6 +181,22 @@ export async function listAllFileSourcesForOwner(
     .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey));
 }
 
+/**
+ * EVERY file source inside one space, with its owner — space deletion's
+ * enumeration (docs/features/spaces.md section 5), the exact space twin of
+ * the owner listing above and unpaginated for the same reason.
+ */
+export async function listAllFileSourcesForSpace(
+  db: DbOrTx,
+  spaceId: string,
+): Promise<{ sourceId: string; ownerId: string }[]> {
+  return db
+    .select({ sourceId: fileMetadata.objectKey, ownerId: fileMetadata.ownerId })
+    .from(fileMetadata)
+    .where(eq(fileMetadata.spaceId, spaceId))
+    .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey));
+}
+
 export async function hydrateFileSourceRefs(
   db: DbOrTx,
   ownerId: string,
