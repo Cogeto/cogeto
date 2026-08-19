@@ -12,11 +12,14 @@
     "project/src",
     "project/web"
   ],
-  "overridesRationale": "multer <=2.1.1 has two DoS advisories (GHSA-72gw-mp4g-v24j, GHSA-3p4h-7m6x-2hcm) reachable via the upload path. It is a transitive dep of @nestjs/platform-express; the patched 2.2.0 line keeps the same API. Pinned here to avoid the breaking drizzle-orm/testcontainers bumps a bare `npm audit fix` would also pull in. uuid <11.1.1 has a buffer bounds advisory (GHSA-w5hq-g745-h8pq); exceljs pins uuid ^8 and npm's only automatic fix is a breaking exceljs DOWNGRADE, so uuid is overridden to the patched line inside exceljs only. exceljs uses uuid's stable v4() API; the XLSX reading suite proves the reader unchanged.",
+  "overridesRationale": "multer <=2.1.1 has two DoS advisories (GHSA-72gw-mp4g-v24j, GHSA-3p4h-7m6x-2hcm) reachable via the upload path. It is a transitive dep of @nestjs/platform-express; the patched 2.2.0 line keeps the same API. Pinned here to avoid the breaking drizzle-orm/testcontainers bumps a bare `npm audit fix` would also pull in. uuid <11.1.1 has a buffer bounds advisory (GHSA-w5hq-g745-h8pq); exceljs pins uuid ^8 and npm's only automatic fix is a breaking exceljs DOWNGRADE, so uuid is overridden to the patched line inside exceljs only. exceljs uses uuid's stable v4() API; the XLSX reading suite proves the reader unchanged. deepmerge-ts <8.0.0 has a stack-exhaustion advisory (CVE-2026-40345, GHSA-ggr8-5vv4-36mx); html-to-text (via mailparser) still pins the vulnerable ^7.1.5 and npm's only automatic fix is a breaking mailparser DOWNGRADE, so deepmerge-ts is overridden to the patched 8.x line inside html-to-text only. html-to-text uses it solely to merge its own options object (never message content), and email/email-html-text.spec.ts pins the rendered output across the forced major. Remove once html-to-text ships with deepmerge-ts >=8 (tracked in issue #669).",
   "overrides": {
     "multer": "^2.2.0",
     "exceljs": {
       "uuid": "^11.1.1"
+    },
+    "html-to-text": {
+      "deepmerge-ts": "^8.0.1"
     }
   },
   "scripts": {
