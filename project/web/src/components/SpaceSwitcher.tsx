@@ -6,6 +6,7 @@ import { createSpace, fetchSpaces, putCurrentSpace, renameSpace } from '../api';
 import type { Session } from '../auth/oidc';
 import { currentSpaceId } from '../space';
 import { useApiErrorMessage } from '../i18n/api-error';
+import { CogIcon } from './CogIcon';
 import { btnPrimary, btnSecondary } from './ui';
 
 /** Search only earns its place once scanning beats reading (the record says
@@ -337,21 +338,9 @@ export function SpaceSwitcher({ session }: { session: Session }) {
           <div className="border-t border-slate-100 p-1.5 dark:border-slate-700">
             <a
               href="/settings"
-              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-teal dark:hover:bg-white/10"
+              className="group flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-teal dark:hover:bg-white/10"
             >
-              <svg
-                viewBox="0 0 20 20"
-                className="h-4 w-4 text-slate-400"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <circle cx="10" cy="10" r="2.4" />
-                <path d="M10 3.2v2.2M10 14.6v2.2M3.2 10h2.2M14.6 10h2.2M5.2 5.2l1.6 1.6M13.2 13.2l1.6 1.6M14.8 5.2l-1.6 1.6M6.8 13.2l-1.6 1.6" />
-              </svg>
+              <CogIcon className="h-[18px] w-[18px] text-slate-400 transition-transform duration-300 ease-out group-hover:rotate-45 group-focus-visible:rotate-45" />
               {t('switcher.spaceSettings')}
             </a>
             {creating ? (

@@ -239,10 +239,13 @@ Recorded with the session that implemented them, the way 6a's were:
 - **The instance area lives at `/instance/<section>`**, and every legacy path
   (`/providers`, `/models`, `/system`, `/audit`, `/users`) renders the same
   surface and is normalized to the canonical URL, so every pre-existing deep
-  link, banner and runbook step keeps resolving. The sidebar identity block
-  and Sign out stay in the space rail beside the new navbar avatar menu: the
-  rail footer is a pinned operator affordance (the version line's neighbour),
-  not a space surface.
+  link, banner and runbook step keeps resolving. Identity and Sign out live
+  in the navbar avatar menu only (owner decision, follow-up to this session):
+  the rail is space content plus the version line the runbook's upgrade step
+  reads, nothing else, and one identity display beats two. Every settings
+  door renders the same toothed cog (one shared icon definition), a bit
+  larger in the navbar and turning slightly on hover, because the earlier
+  spoked glyph read as a sun.
 - **Capture defaults and the auto-research toggle are per user per space**
   (migration 0062): `user_settings` keys on `(user_id, space_id)`, existing
   rows became the default space's rows via the column DEFAULT (migrated,

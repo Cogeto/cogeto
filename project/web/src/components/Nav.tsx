@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isDemoSession, logout } from '../auth/oidc';
+import { CogIcon } from './CogIcon';
 import { CountBadge } from './ui';
 
 export type NavSection =
@@ -185,29 +185,19 @@ export const ICONS: Record<NavSection, ReactNode> = {
       <path d="M6 10.5l1.8-2.2 2 3 1.6-2 1 1.4h1.6" />
     </svg>
   ),
-  settings: (
-    <svg viewBox="0 0 20 20" {...G}>
-      <circle cx="10" cy="10" r="7" />
-      <circle cx="10" cy="10" r="1" fill="currentColor" stroke="none" />
-      <path d="M10 6.2v3.9l2.4 1.2" opacity="0.55" />
-      <path d="M14.8 5.4 15.9 4M5.2 14.6 4.1 16" opacity="0.6" />
-    </svg>
-  ),
+  // The one cog definition (CogIcon) serves every settings door, so the
+  // instance area's nav and the navbar gear cannot drift apart.
+  settings: <CogIcon className="h-full w-full" />,
 };
 
-/** Initials for the sidebar avatar (up to two words). */
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const two = ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
-  return two || '·';
-}
-
-/** Left navigation: custom glyphs, and the identity + sign-out pinned to
- * the bottom instead of floating in the page header.
+/** Left navigation: custom glyphs, with the running version pinned to the
+ * bottom. Identity and Sign out moved to the navbar's avatar menu with the
+ * spaces reorganisation (owner decision, session 3 follow-up): the rail is
+ * space content only, and one identity display beats two.
  *
  * The rail is pinned to the VIEWPORT, not the document. As a plain flex child
  * it stretched to the full page height, so on a long page (Memories, Audit)
- * the identity block and Sign out sat at the bottom of the document and were
+ * the footer version line sat at the bottom of the document and was
  * only reachable by scrolling to the very end. `self-start` stops the stretch,
  * `h-screen` sizes the rail to the viewport, and `sticky top-0` keeps it there
  * while the page scrolls underneath; the item list's own `overflow-y-auto`
@@ -223,19 +213,15 @@ export function Nav({
   approvalsCount,
   dashboardUnread = 0,
   showSystem = false,
-  userName,
-  orgName,
 }: {
   active: NavSection;
   reviewCount?: number;
   approvalsCount?: number;
   /** Unread attention items — a calm dot on the Dashboard item (P2). */
   dashboardUnread?: number;
-  /** System is an operator surface (admin role) — hidden for plain
-   * users (o6-dry-run); the server-side AdminGuard stays the enforcement. */
+  /** Kept for call-site compatibility: the operator surfaces moved to the
+   * instance area, whose own nav applies the role gate (instanceNavFor). */
   showSystem?: boolean;
-  userName?: string;
-  orgName?: string;
 }) {
   const { t } = useTranslation('navigation');
   const badges: Partial<Record<NavSection, number>> = {
@@ -249,7 +235,6 @@ export function Nav({
   // spec keep their shape.
   void showSystem;
   const sections = ENABLED;
-  const demo = isDemoSession();
   return (
     <nav
       aria-label={t('landmark')}
@@ -307,51 +292,12 @@ export function Nav({
         })}
       </ul>
       <div className="border-t border-white/10 p-3">
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-teal to-brand-teal-ink text-xs font-bold text-brand-navy">
-            {initials(userName ?? t('common:productName'))}
-          </span>
-          <span className="min-w-0 leading-tight">
-            <span className="block truncate text-sm font-semibold text-white">
-              {userName ?? t('common:productName')}
-            </span>
-            {orgName && <span className="block truncate text-xs text-white/40">{orgName}</span>}
-          </span>
-        </div>
-        {demo ? (
-          <div className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-brand-teal">
-            <span aria-hidden="true">●</span> {t('liveSandbox')}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/50 transition-colors hover:bg-white/5 hover:text-white"
-          >
-            <svg
-              viewBox="0 0 20 20"
-              className="h-[18px] w-[18px]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 6.5V5a1.5 1.5 0 0 0-1.5-1.5h-5A1.5 1.5 0 0 0 4 5v10a1.5 1.5 0 0 0 1.5 1.5h5A1.5 1.5 0 0 0 12 15v-1.5" />
-              <path d="M8.5 10h8m0 0-2.4-2.4M16.5 10l-2.4 2.4" />
-            </svg>
-            {t('signOut')}
-          </button>
-        )}
-        {/* The running version. It lived here until the sidebar was rebuilt,
-            which dropped the line and left the build-time define with no
-            consumer, so an operator verifying an upgrade had nothing to read.
-            A hairline keeps it clearly apart from the session controls. */}
-        <div
-          className="mt-2 border-t border-white/5 px-3 pt-2 text-[0.65rem] text-white/30"
-          title={t('versionTitle')}
-        >
+        {/* The running version. It lived here until a past sidebar rebuild
+            dropped the line and left the build-time define with no consumer,
+            so an operator verifying an upgrade had nothing to read. It stays
+            in the rail on purpose: the runbook's upgrade step reads it here.
+            Identity and Sign out live in the navbar's avatar menu. */}
+        <div className="px-3 text-[0.65rem] text-white/30" title={t('versionTitle')}>
           v{__APP_VERSION__}
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { currentSpaceId } from '../space';
+import { CogIcon } from './CogIcon';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
 import { SpaceSwitcher } from './SpaceSwitcher';
@@ -22,8 +23,8 @@ import { btnPrimary } from './ui';
  * full-width app bar shares this column so its title lines up with the content. */
 const COL = 'mx-auto w-full max-w-[80rem]';
 
-/** The authenticated page frame: sidebar (identity + sign-out live there now),
- * a slim title bar, and the content column. */
+/** The authenticated page frame: the space-scoped sidebar, a slim title bar
+ * (switcher, page name, gear, avatar menu), and the content column. */
 export function Shell({
   session,
   title,
@@ -110,8 +111,6 @@ export function Shell({
         approvalsCount={pendingApprovals?.length ?? 0}
         dashboardUnread={attention?.unreadCount ?? 0}
         showSystem={me?.isAdmin === true}
-        userName={me?.name}
-        orgName={me?.orgName}
       />
       {leftRail}
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
@@ -142,25 +141,15 @@ export function Shell({
                 space-scoped sidebar, which is what teaches that no space owns
                 it. */}
             <div className="ml-auto flex shrink-0 items-center gap-2">
+              {/* The gear turns a little on hover and focus: a quiet cue that
+                  this is the machine-room door, not another page. */}
               <a
                 href="/instance"
                 aria-label={t('navigation:instance.open')}
                 title={t('navigation:instance.open')}
-                className="grid h-8 w-8 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal dark:hover:bg-white/10"
+                className="group grid h-9 w-9 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal dark:hover:bg-white/10"
               >
-                <svg
-                  viewBox="0 0 20 20"
-                  className="h-[18px] w-[18px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <circle cx="10" cy="10" r="2.6" />
-                  <path d="M10 2.8v2.4M10 14.8v2.4M2.8 10h2.4M14.8 10h2.4M4.9 4.9l1.7 1.7M13.4 13.4l1.7 1.7M15.1 4.9l-1.7 1.7M6.6 13.4l-1.7 1.7" />
-                </svg>
+                <CogIcon className="h-[21px] w-[21px] transition-transform duration-300 ease-out group-hover:rotate-45 group-focus-visible:rotate-45" />
               </a>
               <UserMenu userName={me?.name} orgName={me?.orgName} />
             </div>

@@ -69,9 +69,7 @@ describe('users_is_admin_only', () => {
 
   it('never returns to the space-scoped rail, whatever the role', () => {
     const railFor = (isAdmin: boolean) =>
-      renderToStaticMarkup(
-        <Nav active="dashboard" showSystem={isAdmin} userName="Ana" orgName="Cogeto" />,
-      );
+      renderToStaticMarkup(<Nav active="dashboard" showSystem={isAdmin} />);
     expect(railFor(true)).not.toContain('/users');
     expect(railFor(false)).not.toContain('/users');
   });

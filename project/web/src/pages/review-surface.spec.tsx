@@ -58,9 +58,7 @@ describe('no_uncertain_queue', () => {
 
 describe('badge_counts_contradictions_only', () => {
   it('labels the nav entry and its badge for contradictions', () => {
-    const html = renderToStaticMarkup(
-      <Nav active="review" reviewCount={3} showSystem={false} userName="Ana" orgName="Cogeto" />,
-    );
+    const html = renderToStaticMarkup(<Nav active="review" reviewCount={3} showSystem={false} />);
     expect(html).toContain('Contradictions');
     expect(html).toContain('open contradictions');
     // The count itself still renders: contradictions ARE a chore list, and the
@@ -70,9 +68,7 @@ describe('badge_counts_contradictions_only', () => {
   });
 
   it('shows no badge when there are no contradictions', () => {
-    const html = renderToStaticMarkup(
-      <Nav active="review" reviewCount={0} showSystem={false} userName="Ana" orgName="Cogeto" />,
-    );
+    const html = renderToStaticMarkup(<Nav active="review" reviewCount={0} showSystem={false} />);
     expect(html).not.toContain('open contradictions');
   });
 });
