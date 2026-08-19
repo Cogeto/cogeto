@@ -14,7 +14,9 @@
     "action": "Aktion…",
     "entityType": "Entitätstyp…",
     "from": "von",
-    "to": "bis"
+    "to": "bis",
+    "space": "Space",
+    "spaceAll": "Alle Spaces"
   },
   "empty": {
     "title": "Keine Einträge entsprechen diesen Filtern",

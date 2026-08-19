@@ -15,7 +15,9 @@
     "action": "radnja…",
     "entityType": "vrsta entiteta…",
     "from": "od",
-    "to": "do"
+    "to": "do",
+    "space": "Prostor",
+    "spaceAll": "Svi prostori"
   },
   "empty": {
     "title": "Nijedan zapis ne odgovara ovim filtrima",

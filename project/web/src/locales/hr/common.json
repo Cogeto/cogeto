@@ -20,7 +20,8 @@
     "loading": "Učitavanje…",
     "loadingApp": "Cogeto se učitava…",
     "saving": "Spremanje…",
-    "saved": "Spremljeno."
+    "saved": "Spremljeno.",
+    "spacesFailed": "Popis prostora nije bilo moguće učitati, pa se još ništa ne može prikazati."
   },
   "memoryStatus": {
     "active": "aktivno",

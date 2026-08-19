@@ -15,7 +15,9 @@
     "action": "action…",
     "entityType": "type d’entité…",
     "from": "du",
-    "to": "au"
+    "to": "au",
+    "space": "Espace",
+    "spaceAll": "Tous les espaces"
   },
   "empty": {
     "title": "Aucune entrée ne correspond à ces filtres",

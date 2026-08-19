@@ -155,6 +155,9 @@ export const extractionGate = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The space this gate governs (migration 0062, the settings split): a
+     * gate decides what is EXTRACTED, so it is sealed with its space. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     sourceType: text('source_type').notNull(),
     enabled: boolean('enabled').notNull().default(true),
     /** NULL: the source-type registry's budget (and the parse cap) decide. */
@@ -163,7 +166,7 @@ export const extractionGate = pgTable(
     retentionDays: integer('retention_days'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('extraction_gate_owner_type_idx').on(t.ownerId, t.sourceType)],
+  (t) => [uniqueIndex('extraction_gate_owner_type_idx').on(t.ownerId, t.spaceId, t.sourceType)],
 );
 
 export const extractionGateRule = pgTable(
@@ -171,6 +174,9 @@ export const extractionGateRule = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The space the rule applies in (migration 0062): a rule written for one
+     * space must not govern admission in another. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     sourceType: text('source_type').notNull(),
     dimension: text('dimension').notNull(),
     value: text('value').notNull(),
@@ -182,7 +188,13 @@ export const extractionGateRule = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('extraction_gate_rule_owner_idx').on(t.ownerId, t.sourceType, t.dimension, t.value),
+    uniqueIndex('extraction_gate_rule_owner_idx').on(
+      t.ownerId,
+      t.spaceId,
+      t.sourceType,
+      t.dimension,
+      t.value,
+    ),
   ],
 );
 

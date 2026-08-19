@@ -1,0 +1,73 @@
+{
+  "switcher": {
+    "currentSpace": "Aktueller Space: {{name}}",
+    "listLabel": "Spaces",
+    "searchPlaceholder": "Space finden",
+    "searchLabel": "Space finden",
+    "noMatches": "Kein Space passt zu \"{{query}}\".",
+    "currentMarker": "aktueller Space",
+    "thisSpace": "dieser Space",
+    "newSpace": "Neuer Space",
+    "namePlaceholder": "Name des Spaces",
+    "nameLabel": "Name des neuen Spaces",
+    "create": "Erstellen",
+    "creating": "Wird erstellt…",
+    "renameLabel": "{{name}} umbenennen",
+    "spaceSettings": "Space-Einstellungen",
+    "switchFailed": "Der Wechsel hat nicht stattgefunden; Sie sind weiterhin in {{name}}.",
+    "createFailed": "Der Space wurde nicht erstellt.",
+    "renameFailed": "Der Space wurde nicht umbenannt."
+  },
+  "deleted": {
+    "title": "Dieser Space wurde gelöscht",
+    "body": "Der Space, in dem Sie gearbeitet haben, wurde in einer anderen Sitzung gelöscht. Fahren Sie im Standard-Space fort.",
+    "cta": "Weiter"
+  },
+  "level": {
+    "space": "Diese Einstellungen gelten nur in {{space}}, und nur für Sie. Ihr Profil, das Erscheinungsbild und die Modellwahl finden Sie in den Instanz-Einstellungen hinter dem Zahnrad-Symbol."
+  },
+  "settings": {
+    "title": "Space-Einstellungen",
+    "heading": "Dieser Space",
+    "explainer": "Ein Space ist eine versiegelte Partition: Nichts darin wird jemals mit einem anderen Space verglichen, daraus abgerufen oder gemeinsam berichtet.",
+    "nameLabel": "Name",
+    "dangerHeading": "Diesen Space löschen",
+    "dangerExplainer": "Das Löschen eines Spaces löscht alles darin, für alle Benutzer, über den gewöhnlichen Löschvorgang: ein signierter Beleg pro Quelle.",
+    "defaultUndeletable": "Der Standard-Space kann nicht gelöscht werden. Dort landet alles, was keinen Space benennt.",
+    "deleteButton": "Diesen Space löschen",
+    "planIntro": "Das Löschen von {{space}} wird Folgendes löschen:",
+    "planEmpty": "Der Space enthält noch nichts; nur der Space selbst wird entfernt.",
+    "planLine": "{{kind}}: {{n}}",
+    "planReceipts": "Jede Quelle wird über den gewöhnlichen Löschvorgang gelöscht, mit je einem signierten Beleg, geteiltes Material eingeschlossen. Die Belege bleiben auch nach dem Space überprüfbar.",
+    "planFailed": "Der Löschplan konnte nicht geladen werden.",
+    "confirmLabel": "Geben Sie {{space}} zur Bestätigung ein",
+    "deleteConfirm": "{{space}} endgültig löschen",
+    "deleting": "Wird gelöscht…",
+    "deleteFailed": "Der Space wurde nicht gelöscht.",
+    "sourceType": {
+      "user_note": "Notizen",
+      "file": "Dateien",
+      "chat_conversation": "Unterhaltungen",
+      "email": "E-Mails",
+      "web": "Webseiten",
+      "chat": "Chat-Erfassungen"
+    },
+    "artifact": {
+      "projects": "Projekte",
+      "entity_aliases": "Entitäts-Aliasse",
+      "import_runs": "Importe",
+      "research_runs": "Recherchen",
+      "skill_runs": "Fähigkeitsläufe",
+      "findings_reports": "Befundberichte",
+      "passport_exports": "Wissenspass-Exporte",
+      "connectors": "Konnektoren",
+      "extraction_gates": "Extraktionsfilter-Einstellungen"
+    }
+  },
+  "firstRun": {
+    "title": "{{space}} ist ein neuer Space, versiegelt und leer",
+    "body": "Alles, was hier erfasst wird, bleibt hier: Erinnerungen, Quellen, Befunde und Berichte in diesem Space vermischen sich nie mit einem anderen. Beginnen Sie eine Unterhaltung oder fügen Sie die ersten Dokumente hinzu.",
+    "chatCta": "Unterhaltung beginnen",
+    "sourcesCta": "Quellen hinzufügen"
+  }
+}

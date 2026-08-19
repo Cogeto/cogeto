@@ -44,13 +44,13 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 
 ## Current state
 
-**v1.7.3 is the current release line** (`package.json` and the git tag are the two
+**v1.8.0 is the current release line** (`package.json` and the git tag are the two
 sources of truth and must agree: `npm run verify:version`). Migrations run to
-**0059**; the three most recent are outside the V2 item narrative below and are
-small, self-contained changes with their reasoning in the files themselves:
-0057 full-text search over conversations, 0058 a `stopped` flag so an
-interrupted answer says so, 0059 an index making the duplicate-upload checksum
-lookup cheap.
+**0062**; 0060 through 0062 are the V3 spaces sessions described below, and
+0057 through 0059 are small, self-contained changes with their reasoning in the
+files themselves: 0057 full-text search over conversations, 0058 a `stopped`
+flag so an interrupted answer says so, 0059 an index making the
+duplicate-upload checksum lookup cheap.
 
 The task subsystem and reminders were **removed**
 in V2.0 items 3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What
@@ -606,6 +606,42 @@ never deletable; a deleted last-used space degrades to the default. The
 adversarial fixture (`spaces/space-isolation-depth.integration.spec.ts`)
 proves two spaces holding directly contradictory facts about the same subject
 yield zero cross-space findings through both the inline and nightly paths.
+
+**V3 spaces, session 3 of 4, delivered navigation and the settings split**
+(migration 0062; decisions recorded in
+[`docs/features/spaces.md`](docs/features/spaces.md) section 6b). The space
+switcher is the leftmost element of the top navbar on every page: a hand-rolled
+combobox (current space prominent and announced, search past seven spaces,
+one-field create landing in the new empty space, rename inline, keyboard
+navigable), and the SPA binds the caller's space ONCE per page load from
+`GET /api/spaces` before anything renders, with every request carrying
+`x-cogeto-space` through one header builder in `api.ts`. **A switch is a
+persisted choice followed by a full reload** with query params dropped, which
+is what makes a stale badge from the previous space unrepresentable; a failed
+switch stays put and says so, a space deleted in another session raises a
+deliberate dialog, and there is never an unsaved-state prompt (the chat
+composer draft survives per space in sessionStorage). The sidebar holds
+exactly the ten space-scoped surfaces; providers, models, system, users,
+audit and the instance-level parts of settings moved to the **instance area**
+(`/instance/<section>`, its own light-panel shell and nav, gear at the right
+end of the navbar beside the new avatar menu; every legacy path still
+resolves and normalizes). The **settings split** applied the record's rule:
+capture defaults and the auto-research toggle (moved server-side from
+per-device localStorage) are per user per space on `user_settings`
+(`(user_id, space_id)` primary key, existing rows migrated into the default
+space by the column DEFAULT, missing rows reading as sensible defaults, the
+space FK cascading like `user_space_state`); the **extraction gate is sealed
+with its space** (`(owner_id, space_id, source_type)`, the pipeline
+chokepoint asking with the source row's space, a new ingestion cleanup leg on
+space deletion); profile, appearance, answer-model choice, model
+configuration and the signing key stay instance-level and moved surfaces.
+Both settings pages state their level, and the space settings page carries
+the rename plus the admin-only delete flow that shows the session-2 deletion
+plan and requires typing the space's name. Email routing remains a
+default-space affair, stated on the surface, deferred to the email session.
+The spaces API errors became serverErrors codes; `hr`/`de`/`fr` are fully
+translated (German keeps *Space*, recorded in the glossary); a new space
+opens on a first-run state pointing at Chat and Sources.
 
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).

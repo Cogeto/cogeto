@@ -11,7 +11,6 @@ import {
 import type { Session } from '../auth/oidc';
 import { invalidateAfterJobRetry } from '../query-invalidation';
 import { CapabilitiesPanel } from '../components/CapabilitiesPanel';
-import { Shell } from '../components/Shell';
 import { StatusPanel } from '../components/StatusPanel';
 import { jobLabel, WorkerActivityPanel } from '../components/WorkerActivityPanel';
 import { timeAgo } from '../components/status';
@@ -218,26 +217,23 @@ function DeadLetterTable({ session }: { session: Session }) {
  */
 export function System({ session }: { session: Session }) {
   const { t } = useTranslation('system');
-  const title = t('navigation:section.system');
   const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session), retry: 1 });
   if (me.data && !me.data.isAdmin) {
     return (
-      <Shell session={session} title={title} active="system">
-        <Card>
-          <EmptyState tone="neutral" title={t('operatorOnly.title')}>
-            {t('operatorOnly.body')}
-          </EmptyState>
-        </Card>
-      </Shell>
+      <Card>
+        <EmptyState tone="neutral" title={t('operatorOnly.title')}>
+          {t('operatorOnly.body')}
+        </EmptyState>
+      </Card>
     );
   }
   return (
-    <Shell session={session} title={title} active="system">
+    <>
       <StatusPanel session={session} />
       <CapabilitiesPanel session={session} />
       <WorkerActivityPanel session={session} />
       <IntegrityPanel session={session} />
       <DeadLetterTable session={session} />
-    </Shell>
+    </>
   );
 }

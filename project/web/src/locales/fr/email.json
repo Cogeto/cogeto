@@ -42,5 +42,6 @@
     "wrong_recipient": "adressé à un autre destinataire",
     "message_too_large": "le message dépassait la taille maximale",
     "attachments_too_large": "les pièces jointes dépassaient la taille maximale"
-  }
+  },
+  "spaceNote": "Les e-mails entrants sont pour l'instant capturés dans l'espace par défaut ; le routage d'une adresse vers un espace viendra plus tard."
 }

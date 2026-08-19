@@ -42,5 +42,6 @@
     "wrong_recipient": "an einen anderen Empfänger adressiert",
     "message_too_large": "Nachricht überschritt die Größenbegrenzung",
     "attachments_too_large": "Anhänge überschritten die Größenbegrenzung"
-  }
+  },
+  "spaceNote": "Eingehende E-Mails werden vorerst im Standard-Space erfasst; das Zuordnen einer Adresse zu einem Space folgt später."
 }

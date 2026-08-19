@@ -27,5 +27,14 @@
   },
   "liveSandbox": "Aktive Demo-Umgebung",
   "signOut": "Abmelden",
-  "versionTitle": "Cogeto-Version"
+  "versionTitle": "Cogeto-Version",
+  "instance": {
+    "open": "Instanz-Einstellungen",
+    "title": "Instanz-Einstellungen",
+    "backTo": "Zurück zu {{space}}",
+    "explainer": "Einstellungen für die gesamte Installation. Nichts hier gehört zu einem Space."
+  },
+  "userMenu": {
+    "open": "Konto"
+  }
 }

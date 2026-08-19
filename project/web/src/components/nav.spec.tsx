@@ -18,8 +18,8 @@ import { Nav } from './Nav';
  *     in the nav" (the runbook's own upgrade verification step) had nothing to
  *     read for three releases.
  *   nav_pins_to_viewport — the rail is pinned to the viewport rather than
- *     stretched over the document. Without this, Sign out sits at the bottom
- *     of a long page instead of on screen.
+ *     stretched over the document. Without this, the version line sits at the
+ *     bottom of a long page instead of on screen.
  *   nav_a11y — axe passes on the rendered rail.
  */
 
@@ -30,20 +30,22 @@ const version = (
   ) as { version: string }
 ).version;
 
-// isDemoSession() reads sessionStorage, which jsdom provides; unset means a
-// real session, so the Sign out button renders.
-const html = renderToStaticMarkup(
-  <Nav active="dashboard" showSystem userName="Ana Kovac" orgName="Cogeto" />,
-);
+const html = renderToStaticMarkup(<Nav active="dashboard" showSystem />);
 
 describe('nav_shows_version', () => {
-  it('renders the build-time version alongside the session controls', () => {
+  it('renders the build-time version in the rail footer', () => {
     expect(html).toContain(`v${version}`);
     expect(html).toContain('Cogeto version');
   });
 
-  it('keeps Sign out, which the version line must not displace', () => {
-    expect(html).toContain('Sign out');
+  it('holds no session controls: Sign out moved to the navbar avatar menu (owner decision)', () => {
+    // The rail is space content plus the version line, nothing else. The
+    // operator affordance the old pin protected now lives in the UserMenu,
+    // whose source is pinned here so a redesign cannot quietly drop it.
+    expect(html).not.toContain('Sign out');
+    const userMenu = readFileSync(path.resolve(__dirname, 'UserMenu.tsx'), 'utf8');
+    expect(userMenu).toContain("t('signOut')");
+    expect(userMenu).toContain('logout()');
   });
 });
 

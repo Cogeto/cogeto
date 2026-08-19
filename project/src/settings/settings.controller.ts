@@ -11,14 +11,17 @@ const updateSchema = z
   .object({
     discardByDefault: z.boolean(),
     defaultScope: z.enum(MEMORY_SCOPES),
+    autoResearch: z.boolean(),
   })
   .partial();
 
 /**
- * /api/settings — the owner's per-user capture/upload defaults.
- * Only real, wired toggles: the extract-and-discard default and the default
- * scope. The instance public key shown in the UI is served separately by
- * /api/instance/public-key (F1); Settings does not duplicate it.
+ * /api/settings — the owner's capture/upload defaults IN THE CALLER'S SPACE
+ * (the settings split, docs/features/spaces.md section 4): the
+ * extract-and-discard default, the default scope, and the auto-research
+ * toggle. Only real, wired toggles. The instance public key shown in the UI
+ * is served separately by /api/instance/public-key (F1); Settings does not
+ * duplicate it.
  */
 @Controller('settings')
 @UseGuards(BearerAuthGuard)

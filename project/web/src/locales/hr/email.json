@@ -42,5 +42,6 @@
     "wrong_recipient": "adresirano drugom primatelju",
     "message_too_large": "poruka je premašila ograničenje veličine",
     "attachments_too_large": "privici su premašili ograničenje veličine"
-  }
+  },
+  "spaceNote": "Dolazna e-pošta zasad se sprema u zadani prostor; usmjeravanje adrese u prostor stiže kasnije."
 }

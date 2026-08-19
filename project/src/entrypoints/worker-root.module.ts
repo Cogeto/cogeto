@@ -13,6 +13,8 @@ import { MemoryModule } from '../memory/index';
 import {
   EntityAliasSpaceCleanup,
   EntityAliasSpaceCleanupModule,
+  ExtractionGateSpaceCleanup,
+  ExtractionGateSpaceCleanupModule,
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
@@ -470,6 +472,7 @@ export function createWorkerRootModule(
           imports: [
             ProjectSpaceCleanupModule,
             EntityAliasSpaceCleanupModule,
+            ExtractionGateSpaceCleanupModule,
             ImportSpaceCleanupModule,
             ResearchSpaceCleanupModule,
             SkillSpaceCleanupModule,
@@ -480,6 +483,7 @@ export function createWorkerRootModule(
           adapters: [
             ProjectSpaceCleanup,
             EntityAliasSpaceCleanup,
+            ExtractionGateSpaceCleanup,
             ImportSpaceCleanup,
             ResearchSpaceCleanup,
             SkillSpaceCleanup,

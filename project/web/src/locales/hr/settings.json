@@ -93,5 +93,8 @@
     "heading": "Ključ za potpisivanje instance",
     "explainer": "Svaka potvrda brisanja potpisuje se privatnim ključem ove instance (spec. §11.1). Svatko može provjeriti potvrdu ili knjigu Zaboravljenog prema javnom ključu u nastavku. To neovisno o sustavu Cogeto dokazuje da se brisanje doista dogodilo.",
     "algorithm": "Algoritam: {{algorithm}}"
+  },
+  "level": {
+    "instance": "Ove postavke vrijede posvuda: opisuju vas i ovu instalaciju, a ne pojedini prostor. Što se sprema, izdvaja i odgovara podešava se po prostoru, u postavkama prostora."
   }
 }

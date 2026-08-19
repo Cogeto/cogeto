@@ -93,5 +93,8 @@
     "heading": "Instance signing key",
     "explainer": "Every deletion receipt is signed with this instance's private key (spec §11.1). Anyone can verify a receipt or the Forgotten ledger against the public key below, proof that a deletion really happened, independent of Cogeto.",
     "algorithm": "Algorithm: {{algorithm}}"
+  },
+  "level": {
+    "instance": "These settings apply everywhere: they describe you and this deployment, not any space. What is captured, extracted and answered is configured per space, in Space settings."
   }
 }

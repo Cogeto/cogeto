@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { AuditEntryDto } from '@cogeto/shared';
-import { fetchAudit } from '../api';
+import { fetchAudit, fetchSpaces } from '../api';
 import type { Session } from '../auth/oidc';
-import { Shell } from '../components/Shell';
 import { Card, EmptyState, ErrorState, SectionTitle, SkeletonRows } from '../components/ui';
 import { timeAgo } from '../components/status';
 import { useApiErrorMessage } from '../i18n/api-error';
@@ -79,6 +78,7 @@ export function Audit({ session }: { session: Session }) {
   const [actor, setActor] = useState('');
   const [action, setAction] = useState('');
   const [entityType, setEntityType] = useState('');
+  const [spaceId, setSpaceId] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(0);
@@ -87,6 +87,7 @@ export function Audit({ session }: { session: Session }) {
     actor: actor || undefined,
     action: action || undefined,
     entityType: entityType || undefined,
+    spaceId: spaceId || undefined,
     from: from ? new Date(from).toISOString() : undefined,
     to: to ? new Date(to).toISOString() : undefined,
     limit: PAGE_SIZE,
@@ -103,111 +104,131 @@ export function Audit({ session }: { session: Session }) {
   // Renders the server's own `auth.roleRequired` code as translated copy
   // rather than the page's generic "could not load" line.
   const errorMessage = useApiErrorMessage(t);
+  // The trail stays ONE instance-level surface; the space is a FILTER over
+  // its new attribute (docs/features/spaces.md section 4), never a gate, so
+  // the audit page deliberately does not follow the switcher.
+  const spaceList = useQuery({ queryKey: ['spaces'], queryFn: () => fetchSpaces(session) });
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
   const reset = () => setPage(0);
 
   return (
-    <Shell session={session} title={t('navigation:section.audit')} active="audit">
-      <Card>
-        <div className="mb-3 flex items-center gap-2">
-          <SectionTitle>{t('heading')}</SectionTitle>
-          {data && (
-            <span className="text-xs text-slate-400">{t('entryCount', { count: data.total })}</span>
-          )}
-          <span className="ml-auto text-xs text-slate-400">{t('appendOnly')}</span>
-        </div>
+    <Card>
+      <div className="mb-3 flex items-center gap-2">
+        <SectionTitle>{t('heading')}</SectionTitle>
+        {data && (
+          <span className="text-xs text-slate-400">{t('entryCount', { count: data.total })}</span>
+        )}
+        <span className="ml-auto text-xs text-slate-400">{t('appendOnly')}</span>
+      </div>
 
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-          <input
-            value={actor}
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+        <input
+          value={actor}
+          onChange={(e) => {
+            setActor(e.target.value);
+            reset();
+          }}
+          placeholder={t('filter.actor')}
+          className="w-32 rounded-md border border-slate-300 px-2 py-1.5"
+        />
+        <input
+          value={action}
+          onChange={(e) => {
+            setAction(e.target.value);
+            reset();
+          }}
+          placeholder={t('filter.action')}
+          className="w-40 rounded-md border border-slate-300 px-2 py-1.5"
+        />
+        <input
+          value={entityType}
+          onChange={(e) => {
+            setEntityType(e.target.value);
+            reset();
+          }}
+          placeholder={t('filter.entityType')}
+          className="w-36 rounded-md border border-slate-300 px-2 py-1.5"
+        />
+        <label className="flex items-center gap-1 text-slate-500">
+          <span className="sr-only">{t('filter.space')}</span>
+          <select
+            value={spaceId}
             onChange={(e) => {
-              setActor(e.target.value);
+              setSpaceId(e.target.value);
               reset();
             }}
-            placeholder={t('filter.actor')}
-            className="w-32 rounded-md border border-slate-300 px-2 py-1.5"
-          />
-          <input
-            value={action}
-            onChange={(e) => {
-              setAction(e.target.value);
-              reset();
-            }}
-            placeholder={t('filter.action')}
-            className="w-40 rounded-md border border-slate-300 px-2 py-1.5"
-          />
-          <input
-            value={entityType}
-            onChange={(e) => {
-              setEntityType(e.target.value);
-              reset();
-            }}
-            placeholder={t('filter.entityType')}
             className="w-36 rounded-md border border-slate-300 px-2 py-1.5"
-          />
-          <label className="flex items-center gap-1 text-slate-500">
-            {t('filter.from')}
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                reset();
-              }}
-              className="rounded-md border border-slate-300 px-2 py-1.5"
-            />
-          </label>
-          <label className="flex items-center gap-1 text-slate-500">
-            {t('filter.to')}
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                reset();
-              }}
-              className="rounded-md border border-slate-300 px-2 py-1.5"
-            />
-          </label>
-        </div>
-
-        {isPending && <SkeletonRows rows={5} label={t('loading')} />}
-        {isError && <ErrorState>{errorMessage(error, 'error')}</ErrorState>}
-        {data && data.items.length === 0 && (
-          <EmptyState icon="🗒" title={t('empty.title')}>
-            {t('empty.body')}
-          </EmptyState>
-        )}
-        {data && data.items.length > 0 && (
-          <ul>
-            {data.items.map((entry) => (
-              <AuditRow key={entry.id} entry={entry} />
+          >
+            <option value="">{t('filter.spaceAll')}</option>
+            {(spaceList.data?.spaces ?? []).map((space) => (
+              <option key={space.id} value={space.id}>
+                {space.name}
+              </option>
             ))}
-          </ul>
-        )}
+          </select>
+        </label>
+        <label className="flex items-center gap-1 text-slate-500">
+          {t('filter.from')}
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              reset();
+            }}
+            className="rounded-md border border-slate-300 px-2 py-1.5"
+          />
+        </label>
+        <label className="flex items-center gap-1 text-slate-500">
+          {t('filter.to')}
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => {
+              setTo(e.target.value);
+              reset();
+            }}
+            className="rounded-md border border-slate-300 px-2 py-1.5"
+          />
+        </label>
+      </div>
 
-        {data && pages > 1 && (
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-            <button
-              type="button"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
-              className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
-            >
-              {t('memories:list.pager.newer')}
-            </button>
-            <span>{t('memories:list.pager.position', { page: page + 1, pages })}</span>
-            <button
-              type="button"
-              disabled={page + 1 >= pages}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
-            >
-              {t('memories:list.pager.older')}
-            </button>
-          </div>
-        )}
-      </Card>
-    </Shell>
+      {isPending && <SkeletonRows rows={5} label={t('loading')} />}
+      {isError && <ErrorState>{errorMessage(error, 'error')}</ErrorState>}
+      {data && data.items.length === 0 && (
+        <EmptyState icon="🗒" title={t('empty.title')}>
+          {t('empty.body')}
+        </EmptyState>
+      )}
+      {data && data.items.length > 0 && (
+        <ul>
+          {data.items.map((entry) => (
+            <AuditRow key={entry.id} entry={entry} />
+          ))}
+        </ul>
+      )}
+
+      {data && pages > 1 && (
+        <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
+          >
+            {t('memories:list.pager.newer')}
+          </button>
+          <span>{t('memories:list.pager.position', { page: page + 1, pages })}</span>
+          <button
+            type="button"
+            disabled={page + 1 >= pages}
+            onClick={() => setPage((p) => p + 1)}
+            className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
+          >
+            {t('memories:list.pager.older')}
+          </button>
+        </div>
+      )}
+    </Card>
   );
 }

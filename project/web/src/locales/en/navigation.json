@@ -27,5 +27,14 @@
   },
   "liveSandbox": "Live sandbox",
   "signOut": "Sign out",
-  "versionTitle": "Cogeto version"
+  "versionTitle": "Cogeto version",
+  "instance": {
+    "open": "Instance settings",
+    "title": "Instance settings",
+    "backTo": "Back to {{space}}",
+    "explainer": "Settings for the whole deployment. Nothing here belongs to a space."
+  },
+  "userMenu": {
+    "open": "Account"
+  }
 }

@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { UNAUTHORIZED_EVENT } from './api';
+import { fetchSpaces, UNAUTHORIZED_EVENT } from './api';
 import { clearSession, getWebConfig, loadSession } from './auth/oidc';
 import type { Session } from './auth/oidc';
+import { bindCurrentSpace } from './space';
 import { ConfirmProvider } from './components/confirm';
 import { DemoBanner } from './components/DemoBanner';
 import { DemoIntro } from './components/DemoIntro';
 import { useInterfaceLanguage } from './i18n/use-language';
 import { Callback } from './pages/Callback';
+import { InstanceArea } from './pages/InstanceArea';
+import type { InstanceSection } from './pages/InstanceArea';
 import { Chat } from './pages/Chat';
 import { Research } from './pages/Research';
 import { Dashboard } from './pages/Dashboard';
@@ -16,18 +19,13 @@ import { DemoLogin } from './pages/DemoLogin';
 import { Forgotten } from './pages/Forgotten';
 import { Login } from './pages/Login';
 import { Approvals } from './pages/Approvals';
-import { Audit } from './pages/Audit';
 import { Memories } from './pages/Memories';
 import { Sources } from './pages/Sources';
 import { Review } from './pages/Review';
 import { Reports } from './pages/Reports';
-import { ModelConfiguration } from './pages/ModelConfiguration';
-import { Providers } from './pages/Providers';
 import { Settings } from './pages/Settings';
 import { Skills } from './pages/Skills';
-import { System } from './pages/System';
 import { Timeline } from './pages/Timeline';
-import { Users } from './pages/Users';
 
 /** Tiny path switch — a router dependency is still not justified. */
 export function App() {
@@ -68,6 +66,26 @@ export function App() {
   });
   const demoMode = webConfig?.demoMode === true;
 
+  // The space boot gate (docs/features/spaces.md section 3): nothing renders
+  // until the caller's current space is known and BOUND, because a request
+  // sent without the header acts in the default space, and a page that
+  // briefly showed the wrong space's data would be the worst possible first
+  // impression of a sealed partition. The bind happens inside the queryFn so
+  // any render that sees data also sees the bound space.
+  const {
+    data: spaceList,
+    isError: spacesFailed,
+    refetch: refetchSpaces,
+  } = useQuery({
+    queryKey: ['spaces'],
+    queryFn: async () => {
+      const list = await fetchSpaces(session!);
+      bindCurrentSpace(list);
+      return list;
+    },
+    enabled: session != null,
+  });
+
   if (window.location.pathname === '/callback') {
     return <Callback onSession={setSession} />;
   }
@@ -95,6 +113,38 @@ export function App() {
     return <Login />;
   }
 
+  if (!spaceList) {
+    if (spacesFailed) {
+      return (
+        <main className="grid min-h-screen place-items-center bg-slate-50 p-6 text-sm text-slate-600">
+          <div className="text-center" role="alert">
+            <p>{t('state.spacesFailed')}</p>
+            <button
+              type="button"
+              onClick={() => void refetchSpaces()}
+              className="mt-3 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              {t('action.tryAgain')}
+            </button>
+          </div>
+        </main>
+      );
+    }
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-600">
+        <span className="flex items-center gap-2" role="status" aria-live="polite">
+          <img
+            src="/brand/cogeto-final-favicon.svg"
+            alt=""
+            className="h-5 w-5"
+            aria-hidden="true"
+          />
+          {t('state.loadingApp')}
+        </span>
+      </main>
+    );
+  }
+
   const page = renderPage(session);
   return (
     // One confirmation dialog for the whole app (issue #528): call sites ask
@@ -112,7 +162,27 @@ export function App() {
   );
 }
 
+/** The instance area's canonical routes plus the legacy paths every existing
+ * deep link, banner and doc still uses; each legacy path renders the same
+ * surface and is normalized to its canonical URL by the area itself. */
+const INSTANCE_ROUTES: Record<string, InstanceSection> = {
+  '/instance': 'settings',
+  '/instance/settings': 'settings',
+  '/instance/providers': 'providers',
+  '/instance/models': 'models',
+  '/instance/system': 'system',
+  '/instance/audit': 'audit',
+  '/instance/users': 'users',
+  '/providers': 'providers',
+  '/models': 'models',
+  '/system': 'system',
+  '/audit': 'audit',
+  '/users': 'users',
+};
+
 function renderPage(session: Session) {
+  const instanceSection = INSTANCE_ROUTES[window.location.pathname];
+  if (instanceSection) return <InstanceArea session={session} section={instanceSection} />;
   switch (window.location.pathname) {
     case '/memories':
       return <Memories session={session} />;
@@ -134,18 +204,8 @@ function renderPage(session: Session) {
       return <Approvals session={session} />;
     case '/forgotten':
       return <Forgotten session={session} />;
-    case '/audit':
-      return <Audit session={session} />;
-    case '/users':
-      return <Users session={session} />;
-    case '/providers':
-      return <Providers session={session} />;
-    case '/models':
-      return <ModelConfiguration session={session} />;
     case '/settings':
       return <Settings session={session} />;
-    case '/system':
-      return <System session={session} />;
     default:
       return <Dashboard session={session} />;
   }

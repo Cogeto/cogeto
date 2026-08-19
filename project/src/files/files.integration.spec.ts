@@ -781,9 +781,13 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
 
   it('settings_defaults_applied: a new upload honors the per-user discard and scope defaults', async () => {
     await userSettings.update(userA, { discardByDefault: true, defaultScope: 'shared' });
+    // The DTO gained autoResearch with the settings split
+    // (docs/features/spaces.md section 4); the exact-shape pin names it so
+    // the assertion keeps covering the whole surface.
     expect(await userSettings.get(userA)).toEqual({
       discardByDefault: true,
       defaultScope: 'shared',
+      autoResearch: false,
     });
 
     // Upload through the controller with NO explicit flags → it applies the defaults.

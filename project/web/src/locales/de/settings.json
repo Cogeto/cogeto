@@ -93,5 +93,8 @@
     "heading": "Signierschlüssel der Instanz",
     "explainer": "Jeder Löschbeleg wird mit dem privaten Schlüssel dieser Instanz signiert (Spezifikation §11.1). Jeder kann einen Beleg oder das Verzeichnis unter Vergessen anhand des öffentlichen Schlüssels unten prüfen. Dies weist unabhängig von Cogeto nach, dass eine Löschung tatsächlich erfolgt ist.",
     "algorithm": "Algorithmus: {{algorithm}}"
+  },
+  "level": {
+    "instance": "Diese Einstellungen gelten überall: Sie beschreiben Sie und diese Installation, keinen Space. Was erfasst, extrahiert und beantwortet wird, stellen Sie pro Space ein, in den Space-Einstellungen."
   }
 }

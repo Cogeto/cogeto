@@ -198,5 +198,11 @@
     "notExtractable": "'{{sourceType}}' n'est pas un type de source dont on extrait",
     "notFound": "aucun contexte pour cette source"
   },
+  "spaces": {
+    "defaultUndeletable": "L'espace par défaut ne peut pas être supprimé",
+    "nameRequired": "Un espace a besoin d'un nom",
+    "nameTooLong": "Un nom d'espace fait au plus {{max}} caractères",
+    "notFound": "Cet espace n'existe plus"
+  },
   "too_many_streams": "trop de flux de discussion simultanés (maximum {{max}})"
 }

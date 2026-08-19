@@ -134,3 +134,8 @@ export {
   EntityAliasSpaceCleanup,
   EntityAliasSpaceCleanupModule,
 } from './entity-alias-space-cleanup';
+// Space deletion's extraction-gate leg (the settings split, migration 0062).
+export {
+  ExtractionGateSpaceCleanup,
+  ExtractionGateSpaceCleanupModule,
+} from './extraction-gate-space-cleanup';

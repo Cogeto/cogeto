@@ -28,5 +28,14 @@
   },
   "liveSandbox": "Environnement de démonstration actif",
   "signOut": "Se déconnecter",
-  "versionTitle": "Version de Cogeto"
+  "versionTitle": "Version de Cogeto",
+  "instance": {
+    "open": "Paramètres de l'instance",
+    "title": "Paramètres de l'instance",
+    "backTo": "Retour à {{space}}",
+    "explainer": "Paramètres de toute l'installation. Rien ici n'appartient à un espace."
+  },
+  "userMenu": {
+    "open": "Compte"
+  }
 }

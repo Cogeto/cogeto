@@ -1,7 +1,4 @@
 {
-  "page": {
-    "title": "Fournisseurs"
-  },
   "adminOnly": {
     "title": "Administrateurs uniquement",
     "body": "Les fournisseurs de modèles déterminent ce que cette instance retient et où son contenu est envoyé ; seul un administrateur peut donc les modifier."
@@ -83,7 +80,6 @@
     "submit": "Ajouter et tester"
   },
   "assignment": {
-    "title": "Affectation des modèles",
     "heading": "Ce sur quoi tourne chaque niveau",
     "explainer": "Quatre choix indépendants. Une configuration mixte est courante : l'extraction sur un point de terminaison, les réponses sur un autre.",
     "error": "Impossible de charger la configuration.",

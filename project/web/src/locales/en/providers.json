@@ -1,7 +1,4 @@
 {
-  "page": {
-    "title": "Providers"
-  },
   "adminOnly": {
     "title": "Administrators only",
     "body": "Model providers decide what this instance remembers and where its content is sent, so only an administrator can change them."
@@ -83,7 +80,6 @@
     "submit": "Add and test"
   },
   "assignment": {
-    "title": "Model assignment",
     "heading": "What each tier runs on",
     "explainer": "Four independent choices. A mixed configuration is ordinary: extraction on one endpoint, answers on another.",
     "error": "The configuration could not be loaded.",

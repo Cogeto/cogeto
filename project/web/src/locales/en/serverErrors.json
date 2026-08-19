@@ -194,5 +194,11 @@
     "notExtractable": "'{{sourceType}}' is not an extraction-capable source type",
     "notFound": "no source context for this source"
   },
+  "spaces": {
+    "defaultUndeletable": "the default space cannot be deleted",
+    "nameRequired": "a space needs a name",
+    "nameTooLong": "a space name is at most {{max}} characters",
+    "notFound": "that space no longer exists"
+  },
   "too_many_streams": "too many concurrent chat streams (max {{max}})"
 }
