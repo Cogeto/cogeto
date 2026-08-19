@@ -6,7 +6,7 @@ import type {
   EmailSourceDto,
   Principal,
 } from '@cogeto/shared';
-import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
+import { ALLOWED_UPLOAD_CONTENT_TYPES, resolveSpaceId } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { MemoryObjectStore } from '../memory/index';
@@ -34,7 +34,15 @@ export class EmailSourceService {
     const rows = await this.db
       .select()
       .from(emailMessage)
-      .where(and(eq(emailMessage.id, emailId), eq(emailMessage.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(emailMessage.id, emailId),
+          eq(emailMessage.ownerId, principal.userId),
+          // Space-scoped like every read (docs/features/spaces.md): a message
+          // in another space is not found, even for its owner.
+          eq(emailMessage.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     const email = rows[0];
     if (!email) return null;
@@ -111,6 +119,7 @@ export class EmailSourceService {
         trimmed
           ? and(
               eq(emailMessage.ownerId, principal.userId),
+              eq(emailMessage.spaceId, resolveSpaceId(principal)),
               or(
                 ilike(emailMessage.fromAddr, `%${trimmed}%`),
                 ilike(emailMessage.subject, `%${trimmed}%`),
@@ -119,7 +128,10 @@ export class EmailSourceService {
                 sql`${emailMessage.textBody} ILIKE ${'%' + trimmed + '%'}`,
               ),
             )
-          : eq(emailMessage.ownerId, principal.userId),
+          : and(
+              eq(emailMessage.ownerId, principal.userId),
+              eq(emailMessage.spaceId, resolveSpaceId(principal)),
+            ),
       )
       .orderBy(desc(emailMessage.receivedAt))
       .limit(CANDIDATE_LIMIT);

@@ -160,6 +160,9 @@ export class FileSourceReader implements SourceReader {
       createdAt: metadata.uploadDate,
       scope: metadata.scope,
       sensitive: metadata.sensitive,
+      // The source row's space (docs/features/spaces.md): every derived fact
+      // inherits it at admission, exactly like scope and sensitive.
+      spaceId: metadata.spaceId,
       // A document is someone else's writing, even when the user uploaded it.
       // Its obligations are facts about the document, never the user's own
       // commitments, so they never become open loops.
@@ -208,6 +211,9 @@ export class FileSourceReader implements SourceReader {
       createdAt: md['uploaded-at'] ? new Date(md['uploaded-at']!) : new Date(),
       scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
       sensitive: md['sensitive'] === 'true',
+      // Discard mode has no row, so the space rides the staging object's
+      // metadata beside owner/scope/sensitive (docs/features/spaces.md).
+      spaceId: md['space-id'] ?? undefined,
       // Same rule as the durable path: a document is not the user's own voice.
       authoredByUser: false,
       // Same rule as the durable path: the sniffed format for the gate's

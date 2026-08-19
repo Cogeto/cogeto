@@ -244,6 +244,9 @@ export function confluenceConnector(
       await recordConfluenceProvenance(db, {
         ownerId: connector.ownerId,
         orgId: connector.orgId,
+        // The COGETO space is the connector's (docs/features/spaces.md);
+        // meta carries only Confluence's own space key and name.
+        spaceId: connector.spaceId,
         connectorId: connector.id,
         sourceType: source.sourceType,
         sourceId: source.sourceId,

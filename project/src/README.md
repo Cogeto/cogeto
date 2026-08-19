@@ -3,7 +3,7 @@
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
 `chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
 `passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `providers`,
-`connectors`, `confluence`, `projects`, `identity`,
+`connectors`, `confluence`, `projects`, `spaces`, `identity`,
 `model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
 worker), `migrations` and `testing`.
 
@@ -52,7 +52,14 @@ decides nothing about visibility. The rule the module exists to keep is in
 are organisation and filtering, never authorisation**, so there is no
 project column on `memory` and no project in the vector payload, and the
 retrieval lens is an additive pre-filter over source refs on top of the
-unchanged gates.
+unchanged gates. V3 spaces session 1 added `spaces` (the sealed partition
+record and the user's last used space, owning `space` + `user_space_state`;
+decision record [`docs/features/spaces.md`](../../docs/features/spaces.md)).
+The partition DIMENSION does not live here: `space_id` is a column on every
+content-bearing root and the third hard condition inside both gate
+constructions in `memory`, resolved off the Principal as a value, so the
+gates never join these tables and the space is the gate while the project
+stays the lens.
 
 Module rules (binding, CI-enforced, spec §15):
 

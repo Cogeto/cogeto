@@ -25,6 +25,13 @@ export class NotesSourceDeletion implements SourceDeletion {
     return rows[0]?.ownerId ?? null;
   }
 
+  /** The space the note row carries (docs/features/spaces.md): stamps the
+   * deletion receipt onto its space's chain. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx.select({ spaceId: note.spaceId }).from(note).where(eq(note.id, sourceId));
+    return rows[0]?.spaceId ?? null;
+  }
+
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(note).where(eq(note.id, sourceId));
   }

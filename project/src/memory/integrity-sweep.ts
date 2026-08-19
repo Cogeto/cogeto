@@ -88,6 +88,9 @@ export interface SweepReport {
    * dropping it only makes deletion more complete.
    */
   strayCollectionsDropped: number;
+  /** Every space's chain verifies (docs/features/spaces.md: one chain per
+   * space). On failure, `chainError` names each failing space with its
+   * underlying error. */
   chainOk: boolean;
   chainError?: string;
 }
@@ -235,13 +238,28 @@ export class IntegritySweep {
     // collection no state references is a crash leftover; drop it.
     const strayCollectionsDropped = await this.dropStrayRebuildCollections(log);
 
-    const chain = verifyChain(
-      confirmed.map(toConfirmedReceipt),
-      await loadInstancePublicKey(this.instanceKeyDir),
-    );
-    if (!chain.ok) {
-      found.push({ receiptId: null, kind: 'chain_broken', detail: chain.error ?? 'unknown' });
+    // Chain verification is PER SPACE (docs/features/spaces.md section 5 as
+    // amended): each space owns its own chain with its own genesis and tip,
+    // so the frozen verifyChain walk runs once over each space's receipts.
+    // One flat walk over a multi-space ledger would trip the fork detector on
+    // the second space's genesis, which is exactly why the grouping exists.
+    const publicKey = await loadInstancePublicKey(this.instanceKeyDir);
+    const bySpace = new Map<string, ConfirmedReceipt[]>();
+    for (const row of confirmed) {
+      const receipts = bySpace.get(row.spaceId) ?? [];
+      receipts.push(toConfirmedReceipt(row));
+      bySpace.set(row.spaceId, receipts);
     }
+    const chainErrors: string[] = [];
+    for (const [spaceId, receipts] of bySpace) {
+      const chain = verifyChain(receipts, publicKey);
+      if (!chain.ok) {
+        const detail = `space ${spaceId}: ${chain.error ?? 'unknown'}`;
+        chainErrors.push(detail);
+        found.push({ receiptId: null, kind: 'chain_broken', detail });
+      }
+    }
+    const chainOk = chainErrors.length === 0;
 
     let newAlerts = 0;
     for (const alert of found) {
@@ -263,8 +281,8 @@ export class IntegritySweep {
       newAlerts,
       openAlerts,
       strayCollectionsDropped,
-      chainOk: chain.ok,
-      ...(chain.error ? { chainError: chain.error } : {}),
+      chainOk,
+      ...(chainErrors.length > 0 ? { chainError: chainErrors.join('; ') } : {}),
     };
     // The sweep's own ledger entry — status reads the latest of these.
     // No org, deliberately (V2.0 item 3.7): the sweep is instance-wide
@@ -277,9 +295,9 @@ export class IntegritySweep {
       entityId: randomUUID(),
       detail: { ...report },
     });
-    if (openAlerts > 0 || !chain.ok) {
+    if (openAlerts > 0 || !chainOk) {
       // Loud by contract: an integrity violation must never scroll by quietly.
-      const message = `INTEGRITY VIOLATION: ${openAlerts} alert(s) on record, chain ${chain.ok ? 'ok' : `BROKEN (${chain.error})`}`;
+      const message = `INTEGRITY VIOLATION: ${openAlerts} alert(s) on record, chain ${chainOk ? 'ok' : `BROKEN (${chainErrors.join('; ')})`}`;
       (log ?? console.error)(message);
     }
     return report;
@@ -507,6 +525,7 @@ export class IntegritySweep {
           scope: memory.scope,
           status: memory.status,
           sensitive: memory.sensitive,
+          spaceId: memory.spaceId,
           validUntil: memory.validUntil,
         })
         .from(memory)
@@ -541,6 +560,9 @@ export class IntegritySweep {
         if (payload['scope'] !== row.scope) stale.push('scope');
         if (payload['status'] !== row.status) stale.push('status');
         if (payload['sensitive'] !== row.sensitive) stale.push('sensitive');
+        // The space is a gate field like the others (docs/features/spaces.md),
+        // so a stale payload copy is caught and healed within one cycle.
+        if (payload['space_id'] !== row.spaceId) stale.push('space_id');
         if (stale.length === 0) continue;
 
         await this.vectors.setPayload(row.id, {
@@ -548,6 +570,7 @@ export class IntegritySweep {
           scope: row.scope,
           status: row.status,
           sensitive: row.sensitive,
+          space_id: row.spaceId,
           valid_until: row.validUntil?.toISOString() ?? null,
         });
         healed += 1;

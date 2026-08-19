@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { desc, eq, sql } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import type { Db } from '../infrastructure/index';
 import { deletionReceipt, fileMetadata } from './persistence/tables';
@@ -101,6 +102,7 @@ export async function seedOrphanPoint(options: SeedOrphanOptions): Promise<Seede
         scope: 'private',
         status: 'active',
         sensitive: false,
+        space_id: DEFAULT_SPACE_ID,
         source_type: counts.source.type,
         source_id: counts.source.id,
         valid_until: null,

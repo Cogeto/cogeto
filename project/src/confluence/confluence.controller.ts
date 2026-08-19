@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { resolveSpaceId } from '@cogeto/shared';
 import {
   DRIZZLE,
   parseOrBadRequest,
@@ -132,7 +133,11 @@ export class ConfluenceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ) {
-    const row = await this.connectors.byIdForOwner(id, request.principal.userId);
+    const row = await this.connectors.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     if (row.kind !== CONFLUENCE_KIND) {
       throw userError.badRequest('confluence.notConfluenceConnector', 'not a Confluence connector');
     }
@@ -165,7 +170,11 @@ export class ConfluenceController {
    * and the credential opens only in the worker. */
   @Post(':id/estimate')
   async estimate(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.connectors.byIdForOwner(id, request.principal.userId);
+    const row = await this.connectors.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     if (row.kind !== CONFLUENCE_KIND) {
       throw userError.badRequest('confluence.notConfluenceConnector', 'not a Confluence connector');
     }

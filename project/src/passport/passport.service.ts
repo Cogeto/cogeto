@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { PassportDownloadDto, PassportExportDto, Principal } from '@cogeto/shared';
 import { DRIZZLE, userError, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -23,12 +24,15 @@ export class PassportService {
   ) {}
 
   /**
-   * Trigger an export. At most one in-flight export per user: a pending request
-   * is returned as-is rather than queuing another (cheap anti-spam; the artifact
-   * is the same data either way).
+   * Trigger an export of the caller's CURRENT space (docs/features/spaces.md
+   * section 5 as amended: a passport exports one space). At most one
+   * in-flight export per user per space: a pending request for this space is
+   * returned as-is rather than queuing another (cheap anti-spam; the
+   * artifact is the same data either way).
    */
   async trigger(principal: Principal, includeOriginals: boolean): Promise<PassportExportDto> {
-    const existing = (await this.store.listForOwner(principal.userId)).find(
+    const spaceId = resolveSpaceId(principal);
+    const existing = (await this.store.listForOwner(principal.userId, spaceId)).find(
       (row) => row.status === 'pending',
     );
     if (existing) return toExportDto(existing);
@@ -39,6 +43,7 @@ export class PassportService {
         principal.userId,
         principal.orgId || undefined,
         includeOriginals,
+        spaceId,
       );
       await withTransactionalEnqueue(
         tx,
@@ -71,7 +76,9 @@ export class PassportService {
   }
 
   async list(principal: Principal): Promise<PassportExportDto[]> {
-    return (await this.store.listForOwner(principal.userId)).map(toExportDto);
+    return (await this.store.listForOwner(principal.userId, resolveSpaceId(principal))).map(
+      toExportDto,
+    );
   }
 
   async get(principal: Principal, id: string): Promise<PassportExportDto> {

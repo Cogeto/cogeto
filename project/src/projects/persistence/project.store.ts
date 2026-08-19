@@ -42,9 +42,16 @@ export class ProjectStore {
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
-  async listForOwner(ownerId: string, opts: { archived?: boolean } = {}): Promise<ProjectRow[]> {
+  async listForOwner(
+    ownerId: string,
+    opts: { archived?: boolean; spaceId?: string } = {},
+  ): Promise<ProjectRow[]> {
     const clauses: SQL[] = [eq(project.ownerId, ownerId)];
     if (opts.archived !== undefined) clauses.push(eq(project.archived, opts.archived));
+    // The caller's space (docs/features/spaces.md): the rail shows the current
+    // space's projects only. Optional so pre-spaces callers resolve to the
+    // default space at the service layer, never to "all spaces".
+    if (opts.spaceId !== undefined) clauses.push(eq(project.spaceId, opts.spaceId));
     return this.db
       .select()
       .from(project)
@@ -61,12 +68,20 @@ export class ProjectStore {
     return rows[0] ?? null;
   }
 
-  async create(ownerId: string, orgId: string | null, write: ProjectWrite): Promise<ProjectRow> {
+  async create(
+    ownerId: string,
+    orgId: string | null,
+    write: ProjectWrite,
+    spaceId?: string,
+  ): Promise<ProjectRow> {
     const [row] = await this.db
       .insert(project)
       .values({
         ownerId,
         orgId,
+        // The caller's current space; omitted (legacy harnesses) falls to the
+        // schema-level default space.
+        ...(spaceId ? { spaceId } : {}),
         name: write.name,
         description: write.description ?? null,
         marker: (write.marker ?? null) as ProjectRow['marker'],

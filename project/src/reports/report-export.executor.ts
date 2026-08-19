@@ -24,8 +24,11 @@ import type { ReportOptions } from './report.options';
 /** Owner principal reconstructed from the run row — generation re-reads
  * through the SAME gated interfaces, so a report can only ever contain what
  * this user may see (the passport contract, applied to the second artifact). */
-function ownerPrincipal(userId: string, orgId: string | null): Principal {
-  return { userId, name: '', email: null, orgId: orgId ?? '', orgName: '', roles: [] };
+/** The run row's space rides the fabricated principal
+ * (docs/features/spaces.md), so every gated read during assembly is bounded
+ * to the space the run was requested in. */
+function ownerPrincipal(userId: string, orgId: string | null, spaceId: string): Principal {
+  return { userId, name: '', email: null, orgId: orgId ?? '', orgName: '', roles: [], spaceId };
 }
 
 /**
@@ -64,7 +67,7 @@ export class ReportExportExecutor {
       this.logger.log(`findings report ${reportId} is ${run.status}: generation skipped`);
       return { published: false };
     }
-    const principal = ownerPrincipal(run.userId, run.orgId);
+    const principal = ownerPrincipal(run.userId, run.orgId, run.spaceId);
 
     await this.store.reportProgress(reportId, { stage: 'enumerating', done: 0, total: 0 });
     const previous = await this.store.previousReady(

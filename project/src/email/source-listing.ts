@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, ilike, inArray, lt, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { DbOrTx } from '../infrastructure/index';
 import { emailMessage } from './persistence/tables';
 
@@ -19,9 +20,20 @@ export interface SourceListingRow {
 export async function listEmailSources(
   db: DbOrTx,
   ownerId: string,
-  options: { cursor?: Date; order?: 'asc' | 'desc'; limit?: number; q?: string } = {},
+  options: {
+    cursor?: Date;
+    order?: 'asc' | 'desc';
+    limit?: number;
+    q?: string;
+    /** The caller's space (docs/features/spaces.md); absent means the
+     * default space, never all spaces. */
+    spaceId?: string;
+  } = {},
 ): Promise<SourceListingRow[]> {
-  const clauses: (SQL | undefined)[] = [eq(emailMessage.ownerId, ownerId)];
+  const clauses: (SQL | undefined)[] = [
+    eq(emailMessage.ownerId, ownerId),
+    eq(emailMessage.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+  ];
   const order = options.order ?? 'desc';
   if (options.cursor) {
     clauses.push(
@@ -56,6 +68,7 @@ export async function hydrateEmailSources(
   db: DbOrTx,
   ownerId: string,
   ids: readonly string[],
+  spaceId?: string,
 ): Promise<Map<string, SourceListingRow>> {
   if (ids.length === 0) return new Map();
   const rows = await db
@@ -66,7 +79,13 @@ export async function hydrateEmailSources(
       receivedAt: emailMessage.receivedAt,
     })
     .from(emailMessage)
-    .where(and(eq(emailMessage.ownerId, ownerId), inArray(emailMessage.id, [...ids])));
+    .where(
+      and(
+        eq(emailMessage.ownerId, ownerId),
+        eq(emailMessage.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        inArray(emailMessage.id, [...ids]),
+      ),
+    );
   return new Map(
     rows.map((row) => [
       row.id,
@@ -75,10 +94,16 @@ export async function hydrateEmailSources(
   );
 }
 
-export async function countEmailSources(db: DbOrTx, ownerId: string): Promise<number> {
+export async function countEmailSources(
+  db: DbOrTx,
+  ownerId: string,
+  spaceId?: string,
+): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(emailMessage)
-    .where(eq(emailMessage.ownerId, ownerId));
+    .where(
+      and(eq(emailMessage.ownerId, ownerId), eq(emailMessage.spaceId, spaceId ?? DEFAULT_SPACE_ID)),
+    );
   return rows[0]?.n ?? 0;
 }

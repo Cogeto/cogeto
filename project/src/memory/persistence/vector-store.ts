@@ -1,4 +1,5 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 
 /**
@@ -60,6 +61,7 @@ export interface MemoryPointPayload {
   scope: MemoryScope;
   status: MemoryStatus;
   sensitive: boolean;
+  space_id: string;
   source_type: string;
   source_id: string;
   valid_until: string | null;
@@ -86,6 +88,7 @@ export function memoryPointFor(
     scope: MemoryScope;
     status: MemoryStatus;
     sensitive: boolean;
+    spaceId: string;
     sourceType: string;
     sourceId: string;
     validUntil: Date | null;
@@ -100,6 +103,7 @@ export function memoryPointFor(
       scope: row.scope,
       status: row.status,
       sensitive: row.sensitive,
+      space_id: row.spaceId,
       source_type: row.sourceType,
       source_id: row.sourceId,
       valid_until: row.validUntil?.toISOString() ?? null,
@@ -124,10 +128,13 @@ export interface GateFilter {
 }
 
 /**
- * The scope + sensitive gates as a native Qdrant payload pre-filter — the
- * exact mirror of MemoryStore.visibleTo (spec §4.2/spec §3.4; 0003 ruling 3)
+ * The scope + sensitive + space gates as a native Qdrant payload pre-filter —
+ * the exact mirror of MemoryStore.visibleTo (spec §4.2/spec §3.4; 0003 ruling
+ * 3; docs/features/spaces.md added the space dimension)
  * - scope: own rows OR scope = shared;
- * - sensitive: excluded by default; with explicit opt-in, still owner-only.
+ * - sensitive: excluded by default; with explicit opt-in, still owner-only;
+ * - space: the caller's current space, resolved through the one shared
+ *   fallback so absence can never mean "all spaces". Never optional.
  * Pure and exported so tests can assert the filter itself, not just behavior.
  */
 export function buildGateFilter(
@@ -138,7 +145,8 @@ export function buildGateFilter(
   const scopeGate = { should: [ownRows, { key: 'scope', match: { value: 'shared' } }] };
   const notSensitive: FieldMatch = { key: 'sensitive', match: { value: false } };
   const sensitiveGate = opts.includeSensitive ? { should: [notSensitive, ownRows] } : notSensitive;
-  return { must: [scopeGate, sensitiveGate] };
+  const spaceGate: FieldMatch = { key: 'space_id', match: { value: resolveSpaceId(principal) } };
+  return { must: [scopeGate, sensitiveGate, spaceGate] };
 }
 
 /**
@@ -245,6 +253,7 @@ export class MemoryVectorStore {
       { field: 'scope', schema: 'keyword' },
       { field: 'status', schema: 'keyword' },
       { field: 'sensitive', schema: 'bool' },
+      { field: 'space_id', schema: 'keyword' },
       // Not a gate field: the project retrieval lens's narrowing pre-filter
       // (V2.5 item 8.3). Indexed for the same reason the others are — an
       // unindexed match-any would scan the collection.

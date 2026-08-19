@@ -306,6 +306,10 @@ export class EmailIntakeService {
           ownerId: owner.userId,
           scope,
           sensitive,
+          // spaceId deliberately omitted: intake has no Principal, so inbound
+          // mail lands in the DEFAULT space this session (the schema-level
+          // default). Per-alias and per-sender space routing is
+          // docs/features/spaces.md section 6, a later session.
           messageId: parsed.messageId ?? null,
           inReplyTo: parsed.inReplyTo ?? null,
           references: normalizeReferences(parsed.references),

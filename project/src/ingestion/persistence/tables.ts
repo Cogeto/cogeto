@@ -13,7 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { MEMORY_SCOPES, UNCERTAINTY_REASONS } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, MEMORY_SCOPES, UNCERTAINTY_REASONS } from '@cogeto/shared';
 import type { ReadLocator } from '@cogeto/shared';
 
 /**
@@ -99,6 +99,10 @@ export const suppressedFactLog = pgTable(
     ownerId: text('owner_id').notNull(),
     scope: scopeEnum('scope').notNull(),
     sensitive: boolean('sensitive').notNull().default(false),
+    /** The source's space (docs/features/spaces.md, migration 0060): this
+     * table participates in the access gate, so it carries the dimension
+     * directly, inherited at write time exactly like owner and scope. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     /** Provenance, as plain text: the memory-owned `source_type` enum is not
      * ingestion's to depend on, and item 3.6 turns it into a registry. */
     sourceType: text('source_type').notNull(),
@@ -240,6 +244,10 @@ export const sourceContext = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The source's space (docs/features/spaces.md, migration 0060): a
+     * content-bearing root reached by a loose source ref, so it carries the
+     * dimension directly rather than by join. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     sourceType: text('source_type').notNull(),
     sourceId: text('source_id').notNull(),
     subjects: jsonb('subjects').$type<SourceContextSubject[]>().notNull().default([]),
@@ -349,6 +357,10 @@ export const sourceRevision = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The link's space (docs/features/spaces.md, migration 0060): both
+     * endpoints live in one space by construction, because candidates are
+     * paired within a space only, so the link carries that space directly. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     successorType: text('successor_type').notNull(),
     successorId: text('successor_id').notNull(),
     predecessorType: text('predecessor_type').notNull(),
@@ -419,6 +431,10 @@ export const entityAlias = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    /** The vocabulary's space (docs/features/spaces.md, migration 0060):
+     * aliases are sealed with the corpus they describe, and the unique pair
+     * index includes the space so the same pair may recur across spaces. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     canonical: text('canonical').notNull(),
     alias: text('alias').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

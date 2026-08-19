@@ -1,8 +1,14 @@
 # The Memory Passport
 
-One click exports everything Cogeto holds for you, in a published open format, that a
-third party can verify without any Cogeto code or service. This is the anti-lock-in
-promise made concrete: leave whenever you want.
+One click exports everything Cogeto holds for you **in one space**, in a published open
+format, that a third party can verify without any Cogeto code or service. This is the
+anti-lock-in promise made concrete: leave whenever you want.
+
+**A passport is per space** (docs/features/spaces.md section 5 as amended): the export
+covers the space you triggered it from, the manifest names that space, and the receipts
+it carries belong to that space's own chain, which is what makes them verifiable
+standalone. A receipt in the export never references a receipt from another space,
+because since the chains became per space no receipt anywhere does.
 
 The published schemas and the verification steps live in
 [`../passport-schema/`](../passport-schema/).
@@ -41,9 +47,10 @@ inside the archive and never the server. The validator accepts only the current 
 for new exports: an instance writes one version, and readers pick the schema directory
 matching the archive's own `passport_version`.
 
-The current version is **2.0**. Version 1.0 additionally carried a required `tasks`
-document; removing it was a breaking change and was handled as a version bump rather
-than improvised.
+The current version is **2.1**, which added the required `space` block to the manifest
+(the passport became per space). Version 2.0 lacked it; version 1.0 additionally carried
+a required `tasks` document. Each change was handled as a version bump rather than
+improvised, and every earlier version stays published and verifiable.
 
 ## The complete record, not the current state
 

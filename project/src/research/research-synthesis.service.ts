@@ -137,6 +137,9 @@ export class ResearchSynthesisService {
       orgId: '',
       orgName: '',
       roles: [],
+      // The run row's space (docs/features/spaces.md): a fabricated principal
+      // acts in the space its subject row lives in, never a default.
+      spaceId: run.spaceId,
     };
     const pages = (await this.research.pagesForRun(owner, runId)).slice(0, MAX_PAGES);
     if (pages.length === 0) return { concluded: false };

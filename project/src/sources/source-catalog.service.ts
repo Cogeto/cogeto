@@ -8,13 +8,19 @@ import type {
   SourceInspectionDto,
   SourceOriginDto,
 } from '@cogeto/shared';
-import { isRegisteredSourceType, sourceTypeDescriptor } from '@cogeto/shared';
+import {
+  DEFAULT_SPACE_ID,
+  isRegisteredSourceType,
+  resolveSpaceId,
+  sourceTypeDescriptor,
+} from '@cogeto/shared';
 import { DRIZZLE, jobRunStates, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   MemoryObjectStore,
   MemoryReconciliation,
   MemoryStore,
+  fileKeySpaces,
   listFileSourceRefs,
   toListItem,
 } from '../memory/index';
@@ -293,27 +299,46 @@ export class SourceCatalogService {
     sourceType: SourceType,
     sourceId: string,
   ): Promise<boolean> {
+    const spaceId = resolveSpaceId(principal);
     if (sourceType === 'file') {
       const parts = sourceId.split('/');
       if (parts[0] !== principal.orgId || parts[1] !== principal.userId) return false;
       const described = await this.memory.describeSource('file', sourceId);
-      if (described) return described.ownerId === principal.userId;
+      // The space seals inspection like every read: the owner's own source in
+      // another space reads as absent, never as visible-from-here.
+      if (described) return described.ownerId === principal.userId && described.spaceId === spaceId;
+      const stored = await fileKeySpaces(this.db, principal.userId, [sourceId]);
+      const storedSpace = stored.get(sourceId);
+      if (storedSpace !== undefined) return storedSpace === spaceId;
+      // No metadata row anywhere and no derived memories: the remaining
+      // traces (a bare object, a read-outcome row) carry no space of their
+      // own, and anything spaced was created after the migration with a row
+      // or a memory, so these can only be default-space material.
+      if (spaceId !== DEFAULT_SPACE_ID) return false;
       const stat = await this.objects.statObject(sourceId).catch(() => null);
       if (stat) return true;
       const outcomes = await readOutcomesForKeys(this.db, [sourceId]);
       return outcomes.has(sourceId);
     }
     if (sourceType === 'user_note') {
-      return (await hydrateNoteSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (await hydrateNoteSources(this.db, principal.userId, [sourceId], spaceId)).has(
+        sourceId,
+      );
     }
     if (sourceType === 'email') {
-      return (await hydrateEmailSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (await hydrateEmailSources(this.db, principal.userId, [sourceId], spaceId)).has(
+        sourceId,
+      );
     }
     if (sourceType === 'web') {
-      return (await hydrateWebSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (await hydrateWebSources(this.db, principal.userId, [sourceId], spaceId)).has(
+        sourceId,
+      );
     }
     if (sourceType === 'chat') {
-      return (await hydrateChatSources(this.db, principal.userId, [sourceId])).has(sourceId);
+      return (await hydrateChatSources(this.db, principal.userId, [sourceId], spaceId)).has(
+        sourceId,
+      );
     }
     // Container and defunct types have no inspection.
     return false;
@@ -326,7 +351,14 @@ export class SourceCatalogService {
     query: CatalogQuery,
     limit: number,
   ): Promise<CatalogRef[]> {
-    const options = { cursor: query.cursor, order: query.order ?? 'desc', limit: limit + 1 };
+    const options = {
+      cursor: query.cursor,
+      order: query.order ?? 'desc',
+      limit: limit + 1,
+      // One space per catalog page (docs/features/spaces.md): every family
+      // listing narrows to the caller's current space.
+      spaceId: resolveSpaceId(principal),
+    };
     const per: CatalogRef[][] = [];
     const wants = (type: SourceType) => !query.type || query.type === type;
 
@@ -351,6 +383,7 @@ export class SourceCatalogService {
         this.db,
         principal.userId,
         refs.map((r) => r.sourceId),
+        resolveSpaceId(principal),
       );
       per.push(
         refs.map((r) => ref('chat', r.sourceId, names.get(r.sourceId)?.name ?? null, r.firstAt)),
@@ -402,11 +435,17 @@ export class SourceCatalogService {
         return sourceRefsWithRefusals(this.db, principal.userId);
       case 'truncated': {
         const keys = await keysWithReadOutcome(this.db, principal.userId, ['truncated']);
-        return keys.map((key) => ({ sourceType: 'file', sourceId: key }));
+        return (await this.sealFileKeys(principal, keys)).map((key) => ({
+          sourceType: 'file',
+          sourceId: key,
+        }));
       }
       case 'unreadable': {
         const keys = await keysWithReadOutcome(this.db, principal.userId, [...UNREAD_OUTCOMES]);
-        return keys.map((key) => ({ sourceType: 'file', sourceId: key }));
+        return (await this.sealFileKeys(principal, keys)).map((key) => ({
+          sourceType: 'file',
+          sourceId: key,
+        }));
       }
       case 'processing': {
         // No ledger row means queued or in flight, so the honest driving set is
@@ -445,7 +484,7 @@ export class SourceCatalogService {
     // Name search per family. Files are the stated exception: a filename lives
     // on the object (erased with the bytes, by design), so file matches come
     // from content only.
-    const nameOptions = { q, limit: 50 };
+    const nameOptions = { q, limit: 50, spaceId: resolveSpaceId(principal) };
     if (wants('user_note')) {
       for (const row of await listNoteSources(this.db, principal.userId, nameOptions)) {
         out.set(`user_note ${row.sourceId}`, { sourceType: 'user_note', sourceId: row.sourceId });
@@ -479,41 +518,74 @@ export class SourceCatalogService {
     }
     const out: CatalogRef[] = [];
     const now = new Date();
+    const spaceId = resolveSpaceId(principal);
     for (const [type, ids] of byType) {
       if (!isRegisteredSourceType(type)) continue;
       if (type === 'user_note') {
-        const rows = await hydrateNoteSources(this.db, principal.userId, ids);
+        const rows = await hydrateNoteSources(this.db, principal.userId, ids, spaceId);
         for (const id of ids) {
           const row = rows.get(id);
           if (row) out.push(ref('user_note', id, row.name, row.at));
         }
       } else if (type === 'email') {
-        const rows = await hydrateEmailSources(this.db, principal.userId, ids);
+        const rows = await hydrateEmailSources(this.db, principal.userId, ids, spaceId);
         for (const id of ids) {
           const row = rows.get(id);
           if (row) out.push(ref('email', id, row.name, row.at));
         }
       } else if (type === 'web') {
-        const rows = await hydrateWebSources(this.db, principal.userId, ids);
+        const rows = await hydrateWebSources(this.db, principal.userId, ids, spaceId);
         for (const id of ids) {
           const row = rows.get(id);
           if (row) out.push(ref('web', id, row.name, row.at));
         }
       } else if (type === 'chat') {
-        const rows = await hydrateChatSources(this.db, principal.userId, ids);
+        const rows = await hydrateChatSources(this.db, principal.userId, ids, spaceId);
         for (const id of ids) {
           const row = rows.get(id);
           if (row) out.push(ref('chat', id, row.name, row.at));
         }
       } else if (type === 'file') {
-        // Ownership is the object-key prefix, minted at upload.
-        for (const id of ids) {
-          if (id.split('/')[1] === principal.userId) out.push(ref('file', id, null, now));
+        // Ownership is the object-key prefix, minted at upload; the space is
+        // the caller's current one, sealed exactly like the family hydrators.
+        for (const id of await this.sealFileKeys(
+          principal,
+          ids.filter((id) => id.split('/')[1] === principal.userId),
+        )) {
+          out.push(ref('file', id, null, now));
         }
         // The true date comes from the fact stats below when known; a plain
         // metadata date would need another query per hydrated badge list, and
         // the badge lists sort by flagged-ness first anyway.
       }
+    }
+    return out;
+  }
+
+  /**
+   * The file refs' space seal (docs/features/spaces.md): a stored key must
+   * have its metadata row in the caller's space; a discard key (no row) is
+   * resolved through the gated describeSource read, and a key with neither is
+   * default-space material by construction (anything spaced was created after
+   * the migration with a row or a memory).
+   */
+  private async sealFileKeys(principal: Principal, keys: readonly string[]): Promise<string[]> {
+    if (keys.length === 0) return [];
+    const spaceId = resolveSpaceId(principal);
+    const stored = await fileKeySpaces(this.db, principal.userId, keys);
+    const out: string[] = [];
+    for (const key of keys) {
+      const storedSpace = stored.get(key);
+      if (storedSpace !== undefined) {
+        if (storedSpace === spaceId) out.push(key);
+        continue;
+      }
+      const described = await this.memory.describeSource('file', key);
+      if (described) {
+        if (described.ownerId === principal.userId && described.spaceId === spaceId) out.push(key);
+        continue;
+      }
+      if (spaceId === DEFAULT_SPACE_ID) out.push(key);
     }
     return out;
   }

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import type { Tx } from '../infrastructure/index';
 import type { OwnedSourceRef, SourceDeletion } from '../memory/index';
-import { chatMessage } from './persistence/tables';
+import { chatMessage, conversation } from './persistence/tables';
 
 /**
  * The deletion saga's source port for source_type 'chat' (spec §11.1;
@@ -23,6 +23,17 @@ export class ChatSourceDeletion implements SourceDeletion {
       .where(eq(chatMessage.id, sourceId))
       .for('update');
     return rows[0]?.ownerId ?? null;
+  }
+
+  /** A message's space is its CONVERSATION's space (docs/features/spaces.md):
+   * the container carries the dimension. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx
+      .select({ spaceId: conversation.spaceId })
+      .from(chatMessage)
+      .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
+      .where(eq(chatMessage.id, sourceId));
+    return rows[0]?.spaceId ?? null;
   }
 
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {

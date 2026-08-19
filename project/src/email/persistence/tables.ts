@@ -10,7 +10,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { MEMORY_SCOPES } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
  * Tables owned by the email module (migration 0021; split from the connectors
@@ -32,6 +32,11 @@ export const emailMessage = pgTable(
     ownerId: text('owner_id').notNull(),
     scope: scopeEnum('scope').notNull().default('private'),
     sensitive: boolean('sensitive').notNull().default(false),
+    // The space the message was routed into (docs/features/spaces.md,
+    // migration 0060). Inbound intake has no Principal, so this session every
+    // inbound message lands in the default space; per-rule space routing is
+    // the record's section 6, a later session.
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     messageId: text('message_id'),
     inReplyTo: text('in_reply_to'),
     references: text('references').array().notNull().default([]),

@@ -32,6 +32,16 @@ export class EmailSourceDeletion implements SourceDeletion {
     return rows[0]?.ownerId ?? null;
   }
 
+  /** The space the message row carries (docs/features/spaces.md): stamps the
+   * deletion receipt onto its space's chain. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx
+      .select({ spaceId: emailMessage.spaceId })
+      .from(emailMessage)
+      .where(eq(emailMessage.id, sourceId));
+    return rows[0]?.spaceId ?? null;
+  }
+
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     // email_attachment rows cascade via their FK (ON DELETE CASCADE).
     await tx.delete(emailMessage).where(eq(emailMessage.id, sourceId));

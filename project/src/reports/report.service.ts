@@ -1,5 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type {
   FindingsReportDto,
   Principal,
@@ -79,6 +80,10 @@ export class ReportService {
         scope,
         canonicalize(scope),
         locale,
+        // The run enumerates within the caller's current space
+        // (docs/features/spaces.md): stamped on the row so the worker's
+        // fabricated principal reads under the same space gate.
+        resolveSpaceId(principal),
       );
       await withTransactionalEnqueue(
         tx,
@@ -109,7 +114,9 @@ export class ReportService {
   }
 
   async list(principal: Principal): Promise<FindingsReportDto[]> {
-    return (await this.store.listForOwner(principal.userId)).map(toReportDto);
+    return (await this.store.listForOwner(principal.userId, resolveSpaceId(principal))).map(
+      toReportDto,
+    );
   }
 
   async get(principal: Principal, id: string): Promise<FindingsReportDto> {

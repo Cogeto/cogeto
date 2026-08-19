@@ -213,7 +213,9 @@ export interface ConnectorDescriptor {
     db: DbOrTx,
     item: UpstreamItem,
     source: { sourceType: string; sourceId: string },
-    connector: { id: string; ownerId: string; orgId: string },
+    /** `spaceId` is the connector's COGETO space (docs/features/spaces.md),
+     * so connector-owned provenance rows inherit it at materialization. */
+    connector: { id: string; ownerId: string; orgId: string; spaceId: string },
   ): Promise<void>;
   fetchPage(secrets: ConnectorSecrets, args: FetchPageArgs): Promise<FetchPageResult>;
   /** One targeted item, for webhook-triggered sync. Null = gone upstream. */

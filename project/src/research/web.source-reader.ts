@@ -35,6 +35,9 @@ export class WebSourceReader implements SourceReader {
       content,
       scope: row.scope,
       sensitive: row.sensitive,
+      // The capture-time space (docs/features/spaces.md); derived facts
+      // inherit it.
+      spaceId: row.spaceId,
       // A fetched page is someone else's writing. Its obligations are facts
       // about that page, never commitments the user made.
       authoredByUser: false,

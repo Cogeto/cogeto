@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { resolveSpaceId } from '@cogeto/shared';
 import {
   DRIZZLE,
   parseOrBadRequest,
@@ -100,7 +101,10 @@ export class ConnectorsController {
 
   @Get()
   async list(@Req() request: AuthenticatedRequest) {
-    const rows = await this.store.listForOwner(request.principal.userId);
+    const rows = await this.store.listForOwner(
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     return { connectors: rows.map(publicView) };
   }
 
@@ -115,6 +119,9 @@ export class ConnectorsController {
     const row = await this.store.create({
       ownerId: request.principal.userId,
       orgId: request.principal.orgId,
+      // The caller's current space: the connector lives in it for its whole
+      // life (docs/features/spaces.md section 6).
+      spaceId: resolveSpaceId(request.principal),
       kind: parsed.kind,
       name: parsed.name,
     });
@@ -123,7 +130,11 @@ export class ConnectorsController {
 
   @Get(':id')
   async detail(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const [credential, subScopes, runs] = await Promise.all([
       this.credentials.describe(row.id),
       this.store.subScopes(row.id),
@@ -180,7 +191,11 @@ export class ConnectorsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const parsed = parseOrBadRequest(credentialsSchema, body);
     await this.db.transaction(async (tx) => {
       await this.credentials.store(tx, {
@@ -211,7 +226,11 @@ export class ConnectorsController {
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const descriptor = this.registry.get(row.kind);
     if (!descriptor?.webhook) {
       throw userError.badRequest('connector.noWebhook', 'this connector kind declares no webhook');
@@ -226,7 +245,11 @@ export class ConnectorsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const parsed = parseOrBadRequest(settingsSchema, body);
     await this.store.updateSettings(row.id, { ...(row.settingsJson ?? {}), ...parsed });
     return { updated: true };
@@ -239,7 +262,11 @@ export class ConnectorsController {
     @Param('key') key: string,
     @Body() body: unknown,
   ) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const parsed = parseOrBadRequest(subScopeSchema, body);
     await this.store.setSubScopeSelection(row, key, {
       selected: parsed.selected,
@@ -278,7 +305,11 @@ export class ConnectorsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const parsed = parseOrBadRequest(addSubScopeSchema, body);
     const descriptor = this.registry.get(row.kind);
     if (!descriptor?.acceptSubScopeKey) {
@@ -301,7 +332,11 @@ export class ConnectorsController {
    * sync will never bring back on its own. Identifiers and dates only. */
   @Get(':id/erased-items')
   async erasedItems(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const items = await this.ledger.erasedItems(row.id);
     return {
       items: items.map((item) => ({
@@ -325,7 +360,11 @@ export class ConnectorsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const parsed = parseOrBadRequest(reingestSchema, body);
     if (!SYNCABLE_STATES.includes(row.state)) {
       throw userError.badRequest('connector.cannotSync', 'a {{state}} connector cannot sync', {
@@ -363,7 +402,11 @@ export class ConnectorsController {
    * the upstream still lists, on demand. */
   @Post(':id/presence')
   async presence(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const descriptor = this.registry.get(row.kind);
     if (!descriptor?.listKeys) {
       throw userError.badRequest(
@@ -393,7 +436,11 @@ export class ConnectorsController {
   /** Trigger a sync pass (also how discovery is refreshed). */
   @Post(':id/sync')
   async sync(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     if (!SYNCABLE_STATES.includes(row.state)) {
       throw userError.badRequest('connector.cannotSync', 'a {{state}} connector cannot sync', {
         state: row.state,
@@ -415,7 +462,11 @@ export class ConnectorsController {
 
   @Post(':id/disable')
   async disable(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     await this.store.transition(this.db, row, 'disabled', {
       actor: `user:${request.principal.userId}`,
     });
@@ -424,7 +475,11 @@ export class ConnectorsController {
 
   @Post(':id/enable')
   async enable(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const credential = await this.credentials.describe(row.id);
     if (!credential)
       throw userError.badRequest('connector.notAuthorised', 'authorise the connector first');
@@ -442,7 +497,11 @@ export class ConnectorsController {
    */
   @Delete(':id')
   async remove(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const row = await this.store.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     const actor = `user:${request.principal.userId}`;
     // Removal destroys credentials and sync state; the SOURCES it produced
     // remain with their provenance intact (V2.5 item 8.1), and they keep

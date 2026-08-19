@@ -8,6 +8,7 @@ import {
   UserContextService,
 } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
+import { SpaceNameModule, SpaceNameSource } from '../spaces/index';
 import { MemoryModule } from '../memory/index';
 import {
   ExtractionRefusalCascade,
@@ -432,7 +433,10 @@ export function createWorkerRootModule(
         instanceKeyDir: config.instanceKeyDir,
         downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
-        imports: [memoryModule],
+        imports: [memoryModule, SpaceNameModule],
+        // The per-space manifest names the space it exports; the worker is
+        // where assembly runs, so the binding matters most here.
+        spaceNames: SpaceNameSource,
       }),
     ],
     providers: [

@@ -12,9 +12,9 @@ import { PASSPORT_VERSION } from '@cogeto/shared';
  * build.
  *
  * These schemas describe the CURRENT version only: they accept
- * `passport_version: '2.0'` and nothing else, which is exactly the validator
- * contract asks for — new exports are one version, and
- * a 1.0 archive is read against the 1.0 schema still published in the docs.
+ * `passport_version: '2.1'` and nothing else, which is exactly the validator
+ * contract asks for — new exports are one version, and an older archive is
+ * read against its own schema still published in the docs.
  *
  * Nothing here reaches for a table or a gate — assembly consumes already-gated
  * rows the executor fetched through the Principal-scoped interfaces. This module
@@ -120,6 +120,13 @@ export const manifestSchema = z.object({
   passport_version: z.literal(PASSPORT_VERSION),
   generated_at: iso,
   subject: z.object({ user_id: z.string(), display_name: z.string().nullable() }),
+  /**
+   * The ONE space this archive exports (docs/features/spaces.md section 5 as
+   * amended, format 2.1): a passport is per space, never the whole instance.
+   * `name` is the space's display name at export time, null when the
+   * assembling process could not resolve one; `id` is the durable identity.
+   */
+  space: z.object({ id: z.string(), name: z.string().nullable() }),
   instance: z.object({
     public_key_pem: z.string(),
     signature_algorithm: z.literal('ed25519'),

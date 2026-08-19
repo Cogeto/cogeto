@@ -1,7 +1,12 @@
 import { Inject, Injectable, NotImplementedException, Optional } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import { isRegisteredSourceType, MEMORY_STATUSES } from '@cogeto/shared';
+import {
+  DEFAULT_SPACE_ID,
+  isRegisteredSourceType,
+  MEMORY_STATUSES,
+  resolveSpaceId,
+} from '@cogeto/shared';
 import type {
   FactKind,
   MemoryScope,
@@ -50,6 +55,13 @@ import { visibleToPrincipal } from './domain/scope-gate';
 export interface NewFact {
   content: string;
   scope: MemoryScope;
+  /**
+   * The space the fact lives in (docs/features/spaces.md). The pipeline
+   * stamps it from the SOURCE row's space; the user-capture path resolves it
+   * from the caller's Principal. Absent, the schema-level DEFAULT lands the
+   * row in the default space, which is a real space, never "all spaces".
+   */
+  spaceId?: string;
   sourceType: SourceType;
   sourceId: string;
   /** Extracted entity names, flat — the spec §3.4 entity signal. */
@@ -380,15 +392,25 @@ export class MemoryStore {
   /**
    * The caller's confirmed deletion receipts, in the shape `verifyChain`
    * consumes (spec §11.4) — owner-scoped by the signed payload's `requested_by`, the
-   * same gate the Forgotten ledger uses. Exported into a Passport, each receipt
-   * stays independently verifiable against the chain and the instance key.
+   * same gate the Forgotten ledger uses, and space-scoped since the chain
+   * became per-space (docs/features/spaces.md section 5 as amended): a
+   * Passport exports one space, and a receipt in it never references a
+   * receipt from another space. Each receipt stays independently verifiable
+   * against its space's chain and the instance key.
    */
-  async confirmedReceiptsForOwner(userId: string): Promise<ConfirmedReceipt[]> {
+  async confirmedReceiptsForOwner(
+    userId: string,
+    spaceId: string = DEFAULT_SPACE_ID,
+  ): Promise<ConfirmedReceipt[]> {
     const rows = await this.db
       .select()
       .from(deletionReceipt)
       .where(
-        and(eq(deletionReceipt.status, 'confirmed'), sql`counts_json->>'requested_by' = ${userId}`),
+        and(
+          eq(deletionReceipt.status, 'confirmed'),
+          eq(deletionReceipt.spaceId, spaceId),
+          sql`counts_json->>'requested_by' = ${userId}`,
+        ),
       )
       .orderBy(deletionReceipt.confirmedAt, deletionReceipt.id);
     return rows.map((row) => ({
@@ -658,7 +680,14 @@ export class MemoryStore {
 
   async createFromFact(principal: Principal, fact: NewFact): Promise<MemoryRow> {
     return this.db.transaction(async (tx) =>
-      this.insertFact(tx, principal.userId, fact, `user:${principal.userId}`),
+      this.insertFact(
+        tx,
+        principal.userId,
+        // The caller's current space, unless the fact already carries one
+        // (the pipeline stamps the source's space before it gets here).
+        { ...fact, spaceId: fact.spaceId ?? resolveSpaceId(principal) },
+        `user:${principal.userId}`,
+      ),
     );
   }
 
@@ -1055,7 +1084,10 @@ export class MemoryStore {
     const successor = await this.insertFact(
       tx,
       old.ownerId,
-      { ...successorFact, validFrom: successorValidFrom },
+      // The successor lives in the predecessor's space, always: the space is
+      // provenance and survives supersession exactly like source_type and
+      // source_id do.
+      { ...successorFact, validFrom: successorValidFrom, spaceId: old.spaceId },
       actorLabel(actor),
     );
     const [predecessor] = await tx
@@ -1261,12 +1293,19 @@ export class MemoryStore {
   async describeSource(
     sourceType: SourceType,
     sourceId: string,
-  ): Promise<{ ownerId: string; scope: MemoryScope; sensitive: boolean; createdAt: Date } | null> {
+  ): Promise<{
+    ownerId: string;
+    scope: MemoryScope;
+    sensitive: boolean;
+    spaceId: string;
+    createdAt: Date;
+  } | null> {
     const rows = await this.db
       .select({
         ownerId: memory.ownerId,
         scope: memory.scope,
         sensitive: memory.sensitive,
+        spaceId: memory.spaceId,
         createdAt: memory.createdAt,
       })
       .from(memory)
@@ -1494,7 +1533,12 @@ export class MemoryStore {
    * definition, two tables. This names the columns and nothing else. */
   private visibleTo(principal: Principal, opts: ReadOptions): SQL {
     return visibleToPrincipal(
-      { ownerId: memory.ownerId, scope: memory.scope, sensitive: memory.sensitive },
+      {
+        ownerId: memory.ownerId,
+        scope: memory.scope,
+        sensitive: memory.sensitive,
+        spaceId: memory.spaceId,
+      },
       principal,
       opts,
     );
@@ -1542,6 +1586,9 @@ export class MemoryStore {
       .values({
         ownerId,
         scope: fact.scope,
+        // Omitted means the schema-level DEFAULT: the default space, which is
+        // a real space. Every live write path resolves it explicitly.
+        ...(fact.spaceId ? { spaceId: fact.spaceId } : {}),
         sourceType: fact.sourceType,
         sourceId: fact.sourceId,
         status,

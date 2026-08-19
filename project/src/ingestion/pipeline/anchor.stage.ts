@@ -168,6 +168,7 @@ export class AnchorStage {
       if (this.store) {
         await this.store.recordMachine(tx, {
           ownerId: source.ownerId,
+          spaceId: source.spaceId,
           sourceType: source.sourceType,
           sourceId: source.sourceId,
           context,

@@ -7,7 +7,7 @@ import type {
   ProjectWriteDto,
   Principal,
 } from '@cogeto/shared';
-import { CONVERSATION_REF_TYPE, PROJECT_MARKERS } from '@cogeto/shared';
+import { CONVERSATION_REF_TYPE, PROJECT_MARKERS, resolveSpaceId } from '@cogeto/shared';
 import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { ProjectStore } from './persistence/project.store';
@@ -51,7 +51,12 @@ export class ProjectService {
 
   async list(principal: Principal, opts: { archived?: boolean } = {}): Promise<ProjectDto[]> {
     const [rows, counts] = await Promise.all([
-      this.store.listForOwner(principal.userId, opts),
+      // The caller's current space only (docs/features/spaces.md): a project
+      // nests inside a space and the rail never shows another space's.
+      this.store.listForOwner(principal.userId, {
+        ...opts,
+        spaceId: resolveSpaceId(principal),
+      }),
       this.store.countsForOwner(principal.userId),
     ]);
     return rows.map((row) => toProjectDto(row, counts.get(row.id) ?? {}));
@@ -77,10 +82,14 @@ export class ProjectService {
   async create(principal: Principal, write: ProjectWriteDto): Promise<ProjectDto> {
     const name = write.name.trim();
     if (!name) throw userError.badRequest('project.nameRequired', 'a project needs a name');
-    // Every project, archived included: the cap counts only active ones, but
-    // the colour must stay distinct across all of them, or unarchiving one
-    // would collide with a colour handed out while it was away.
-    const owned = await this.store.listForOwner(principal.userId);
+    // Every project in the caller's space, archived included: the cap counts
+    // only active ones, but the colour must stay distinct across all of them,
+    // or unarchiving one would collide with a colour handed out while it was
+    // away. Space-scoped like the list: each space is its own workspace, so
+    // the cap, the colours and the name check all live within it.
+    const owned = await this.store.listForOwner(principal.userId, {
+      spaceId: resolveSpaceId(principal),
+    });
     if (owned.filter((project) => !project.archived).length >= MAX_ACTIVE_PROJECTS) {
       throw userError.badRequest(
         'project.tooMany',
@@ -92,20 +101,25 @@ export class ProjectService {
       );
     }
     const row = await this.store
-      .create(principal.userId, principal.orgId || null, {
-        name,
-        description: write.description?.trim() || null,
-        // A project gets a colour WITHOUT being asked for one. The marker is
-        // what the rail groups by, so leaving it null (which every caller
-        // did) meant the colour identity existed in the schema and never
-        // once rendered. Creation is the moment to decide it, and the user
-        // has nothing useful to say at that moment.
-        marker: write.marker ?? nextMarker(owned),
-        lensEnabled: write.lensEnabled ?? true,
-        extractionEnabled: write.extraction?.enabled ?? null,
-        extractionFactBudget: write.extraction?.factBudget ?? null,
-        extractionRetentionDays: write.extraction?.retentionDays ?? null,
-      })
+      .create(
+        principal.userId,
+        principal.orgId || null,
+        {
+          name,
+          description: write.description?.trim() || null,
+          // A project gets a colour WITHOUT being asked for one. The marker is
+          // what the rail groups by, so leaving it null (which every caller
+          // did) meant the colour identity existed in the schema and never
+          // once rendered. Creation is the moment to decide it, and the user
+          // has nothing useful to say at that moment.
+          marker: write.marker ?? nextMarker(owned),
+          lensEnabled: write.lensEnabled ?? true,
+          extractionEnabled: write.extraction?.enabled ?? null,
+          extractionFactBudget: write.extraction?.factBudget ?? null,
+          extractionRetentionDays: write.extraction?.retentionDays ?? null,
+        },
+        resolveSpaceId(principal),
+      )
       .catch(rethrowDuplicateName);
     await this.audit(principal, 'project.created', row.id, { archived: false });
     return toProjectDto(row, {});

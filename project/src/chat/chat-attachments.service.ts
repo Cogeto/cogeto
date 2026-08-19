@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { ChatAttachmentDto, FileProcessingState, Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
@@ -301,7 +302,15 @@ export class ChatAttachmentsService {
     row: ChatAttachmentRow,
     status: 'settled' | 'failed',
   ): Promise<ChatAttachmentRow> {
-    const principal: Principal = principalOf(row);
+    // The counting reads are space-gated (docs/features/spaces.md), so the
+    // fabricated principal must act in the attachment's conversation's space,
+    // where the attachment's facts live.
+    const conversationRows = await this.db
+      .select({ spaceId: conversation.spaceId })
+      .from(conversation)
+      .where(eq(conversation.id, row.conversationId))
+      .limit(1);
+    const principal: Principal = principalOf(row, conversationRows[0]?.spaceId);
     const objectKey = row.objectKey!;
     const [facts, contradictions, read, refusal] = await Promise.all([
       this.memory.countBySourceForPrincipal(principal, 'file', objectKey),
@@ -368,7 +377,14 @@ export class ChatAttachmentsService {
     const rows = await this.db
       .select({ id: conversation.id })
       .from(conversation)
-      .where(and(eq(conversation.id, conversationId), eq(conversation.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(conversation.id, conversationId),
+          eq(conversation.ownerId, principal.userId),
+          // Space-scoped like every read (docs/features/spaces.md).
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     if (rows.length === 0) {
       throw userError.notFound('chat.conversationNotFound', 'conversation {{id}} not found', {
@@ -383,7 +399,7 @@ export class ChatAttachmentsService {
  * recoverable from the durable object key, whose first segment is the org
  * (the object-key contract); the gated reads only use userId + orgId.
  */
-function principalOf(row: ChatAttachmentRow): Principal {
+function principalOf(row: ChatAttachmentRow, spaceId?: string): Principal {
   return {
     userId: row.ownerId,
     name: '',
@@ -391,5 +407,8 @@ function principalOf(row: ChatAttachmentRow): Principal {
     orgId: row.objectKey?.split('/')[0] ?? '',
     orgName: '',
     roles: [],
+    // The subject row's space (docs/features/spaces.md): a fabricated
+    // principal acts in the space its row lives in, never a default.
+    spaceId,
   };
 }

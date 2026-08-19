@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { EntityAliasDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -47,7 +48,10 @@ export class EntityAliasesController {
 
   @Get()
   async list(@Req() request: AuthenticatedRequest): Promise<EntityAliasDto[]> {
-    const rows = await this.store.listForOwner(request.principal.userId);
+    const rows = await this.store.listForOwner(
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     return rows.map(toDto);
   }
 
@@ -60,7 +64,12 @@ export class EntityAliasesController {
         'these names already match after normalization; no alias is needed',
       );
     }
-    const row = await this.store.add(request.principal.userId, input.canonical, input.alias);
+    const row = await this.store.add(
+      request.principal.userId,
+      input.canonical,
+      input.alias,
+      resolveSpaceId(request.principal),
+    );
     if (!row) {
       throw userError.badRequest('alias.duplicate', 'this alias pair is already recorded');
     }

@@ -70,6 +70,7 @@ import {
   ProjectAssignmentCascadeModule,
   ProjectsModule,
 } from '../projects/index';
+import { SpaceNameModule, SpaceNameSource, SpacesModule } from '../spaces/index';
 import { CONNECTOR_HEALTH, OperationsModule } from '../operations/index';
 import {
   ConnectorHealthSource,
@@ -392,7 +393,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         instanceKeyDir: config.instanceKeyDir,
         downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
-        imports: [memoryModule],
+        imports: [memoryModule, SpaceNameModule],
+        // The per-space manifest names the space it exports.
+        spaceNames: SpaceNameSource,
       }),
       // The "what needs my attention" feed + the dashboard statistics. Its own
       // context (V2.0 item 3.6 part 2): the surface composes memory, retrieval,
@@ -422,6 +425,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       importsModule,
       // Projects as workspaces (V2.5 item 8.3): the folder surface.
       projectsModule,
+      // Spaces (docs/features/spaces.md): the sealed-partition records and
+      // the data-and-API surface. App root only; no worker job needs it.
+      SpacesModule.register(),
       // The connector platform (V2.5 item 8.1): owner API + webhook ingress.
       connectorsModule,
       // The first real connector (V2.5 item 8.2).

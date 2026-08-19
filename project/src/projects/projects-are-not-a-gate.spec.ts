@@ -40,28 +40,34 @@ describe('projects are not a gate', () => {
         scope: 'private',
         status: 'active',
         sensitive: false,
+        spaceId: '00000000-0000-4000-8000-000000000001',
         sourceType: 'file',
         sourceId: 'org/user-1/private/file-1',
         validUntil: null,
       },
       [0.1, 0.2],
     );
+    // space_id is a GATE field (docs/features/spaces.md): the space is the
+    // gate, the project stays the lens. No project key, ever.
     expect(Object.keys(point.payload).sort()).toEqual([
       'owner_id',
       'scope',
       'sensitive',
       'source_id',
       'source_type',
+      'space_id',
       'status',
       'valid_until',
     ]);
+    expect(Object.keys(point.payload).join(' ')).not.toContain('project');
   });
 
-  it('gate_filter_unchanged: the vector gate is exactly the two scope/sensitive conditions', () => {
+  it('gate_filter_unchanged: the vector gate is exactly the scope/sensitive/space conditions', () => {
     const filter = buildGateFilter({ userId: 'user-1', orgId: 'org-1', roles: [] });
-    // Two must-conditions, both about scope and sensitivity, and nothing else.
-    // The project lens is pushed on TOP of this by the store, never into it.
-    expect(filter.must).toHaveLength(2);
+    // Three must-conditions: scope, sensitivity, and the space dimension
+    // (docs/features/spaces.md), and nothing else. The project lens is pushed
+    // on TOP of this by the store, never into it.
+    expect(filter.must).toHaveLength(3);
     expect(JSON.stringify(filter)).not.toContain('project');
   });
 
