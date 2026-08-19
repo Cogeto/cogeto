@@ -69,6 +69,7 @@ export class PassportService {
         detail: { includeOriginals },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId,
       });
       return created;
     });
@@ -122,6 +123,7 @@ export class PassportService {
       detail: { ttlSeconds: ttl, sizeBytes: row.sizeBytes ?? null },
       orgId: principal.orgId,
       ownerId: principal.userId,
+      spaceId: row.spaceId,
     });
     return { url, expiresInSeconds: ttl };
   }

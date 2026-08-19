@@ -18,3 +18,5 @@ export type { AssignmentRef, SourceRef } from './persistence/project.store';
 export type { ProjectRow, ProjectAssignmentRow } from './persistence/tables';
 export { LENS_SOURCE_CAP } from './project-lens';
 export { ProjectPolicySource, ProjectPolicyModule } from './project-policy.adapter';
+// Space deletion's projects leg (docs/features/spaces.md section 5).
+export { ProjectSpaceCleanup, ProjectSpaceCleanupModule } from './project-space-cleanup';

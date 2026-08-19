@@ -432,16 +432,25 @@ export class SourceCatalogService {
       case 'suppressed':
         return sourceRefsWithSuppressed(this.db, principal);
       case 'gated':
-        return sourceRefsWithRefusals(this.db, principal.userId);
+        // Space-scoped INSIDE the limit-bounded scan (docs/features/spaces.md):
+        // the seal below still runs, but it cannot restore rows another
+        // space's refusals pushed out of the window.
+        return sourceRefsWithRefusals(this.db, principal.userId, {
+          spaceId: resolveSpaceId(principal),
+        });
       case 'truncated': {
-        const keys = await keysWithReadOutcome(this.db, principal.userId, ['truncated']);
+        const keys = await keysWithReadOutcome(this.db, principal.userId, ['truncated'], {
+          spaceId: resolveSpaceId(principal),
+        });
         return (await this.sealFileKeys(principal, keys)).map((key) => ({
           sourceType: 'file',
           sourceId: key,
         }));
       }
       case 'unreadable': {
-        const keys = await keysWithReadOutcome(this.db, principal.userId, [...UNREAD_OUTCOMES]);
+        const keys = await keysWithReadOutcome(this.db, principal.userId, [...UNREAD_OUTCOMES], {
+          spaceId: resolveSpaceId(principal),
+        });
         return (await this.sealFileKeys(principal, keys)).map((key) => ({
           sourceType: 'file',
           sourceId: key,

@@ -114,6 +114,7 @@ export class ResearchService {
         entityId: row!.id,
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row!.spaceId,
       });
       return row!;
     });
@@ -152,6 +153,7 @@ export class ResearchService {
         detail: { skill_run_id: skillRunId },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row!.spaceId,
       });
       return row!;
     });
@@ -230,6 +232,7 @@ export class ResearchService {
         detail: { edited: sentQuery !== row.minimisedQuery },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       return updated!;
     });
@@ -285,6 +288,7 @@ export class ResearchService {
         entityId: runId,
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       return updated!;
     });

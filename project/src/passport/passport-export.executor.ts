@@ -149,6 +149,7 @@ export class PassportExportExecutor {
       // Principal, and an entry with no org is readable from every org.
       orgId: (await this.directory.orgOf(request.userId)) ?? undefined,
       ownerId: request.userId,
+      spaceId: request.spaceId,
     });
     this.logger.log(
       `passport export ${exportId} ready: ${memories.length} memories, ` +

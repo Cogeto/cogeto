@@ -107,6 +107,7 @@ export class ReportService {
         detail: { scopeKind: scope.kind },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
       return created;
     });
@@ -170,6 +171,7 @@ export class ReportService {
       },
       orgId: principal.orgId,
       ownerId: principal.userId,
+      spaceId: row.spaceId,
     });
     return { url, expiresInSeconds: ttl };
   }

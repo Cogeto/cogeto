@@ -297,7 +297,9 @@ export class ChatService {
     principal: Principal,
     query: string,
   ): Promise<ConversationSearchHitDto[]> {
-    const hits = await searchConversationRows(this.db, principal.userId, query);
+    const hits = await searchConversationRows(this.db, principal.userId, query, {
+      spaceId: resolveSpaceId(principal),
+    });
     if (hits.length === 0) return [];
     const ids = hits.map((hit) => hit.conversationId);
     const rows = await this.db
@@ -346,10 +348,20 @@ export class ChatService {
     // project is a 404 before any row exists, so a rejected create leaves no
     // orphan conversation behind.
     if (projectId && this.projects) await this.projects.get(principal, projectId);
+    // Per space (docs/features/spaces.md): every other conversation read in
+    // this file narrows to the caller's space, and a thread in space A must
+    // not consume space B's budget. Not spend protection (no model call is
+    // bounded by it), so the instance-wide-caps rule does not apply.
     const active = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(conversation)
-      .where(and(eq(conversation.ownerId, principal.userId), eq(conversation.archived, false)));
+      .where(
+        and(
+          eq(conversation.ownerId, principal.userId),
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+          eq(conversation.archived, false),
+        ),
+      );
     if ((active[0]?.count ?? 0) >= MAX_ACTIVE_CONVERSATIONS) {
       throw userError.badRequest(
         'chat.tooManyConversations',

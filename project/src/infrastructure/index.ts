@@ -108,6 +108,7 @@ export {
   setUsageUser,
   setUsageTaskFamily,
   currentUsageUserId,
+  currentUsageSpaceId,
 } from './usage-context';
 
 // Set-based job states for one page of catalog refs (V2.2 item 5.2).

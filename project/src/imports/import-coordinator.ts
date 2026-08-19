@@ -218,6 +218,9 @@ export class ImportCoordinator {
       if (!score) return;
       const recorded = await this.revisions.recordDetected(this.db, {
         ownerId: principal.userId,
+        // The run's space (docs/features/spaces.md): both endpoints live in
+        // it, and an unstamped link fell to the default space.
+        spaceId: principal.spaceId,
         successor: { sourceType: 'file', sourceId: successorKey },
         predecessor: { sourceType: 'file', sourceId: predecessorKey },
         status: score.decision,

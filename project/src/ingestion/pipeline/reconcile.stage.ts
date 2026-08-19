@@ -526,6 +526,7 @@ export class ReconciliationService {
     const verdict = await this.judge.judgeDedup(factView, this.toView(candidate.row, spans));
     await this.ledger?.record(tx, fact.id, candidate.row.id, {
       ownerId: fact.ownerId,
+      spaceId: fact.spaceId,
       family: 'dedup',
       verdict: verdict.verdict,
       similarity: candidate.similarity,
@@ -585,6 +586,7 @@ export class ReconciliationService {
       const reason = `numeric conflict: ${deterministic.decision.aRaw} vs ${deterministic.decision.bRaw} in the same specification`;
       await this.ledger?.record(tx, fact.id, candidate.row.id, {
         ownerId: fact.ownerId,
+        spaceId: fact.spaceId,
         family: 'contradiction',
         verdict: 'contradicts',
         similarity: candidate.similarity,
@@ -600,6 +602,7 @@ export class ReconciliationService {
     const verdict = await this.judge.judgeContradiction(factView, candidateView);
     await this.ledger?.record(tx, fact.id, candidate.row.id, {
       ownerId: fact.ownerId,
+      spaceId: fact.spaceId,
       family: 'contradiction',
       verdict: verdict.verdict,
       direction: verdict.direction ?? null,
@@ -802,6 +805,19 @@ export class ReconciliationService {
     const candidates: Candidate[] = [];
     for (const row of byId.values()) {
       if (row.id === fact.id) continue;
+      // The space constraint lives INSIDE every candidate query above (the
+      // gate rides the fabricated principal), never in a post-filter: a
+      // budget applied to a set that spanned two spaces would silently
+      // starve the pairing that should have happened within one
+      // (docs/features/spaces.md). A row from another space reaching this
+      // loop therefore means the gate itself is broken, and the only honest
+      // response is to stop, not to skim it off.
+      if (row.spaceId !== fact.spaceId) {
+        throw new Error(
+          `reconciliation candidate ${row.id} crossed the space wall (fact ${fact.id}); ` +
+            'the gated candidate reads can never return this, refusing to continue',
+        );
+      }
       if (exclude === 'same_batch' && batchIds.has(row.id)) continue;
       if (
         exclude === 'same_source' &&

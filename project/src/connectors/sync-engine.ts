@@ -434,6 +434,10 @@ export class ConnectorSyncEngine {
           await this.revisions
             .recordDetected(this.db, {
               ownerId: row.ownerId,
+              // The connector's space (docs/features/spaces.md): both
+              // endpoints live in it, and an unstamped link fell to the
+              // default space.
+              spaceId: row.spaceId,
               successor: source,
               predecessor: {
                 sourceType: predecessor.sourceType,

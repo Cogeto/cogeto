@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { AwaitingCapabilityDto, FileReadReportDto } from '@cogeto/shared';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db, DbOrTx } from '../../infrastructure/index';
@@ -25,19 +26,24 @@ import { fileReadReport } from './tables';
 export class FileReadReportStore {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
-  /** Records (or replaces) the report for one file source. Never throws. */
+  /** Records (or replaces) the report for one file source. Never throws.
+   * `spaceId` is the file's own space (row or staging metadata); absent means
+   * the default space, the resolution rule every space column follows. */
   async record(
     objectKey: string,
     ownerId: string,
     report: ReadReport,
-    logger?: { warn(message: string): void },
+    opts: { spaceId?: string; logger?: { warn(message: string): void } } = {},
   ): Promise<void> {
+    const logger = opts.logger;
+    const spaceId = opts.spaceId ?? DEFAULT_SPACE_ID;
     try {
       await this.db
         .insert(fileReadReport)
         .values({
           objectKey,
           ownerId,
+          spaceId,
           format: report.format,
           outcome: report.outcome,
           reasonCode: report.reasonCode,
@@ -48,6 +54,7 @@ export class FileReadReportStore {
           target: fileReadReport.objectKey,
           set: {
             ownerId,
+            spaceId,
             format: report.format,
             outcome: report.outcome,
             reasonCode: report.reasonCode,
@@ -186,18 +193,26 @@ export async function readOutcomesForKeys(
 }
 
 /** The owner's object keys whose read landed on one of `outcomes` — the
- * driving query behind the truncated / unreadable badge filters. */
+ * driving query behind the truncated / unreadable badge filters. Space-scoped
+ * inside the query (docs/features/spaces.md): the scan is limit-bounded, so a
+ * post-filter would let one space's reports consume another's window. */
 export async function keysWithReadOutcome(
   db: DbOrTx,
   ownerId: string,
   outcomes: readonly string[],
-  options: { limit?: number } = {},
+  options: { spaceId?: string; limit?: number } = {},
 ): Promise<string[]> {
   if (outcomes.length === 0) return [];
   const rows = await db
     .select({ objectKey: fileReadReport.objectKey })
     .from(fileReadReport)
-    .where(and(eq(fileReadReport.ownerId, ownerId), inArray(fileReadReport.outcome, [...outcomes])))
+    .where(
+      and(
+        eq(fileReadReport.ownerId, ownerId),
+        eq(fileReadReport.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+        inArray(fileReadReport.outcome, [...outcomes]),
+      ),
+    )
     .orderBy(desc(fileReadReport.readAt))
     .limit(Math.min(options.limit ?? 200, 500));
   return rows.map((row) => row.objectKey);

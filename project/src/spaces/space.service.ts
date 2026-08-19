@@ -11,15 +11,14 @@ import type { SpaceRow } from './persistence/tables';
 const MAX_NAME_LENGTH = 120;
 
 /**
- * The spaces surface (docs/features/spaces.md), data and API only in this
- * session; the switcher is a later one. Every instance user sees every space
- * (no per-space membership, by owner decision), so `list` takes no owner
- * filter. What a space SEALS is content, and that wall is the gate dimension
- * in the memory module, never anything here.
+ * The spaces surface (docs/features/spaces.md), data and API; the switcher is
+ * a later session. Every instance user sees every space (no per-space
+ * membership, by owner decision), so `list` takes no owner filter. What a
+ * space SEALS is content, and that wall is the gate dimension in the memory
+ * module, never anything here.
  *
- * There is deliberately no delete in this session: deleting a space has its
- * own decision-record rules (empty, or the ordinary deletion saga per source)
- * and lands with the surface that can state them honestly.
+ * Deletion lives in SpaceErasureService (session 2): the ordinary deletion
+ * saga per source, then the container cleanups, then the row.
  */
 @Injectable()
 export class SpaceService {
@@ -43,6 +42,7 @@ export class SpaceService {
       detail: {},
       ownerId: principal.userId,
       orgId: principal.orgId,
+      spaceId: row!.id,
     });
     return toSpaceDto(row!);
   }
@@ -59,6 +59,7 @@ export class SpaceService {
       detail: {},
       ownerId: principal.userId,
       orgId: principal.orgId,
+      spaceId: id,
     });
     return toSpaceDto(row);
   }

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { sourceTypeDescriptor } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, resolveSpaceId, sourceTypeDescriptor } from '@cogeto/shared';
 import type {
   AttentionFeedDto,
   AttentionItem,
@@ -186,9 +186,21 @@ export class AttentionService {
       locale: hr ? 'hr' : 'en',
     });
     if (!digest.runId || !digest.finishedAt) return [];
+    const spaceId = resolveSpaceId(principal);
     return digest.lines.map((line, index) => ({
       // Content-free key: run id + position in the deterministic line order.
-      key: `digest:${digest.runId}:${index}`,
+      // The index is a position in the PER-SPACE visible line list (the
+      // digest reads through the gated principal), so a NON-default space's
+      // key carries the space segment; without it a dismissal in one space
+      // hid a different line at the same index in another. The DEFAULT
+      // space keeps the historical two-segment form byte-identically, the
+      // same rule that makes the pre-spaces receipt chain the default
+      // space's chain (docs/features/spaces.md), so every stored dismissal
+      // keeps dismissing exactly the line it always did.
+      key:
+        spaceId === DEFAULT_SPACE_ID
+          ? `digest:${digest.runId}:${index}`
+          : `digest:${digest.runId}:${spaceId}:${index}`,
       kind: 'digest_change' as const,
       title: line.text,
       timestamp: digest.finishedAt!,

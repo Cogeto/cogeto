@@ -70,6 +70,7 @@ export class ConnectorStore {
       detail: { kind: input.kind },
       orgId: input.orgId,
       ownerId: input.ownerId,
+      spaceId: row.spaceId,
     });
     return row;
   }
@@ -128,7 +129,7 @@ export class ConnectorStore {
    */
   async transition(
     executor: DbOrTx,
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state' | 'spaceId'>,
     to: ConnectorState,
     opts: { actor: string; reason?: string | null } = { actor: 'connector_platform' },
   ): Promise<void> {
@@ -153,6 +154,7 @@ export class ConnectorStore {
       detail: { from: row.state, to },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 
@@ -187,7 +189,7 @@ export class ConnectorStore {
    */
   async remove(
     tx: DbOrTx,
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state' | 'spaceId'>,
     actor: string,
   ): Promise<void> {
     const decision = transition(row.state, 'removed');
@@ -223,6 +225,7 @@ export class ConnectorStore {
       detail: { from: row.state, sourcesRetained: true },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 
@@ -233,7 +236,9 @@ export class ConnectorStore {
 
   /** Generate and store a fresh signing secret; return it ONCE for the user
    * to configure upstream. It is never retrievable again. */
-  async rotateWebhookSecret(row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>): Promise<string> {
+  async rotateWebhookSecret(
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'spaceId'>,
+  ): Promise<string> {
     const secret = randomBytes(32).toString('hex');
     await this.db
       .update(connector)
@@ -250,6 +255,7 @@ export class ConnectorStore {
       detail: { rotated: true },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
     return secret;
   }
@@ -329,7 +335,7 @@ export class ConnectorStore {
    * the next sync. Upsert, so re-adding an existing key just relabels it.
    */
   async addSubScope(
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'spaceId'>,
     key: string,
     label: string,
   ): Promise<void> {
@@ -348,6 +354,7 @@ export class ConnectorStore {
       detail: { custom: true },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 
@@ -364,7 +371,7 @@ export class ConnectorStore {
   }
 
   async setSubScopeSelection(
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'spaceId'>,
     key: string,
     patch: {
       selected?: boolean;
@@ -390,6 +397,7 @@ export class ConnectorStore {
       },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 

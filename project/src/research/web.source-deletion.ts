@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { asc, eq, inArray } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceCascade, SourceDeletion } from '../memory/index';
+import type {
+  OwnedSourceRef,
+  SpaceSourceRef,
+  SourceCascade,
+  SourceDeletion,
+} from '../memory/index';
 import { webPage } from './persistence/tables';
 
 /**
@@ -46,6 +51,15 @@ export class WebSourceDeletion implements SourceDeletion {
       .select({ sourceId: webPage.id, scope: webPage.scope })
       .from(webPage)
       .where(eq(webPage.ownerId, ownerId))
+      .orderBy(asc(webPage.id));
+  }
+
+  /** Space deletion's enumeration (docs/features/spaces.md section 5). */
+  async listForSpace(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]> {
+    return db
+      .select({ sourceId: webPage.id, ownerId: webPage.ownerId })
+      .from(webPage)
+      .where(eq(webPage.spaceId, spaceId))
       .orderBy(asc(webPage.id));
   }
 

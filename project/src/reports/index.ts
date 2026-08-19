@@ -23,3 +23,5 @@ export {
 } from './report-format';
 export type { ReportArtifact, ReportPayload } from './report-format';
 export { buildReportFixturePayload } from './report-fixture';
+// Space deletion's reports leg (docs/features/spaces.md section 5).
+export { ReportSpaceCleanup, ReportSpaceCleanupModule } from './report-space-cleanup';

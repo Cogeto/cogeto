@@ -169,6 +169,7 @@ export class SourceContextStore {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
       return row;
     });

@@ -74,6 +74,18 @@ export interface OwnedSourceRef {
 }
 
 /**
+ * One source inside a space, as space deletion enumerates it
+ * (docs/features/spaces.md section 5). `ownerId` rides along because the
+ * ordinary saga acts FOR a subject, and a space's sources belong to many
+ * owners: each per-source deletion runs as that source's owner, producing the
+ * receipt on that owner's behalf in the space's own chain.
+ */
+export interface SpaceSourceRef {
+  sourceId: string;
+  ownerId: string;
+}
+
+/**
  * Port for deleting a source row that lives in another module's table (the
  * exact mirror of ingestion's SourceReader port): the memory module defines
  * it, connector modules implement it, the composition root binds the two —
@@ -111,6 +123,18 @@ export interface SourceDeletion {
    * conversation, so listing both would enumerate the same content twice.
    */
   listForOwner?(db: DbOrTx, ownerId: string): Promise<OwnedSourceRef[]>;
+  /**
+   * EVERY source of this type inside `spaceId`, with its owner — space
+   * deletion's enumeration (docs/features/spaces.md section 5), the exact
+   * space twin of `listForOwner` and unpaginated for the same reason: a
+   * source left behind is a source the deletion did not erase, and the FK
+   * from the source table to `space` turns any miss into a loud refusal of
+   * the final space-row delete rather than a silent leftover.
+   *
+   * OPTIONAL by the same declaration rule as `listForOwner`: `chat` returns
+   * nothing because a message is erased with its conversation.
+   */
+  listForSpace?(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]>;
   /**
    * Extra artifacts that must be enumerated and removed WITH this source, when a
    * source owns more than its own row + body memories. An
@@ -230,8 +254,18 @@ export interface DerivedCascade {
    * are deleted by the WORKER leg like every other object, so the all-or-nothing
    * guarantee and the retry semantics are the existing ones: this runs inside
    * the enumeration transaction and performs no external side effect itself.
+   *
+   * `spaceId` narrows the expiry to the DELETION'S space
+   * (docs/features/spaces.md): a passport or report covers one space, so a
+   * deletion in space A cannot have leaked into space B's artifact and must
+   * not expire it. The saga always passes it; absence (legacy harnesses)
+   * expires across spaces, the pre-spaces behaviour.
    */
-  expireForOwner?(tx: Tx, ownerId: string): Promise<{ count: number; objectKeys: string[] }>;
+  expireForOwner?(
+    tx: Tx,
+    ownerId: string,
+    spaceId?: string,
+  ): Promise<{ count: number; objectKeys: string[] }>;
 }
 
 export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
@@ -614,6 +648,31 @@ export class DeletionSaga {
   }
 
   /**
+   * Space deletion's per-source call (docs/features/spaces.md section 5): the
+   * same saga, the same cascades, the same one receipt per source, invoked by
+   * an ADMINISTRATOR for each source's own owner as the subject. There is no
+   * second deletion mechanism anywhere; this method IS requestSourceDeletion
+   * with the subject and the actor separated, exactly like owner erasure.
+   *
+   * `retainShared` is OFF, and deliberately so: owner erasure removes one
+   * person's material from a living space, where a colleague's shared
+   * knowledge must survive; space deletion destroys the partition itself, and
+   * scope governs who sees a fact WITHIN a space, never whether the fact
+   * outlives its space. Nothing can remain, because the space row's FK graph
+   * refuses to release the space while anything does.
+   */
+  async eraseSpaceSource(
+    subject: { userId: string; orgId: string },
+    actor: string,
+    sourceType: string,
+    sourceId: string,
+  ): Promise<{ receiptId: string | null }> {
+    return this.deleteSourceForSubject(subject, actor, sourceType, sourceId, {
+      retainShared: false,
+    });
+  }
+
+  /**
    * The same enumeration transaction, with WHO it acts for separated from WHO
    * asked (issue #632).
    *
@@ -885,7 +944,7 @@ export class DeletionSaga {
           // objects join `objectKeys` below, so the worker leg erases them and
           // the sweep verifies them absent, exactly like a file or an email body.
           if (cascade.expireForOwner) {
-            const expired = await cascade.expireForOwner(tx, principal.userId);
+            const expired = await cascade.expireForOwner(tx, principal.userId, spaceId);
             if (cascade.artifact === 'passport_exports') {
               passportExportsExpired += expired.count;
             }
@@ -1014,6 +1073,7 @@ export class DeletionSaga {
             // The SUBJECT: the detail gate serves the person whose material it
             // was, which is the point of recording it.
             ownerId: principal.userId,
+            spaceId,
           });
           return { receiptId: null };
         }
@@ -1059,6 +1119,7 @@ export class DeletionSaga {
           },
           orgId: principal.orgId,
           ownerId: principal.userId,
+          spaceId,
         });
         return { receiptId };
       });
@@ -1303,6 +1364,7 @@ export class DeletionExecutor {
       // this leg runs in the worker with no Principal in scope.
       orgId: (await this.directory?.orgOf(counts.requested_by)) ?? undefined,
       ownerId: counts.requested_by,
+      spaceId: receipt.spaceId,
     });
     return {
       alreadyConfirmed: false,

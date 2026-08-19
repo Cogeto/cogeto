@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -138,6 +139,9 @@ export class ExtractionGateStore {
     tx: Tx,
     entry: {
       ownerId: string;
+      /** The refused source's space (docs/features/spaces.md, 0061); absent
+       * resolves to the default space like every space column. */
+      spaceId?: string;
       sourceType: string;
       sourceId: string;
       reason: ExtractionRefusalReason;
@@ -146,6 +150,7 @@ export class ExtractionGateStore {
   ): Promise<void> {
     await tx.insert(extractionGateRefusal).values({
       ownerId: entry.ownerId,
+      ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
       sourceType: entry.sourceType,
       sourceId: entry.sourceId,
       reason: entry.reason,
@@ -487,11 +492,14 @@ export async function refusalsForSources(
   return out;
 }
 
-/** The owner's refs with a refusal on the ledger — the gated badge filter. */
+/** The owner's refs with a refusal on the ledger — the gated badge filter.
+ * Space-scoped inside the query (docs/features/spaces.md): the scan is
+ * limit-bounded, so a post-filter would let one space's refusals consume
+ * another's window. */
 export async function sourceRefsWithRefusals(
   db: DbOrTx,
   ownerId: string,
-  options: { limit?: number } = {},
+  options: { spaceId?: string; limit?: number } = {},
 ): Promise<{ sourceType: string; sourceId: string }[]> {
   const rows = await db
     .select({
@@ -499,7 +507,12 @@ export async function sourceRefsWithRefusals(
       sourceId: extractionGateRefusal.sourceId,
     })
     .from(extractionGateRefusal)
-    .where(eq(extractionGateRefusal.ownerId, ownerId))
+    .where(
+      and(
+        eq(extractionGateRefusal.ownerId, ownerId),
+        eq(extractionGateRefusal.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+      ),
+    )
     .groupBy(extractionGateRefusal.sourceType, extractionGateRefusal.sourceId)
     .limit(Math.min(options.limit ?? 200, 500));
   return rows;

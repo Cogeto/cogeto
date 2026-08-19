@@ -174,6 +174,43 @@ Guidance, not prescription.
   copy, confirmations) is a key present in every locale. House style: no
   em dashes.
 
+## 6a. Session 2 decisions (isolation in depth, 2026-08-19)
+
+Recorded with the session that implemented them, the way section 5's
+amendments were:
+
+- **The default space is never deletable.** The record requires "not while it
+  is the only space"; the implementation refuses it always, which subsumes
+  that rule. The default space's fixed id is the instance's resolution
+  anchor: the schema-level DEFAULT, the absent-header resolution, the email
+  intake target and every CLI principal all name it, so deleting it would
+  leave every spaceless caller pointing at nothing. Every other space is
+  deletable, content and all, administrator-only.
+- **Receipts outlive their space.** A deleted space's receipts ARE the proof
+  of its erasure and are immutable, so `deletion_receipt.space_id` keeps the
+  column (the chain key) and drops the foreign key (migration 0061). Chain
+  verification walks receipts, never the space table, so a deleted space's
+  chain keeps verifying standalone. Every OTHER space foreign key stays
+  NO ACTION on purpose: the final `DELETE FROM space` refusing while any
+  content row remains is the structural completeness proof space deletion
+  relies on.
+- **Shared material dies with its space.** Scope governs who sees a fact
+  WITHIN a space, never whether a fact outlives its space. This is the
+  opposite of owner erasure's shared-material rule and deliberately so:
+  owner erasure removes one person from a living space, space deletion
+  destroys the partition itself.
+- **The nightly pass is one job iterating per-(owner, space) groups**, not
+  one job per space: partitioning is a grouping concern, not a scheduling
+  one. Each group runs in its own transaction under its own per-fact check
+  budgets, so a busy space can neither starve a quiet one nor roll back its
+  work.
+- **The audit space attribute** (section 4's promise) is a nullable
+  `audit_log.space_id`, no foreign key, stamped from the principal on request
+  paths, from the subject row in worker paths, and via the usage scope for
+  model-egress entries. NULL means a genuinely instance-level action, never
+  "unknown". Budgets and daily caps stay instance-wide; the usage scope
+  carries the space for attribution only, never as a cap input.
+
 ## 7. Decisions and non-goals
 
 Decided by the owner, 2026-08-19:

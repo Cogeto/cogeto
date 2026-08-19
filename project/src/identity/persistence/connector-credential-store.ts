@@ -58,6 +58,9 @@ export interface StoreCredentialInput {
   accountIdentity?: string | null;
   scopes?: string[] | null;
   expiresAt?: Date | null;
+  /** The connector's space, passed by the caller: identity is a seam and
+   * never reads the connectors module's tables. Audit stamping only. */
+  spaceId?: string;
 }
 
 /** Every ordinary read names its columns; the sealed one is not among them. */
@@ -125,6 +128,7 @@ export class ConnectorCredentialStore {
       },
       orgId: input.orgId,
       ownerId: input.ownerId,
+      spaceId: input.spaceId,
     });
   }
 
@@ -189,7 +193,7 @@ export class ConnectorCredentialStore {
    */
   async destroy(
     executor: DbOrTx,
-    input: { connectorId: string; ownerId: string; orgId: string; actor: string },
+    input: { connectorId: string; ownerId: string; orgId: string; actor: string; spaceId?: string },
   ): Promise<number> {
     const deleted = await executor
       .delete(connectorCredential)
@@ -203,6 +207,7 @@ export class ConnectorCredentialStore {
       detail: { destroyed: deleted.length },
       orgId: input.orgId,
       ownerId: input.ownerId,
+      spaceId: input.spaceId,
     });
     return deleted.length;
   }

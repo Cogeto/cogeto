@@ -166,6 +166,7 @@ export class ReportExportExecutor {
       },
       orgId: (await this.directory.orgOf(run.userId)) ?? undefined,
       ownerId: run.userId,
+      spaceId: run.spaceId,
     });
     this.logger.log(
       `findings report ${reportId} ready: ${counts.sourcesExamined} sources, ` +

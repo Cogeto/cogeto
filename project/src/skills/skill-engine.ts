@@ -184,6 +184,7 @@ export class SkillEngine {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       await withTransactionalEnqueue(
         tx,

@@ -292,6 +292,7 @@ export class ProjectService {
       detail,
       ownerId: principal.userId,
       orgId: principal.orgId,
+      spaceId: resolveSpaceId(principal),
     });
   }
 }

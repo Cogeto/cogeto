@@ -51,6 +51,9 @@ export class ApprovalExecutor {
       detail: { actionType: row.actionType, summary: result.summary, ...result.detail },
       orgId: row.orgId ?? undefined,
       ownerId: ctx.userId,
+      // The subject row's space (docs/features/spaces.md): the worker holds
+      // no Principal, and the approval row records where it was raised.
+      spaceId: row.spaceId,
     });
     // The effect's after-commit continuation bubbles to the idempotent
     // task wrapper, which runs it once this transaction commits.

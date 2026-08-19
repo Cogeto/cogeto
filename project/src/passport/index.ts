@@ -21,3 +21,5 @@ export { SPACE_NAME_RESOLVER } from './space-name.port';
 export type { SpaceNameResolver } from './space-name.port';
 // Format + assembler exposed for the eval/verify harness and the schema tests.
 export { manifestSchema, sha256Hex } from './passport-format';
+// Space deletion's passport leg (docs/features/spaces.md section 5).
+export { PassportSpaceCleanup, PassportSpaceCleanupModule } from './passport-space-cleanup';

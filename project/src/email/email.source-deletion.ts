@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { asc, eq, inArray, or } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceCascade, SourceDeletion } from '../memory/index';
+import type {
+  OwnedSourceRef,
+  SpaceSourceRef,
+  SourceCascade,
+  SourceDeletion,
+} from '../memory/index';
 import { emailAttachment, emailMessage } from './persistence/tables';
 
 /**
@@ -56,6 +61,16 @@ export class EmailSourceDeletion implements SourceDeletion {
       .select({ sourceId: emailMessage.id, scope: emailMessage.scope })
       .from(emailMessage)
       .where(eq(emailMessage.ownerId, ownerId))
+      .orderBy(asc(emailMessage.id));
+  }
+
+  /** Space deletion's enumeration (docs/features/spaces.md section 5);
+   * attachments stay cascade members, exactly as in the owner listing. */
+  async listForSpace(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]> {
+    return db
+      .select({ sourceId: emailMessage.id, ownerId: emailMessage.ownerId })
+      .from(emailMessage)
+      .where(eq(emailMessage.spaceId, spaceId))
       .orderBy(asc(emailMessage.id));
   }
 

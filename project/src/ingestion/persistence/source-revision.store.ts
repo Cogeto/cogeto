@@ -77,7 +77,15 @@ export class SourceRevisionStore {
       const rows = await tx
         .select()
         .from(sourceRevision)
-        .where(and(eq(sourceRevision.id, revisionId), eq(sourceRevision.ownerId, principal.userId)))
+        .where(
+          and(
+            eq(sourceRevision.id, revisionId),
+            eq(sourceRevision.ownerId, principal.userId),
+            // A link reached by id from another space reads as not found,
+            // like every by-id read (docs/features/spaces.md).
+            eq(sourceRevision.spaceId, resolveSpaceId(principal)),
+          ),
+        )
         .for('update');
       const row = rows[0];
       if (!row)
@@ -101,6 +109,7 @@ export class SourceRevisionStore {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       return updated!;
     });
@@ -164,12 +173,16 @@ export class SourceRevisionStore {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
       return inserted[0]!;
     });
   }
 
-  /** The links touching one source, either side, newest first. Owner-only. */
+  /** The links touching one source, either side, newest first. Owner-only,
+   * and space-scoped like every other read of a space-carrying table: the
+   * endpoint ref is already space-gated by the caller, so this condition is
+   * the row's own seal, not the primary gate. */
   async forSource(principal: Principal, ref: RevisionRef): Promise<SourceRevisionRow[]> {
     return this.db
       .select()
@@ -177,6 +190,7 @@ export class SourceRevisionStore {
       .where(
         and(
           eq(sourceRevision.ownerId, principal.userId),
+          eq(sourceRevision.spaceId, resolveSpaceId(principal)),
           or(
             and(
               eq(sourceRevision.successorType, ref.sourceType),

@@ -25,3 +25,5 @@ export { ResearchSourcePortsModule } from './research-source-ports.module';
 
 // The source catalog's web listing (V2.2 item 5.2).
 export { listWebSources, hydrateWebSources, countWebSources } from './source-listing';
+// Space deletion's research leg (docs/features/spaces.md section 5).
+export { ResearchSpaceCleanup, ResearchSpaceCleanupModule } from './research-space-cleanup';

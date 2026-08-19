@@ -94,6 +94,11 @@ export class ConfluenceController {
     const row = await this.connectors.create({
       ownerId: request.principal.userId,
       orgId: request.principal.orgId,
+      // The caller's space (docs/features/spaces.md): a connector belongs to
+      // exactly one space, and every page it materializes lands there. This
+      // path used to omit it, so a connector made from another space fell to
+      // the default space and its own reconnect read as not found.
+      spaceId: resolveSpaceId(request.principal),
       kind: CONFLUENCE_KIND,
       name: parsed.name,
     });
@@ -102,6 +107,7 @@ export class ConfluenceController {
         ownerId: row.ownerId,
         orgId: row.orgId,
         connectorId: row.id,
+        spaceId: row.spaceId,
         material: {
           accessToken: parsed.apiToken,
           extras: { siteUrl: validated.siteUrl, email: parsed.email },
@@ -149,6 +155,7 @@ export class ConfluenceController {
         ownerId: row.ownerId,
         orgId: row.orgId,
         connectorId: row.id,
+        spaceId: row.spaceId,
         material: {
           accessToken: parsed.apiToken,
           extras: { siteUrl: validated.siteUrl, email: parsed.email },
