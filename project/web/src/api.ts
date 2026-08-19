@@ -28,7 +28,9 @@ import type {
   AssignTierRequest,
   UserAnswerModelDto,
   UpdateUserSettingsRequest,
+  AddEmailAliasRequest,
   AddEmailAllowlistEntryRequest,
+  EmailAliasDto,
   AddExtractionGateRuleRequest,
   EmailAllowlistEntryDto,
   EmailCaptureConfigDto,
@@ -657,6 +659,20 @@ export const addEmailAllowlistEntry = (
 ): Promise<EmailAllowlistEntryDto> => apiPost('/api/email/allowlist', request, session);
 export async function removeEmailAllowlistEntry(session: Session, id: string): Promise<void> {
   const path = `/api/email/allowlist/${encodeURIComponent(id)}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: authHeaders(session),
+  });
+  if (!response.ok) throw await toError(path, response);
+}
+// Alias routing rules (docs/features/spaces.md section 6c): mail to the
+// plus-tagged inbound address lands in the alias rule's space.
+export const addEmailAlias = (
+  session: Session,
+  request: AddEmailAliasRequest,
+): Promise<EmailAliasDto> => apiPost('/api/email/aliases', request, session);
+export async function removeEmailAlias(session: Session, id: string): Promise<void> {
+  const path = `/api/email/aliases/${encodeURIComponent(id)}`;
   const response = await fetch(path, {
     method: 'DELETE',
     headers: authHeaders(session),

@@ -548,6 +548,42 @@ completed run leaves a `user.erased` entry in **Audit** carrying `erased`,
 
 Re-running is always safe: it erases what is left and keeps what it kept.
 
+### 4e. Machine callers and spaces (API integrations)
+
+A **machine caller** is any client authenticating with a token that carries no
+human profile: a Zitadel **service user's** PAT or client-credentials token.
+Since V3 spaces session 4 (docs/features/spaces.md section 6c), a machine
+caller is **refused** by the API until an administrator binds its user id to
+exactly one space; there is no ambient default for machines, because a machine
+has no "current space" and a silent default is how content ends up in the
+wrong partition.
+
+To integrate a machine client:
+
+1. Create a **service user** in Zitadel and mint its credential there. Human
+   accounts keep working unchanged; only tokens without an email claim are
+   treated as machines.
+2. **Bind it to a space** (administrator token, any space id from
+   `GET /api/spaces`):
+
+   ```sh
+   curl -s -X PUT "https://<domain>/api/spaces/machine-bindings/<service-user-id>" \
+     -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"spaceId":"<space-id>"}'
+   ```
+
+   `GET /api/spaces/machine-bindings` lists bindings; `DELETE` removes one.
+3. The machine then acts **in that space only**, under the ordinary owner and
+   scope gates. An `x-cogeto-space` header may restate the binding; a header
+   naming any other space is refused, never honored. Deleting the bound space
+   removes the binding (the machine is refused again until rebound), and every
+   bind and unbind is audited.
+
+The other two machine-facing doors carry their own space bindings: inbound
+mail routes by alias and sender rules
+([email-inbound.md](operations/email-inbound.md)), and connector webhooks act
+in their connector's space.
+
 ---
 
 ## 5. Backups and restore

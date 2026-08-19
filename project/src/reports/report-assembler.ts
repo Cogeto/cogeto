@@ -32,6 +32,8 @@ import { listWebSources, hydrateWebSources } from '../research/index';
 import { hydrateChatSources } from '../chat/index';
 import { ImportService } from '../imports/index';
 import type { FindingsReportRow } from './persistence/tables';
+import { REPORT_SPACE_NAMES } from './space-name.port';
+import type { ReportSpaceNameResolver } from './space-name.port';
 import {
   rateString,
   sanitizeReportText,
@@ -101,6 +103,12 @@ export class ReportAssembler {
      * the name the report states. Optional so a bare harness assembles the
      * four pre-existing scope kinds unchanged. */
     @Optional() private readonly projects?: ProjectService,
+    /** The space's display name for the scope block (schema 1.2,
+     * docs/features/spaces.md section 6c). Optional: a harness without the
+     * binding states `space_name: null`; the id is the durable identity. */
+    @Optional()
+    @Inject(REPORT_SPACE_NAMES)
+    private readonly spaceNames?: ReportSpaceNameResolver,
   ) {}
 
   async assemble(
@@ -197,6 +205,13 @@ export class ReportAssembler {
       scope.kind === 'project'
         ? ((await this.projects?.get(principal, scope.projectId).catch(() => null))?.name ?? null)
         : null;
+    // The SPACE the run enumerated goes on the scope block (schema 1.2,
+    // docs/features/spaces.md section 6c): a report forwarded to an auditor
+    // must say which sealed partition it describes. The user's own words,
+    // sanitized like every other text that reaches the canonical bytes.
+    const spaceId = resolveSpaceId(principal);
+    const rawSpaceName = (await this.spaceNames?.nameOf(spaceId)) ?? null;
+    const spaceName = rawSpaceName === null ? null : sanitizeReportText(rawSpaceName);
     await onProgress(0, sources.length);
 
     // ── Per-source grouped reads (one query per family per batch) ──────────
@@ -546,6 +561,8 @@ export class ReportAssembler {
                 : null,
           project_id: scope.kind === 'project' ? scope.projectId : null,
           project_name: projectName,
+          space_id: spaceId,
+          space_name: spaceName,
           from: scope.kind === 'date_range' ? scope.from : null,
           to: scope.kind === 'date_range' ? scope.to : null,
         },

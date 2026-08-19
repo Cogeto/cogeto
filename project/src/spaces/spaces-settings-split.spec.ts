@@ -29,12 +29,17 @@ describe('the settings split is structural', () => {
     expect(service).toContain('async defaultScopeFor(userId: string, spaceId: string)');
   });
 
-  it('default_scope_callers_name_their_space: the conversation row and the intake default', () => {
+  it('default_scope_callers_name_their_space: the conversation row and the routed intake space', () => {
     expect(read('chat/chat.source-reader.ts')).toContain(
       'defaultScopeFor(row.ownerId, rows[0]!.spaceId)',
     );
+    // Session 4 (docs/features/spaces.md section 6c): intake resolves the
+    // recipient's ROUTED space before anything is stored, and that space's
+    // own capture defaults govern the copy. The pre-routing pin
+    // (`DEFAULT_SPACE_ID` hardcoded) is exactly what the email session was
+    // mandated to replace.
     expect(read('email/email-intake.service.ts')).toContain(
-      'defaultScopeFor(recipient.userId, DEFAULT_SPACE_ID)',
+      'defaultScopeFor(recipient.userId, spaceId)',
     );
   });
 

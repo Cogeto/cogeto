@@ -35,3 +35,16 @@ export interface SpaceDeletionPlanDto {
   totalSources: number;
   containers: { artifact: string; count: number }[];
 }
+
+/**
+ * A machine caller's per-credential space binding (docs/features/spaces.md
+ * section 6c): a machine principal (a token without a human profile) is
+ * refused unless an administrator has bound its user id to exactly one
+ * space. Managed at PUT/DELETE /api/spaces/machine-bindings/:userId.
+ */
+export interface MachineSpaceBindingDto {
+  userId: string;
+  spaceId: string;
+  createdAt: string;
+  updatedAt: string;
+}

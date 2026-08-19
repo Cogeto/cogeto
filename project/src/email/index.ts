@@ -24,6 +24,8 @@ export { MAIL_OPTIONS } from './mail-options';
 // families reuse on retained markup.
 export { sanitizeHtml } from './email-parse';
 export { EmailSourcePortsModule } from './email-source-ports.module';
+// Space deletion's email-routing leg (docs/features/spaces.md section 6c).
+export { EmailRoutingSpaceCleanup, EmailRoutingSpaceCleanupModule } from './email-space-cleanup';
 
 // The source catalog's email listing (V2.2 item 5.2).
 export { listEmailSources, hydrateEmailSources, countEmailSources } from './source-listing';

@@ -134,9 +134,26 @@ report contains that client's documents **structurally** rather than because
 the user remembered to filter. The scope is stated on the artifact as every
 scope is, listing what was examined.
 
-This changed the published artifact, so the format is now **1.1**, additive:
+This changed the published artifact, so the format became **1.1**, additive:
 the scope block gained `project_id` and `project_name`, and its `kind` gained
 `project`. Version 1.0 stays published at
 `docs/findings-report-schema/1.0/` and every 1.0 artifact keeps verifying,
 because the integrity block, the canonicalization and the signing procedure
 are untouched.
+
+## Spaces (V3 session 4): the report states its partition
+
+A findings run enumerates exactly ONE space, by construction since the spaces
+foundation (the run row stamps the requester's space and the worker's
+fabricated principal carries it into every gated read). Session 4
+(docs/features/spaces.md section 6c) made the artifact say so: the format is
+now **1.2**, additive, the scope block carrying `space_id` (required) and
+`space_name` (nullable, resolved through a port the spaces module satisfies),
+and the PDF stating the space on the cover and in the provenance table,
+because a report forwarded to an auditor must say which sealed partition it
+describes. The ledger's remaining cross-space reads were sealed in the same
+change: the delta baseline and the single-flight trigger dedupe match within
+one space (two spaces legitimately hold byte-identical corpus scope keys),
+and the by-id status and download reads carry the caller's space. Generated
+reports die with their space through the reports cleanup leg, artifact keys
+included.

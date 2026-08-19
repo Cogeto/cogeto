@@ -32,10 +32,12 @@ export const emailMessage = pgTable(
     ownerId: text('owner_id').notNull(),
     scope: scopeEnum('scope').notNull().default('private'),
     sensitive: boolean('sensitive').notNull().default(false),
-    // The space the message was routed into (docs/features/spaces.md,
-    // migration 0060). Inbound intake has no Principal, so this session every
-    // inbound message lands in the default space; per-rule space routing is
-    // the record's section 6, a later session.
+    // The space the message was routed into (docs/features/spaces.md
+    // section 6c, migration 0063): resolved BEFORE anything is stored, from
+    // the recipient's alias rule, else the matched sender rule's target,
+    // else the default space. Intake has no Principal, so the routing rules
+    // are the machine path's space binding; an alias without a rule is
+    // refused, never defaulted.
     spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     messageId: text('message_id'),
     inReplyTo: text('in_reply_to'),
@@ -109,12 +111,42 @@ export const emailAllowlist = pgTable(
     kind: emailAllowlistKindEnum('kind').notNull(),
     value: text('value').notNull(),
     note: text('note'),
+    // The space this sender's mail lands in (docs/features/spaces.md
+    // section 6c, migration 0063). A rule is owner-level configuration WITH
+    // a space target, never a per-space rule set: which space's rules govern
+    // an inbound message is exactly the unknown routing must resolve. The
+    // DEFAULT keeps every pre-routing rule landing where it always did; the
+    // email space cleanup leg removes rules whose target space is erased.
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('email_allowlist_owner_kind_value_idx').on(t.ownerId, t.kind, t.value)],
 );
 
 export type EmailAllowlistRow = typeof emailAllowlist.$inferSelect;
+
+/**
+ * Per-owner alias routing rules (docs/features/spaces.md section 6c,
+ * migration 0063): mail to the instance address plus-tagged with the alias
+ * (`capture+alias@instance`) lands in the named space. An alias the
+ * recipient has not defined is REFUSED, never defaulted: the sender named a
+ * partition explicitly, and landing that mail anywhere else is the
+ * misplacement the spaces feature exists to prevent.
+ */
+export const emailAlias = pgTable(
+  'email_alias',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    alias: text('alias').notNull(),
+    spaceId: uuid('space_id').notNull(),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('email_alias_owner_alias_idx').on(t.ownerId, t.alias)],
+);
+
+export type EmailAliasRow = typeof emailAlias.$inferSelect;
 
 /**
  * Metadata-only log of refused mail (ruling 7): sender, time, reason — never a

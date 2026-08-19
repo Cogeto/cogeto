@@ -83,14 +83,14 @@ export class PassportService {
   }
 
   async get(principal: Principal, id: string): Promise<PassportExportDto> {
-    const row = await this.store.getForOwner(principal.userId, id);
+    const row = await this.store.getForOwner(principal.userId, id, resolveSpaceId(principal));
     if (!row) throw userError.notFound('passport.notFound', 'export {{id}} not found', { id });
     return toExportDto(row);
   }
 
   /** A short-lived signed download URL — owner-gated, only for a ready export. */
   async download(principal: Principal, id: string): Promise<PassportDownloadDto> {
-    const row = await this.store.getForOwner(principal.userId, id);
+    const row = await this.store.getForOwner(principal.userId, id, resolveSpaceId(principal));
     if (!row) throw userError.notFound('passport.notFound', 'export {{id}} not found', { id });
     // SEC-8: an export expired by a source deletion must never mint another
     // URL. Its bytes are erased by the same receipt that erased the source, so

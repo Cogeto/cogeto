@@ -45,6 +45,11 @@ const NOT_A_UUID: Record<string, string[]> = {
   // uniform 403 for every refusal, so it must not use a pipe: a pipe's 400
   // would reintroduce the existence oracle the uniform refusal removed.
   'connectors/webhook.controller.ts': ['connectorId'],
+  // A machine binding's subject (V3 spaces session 4): a Zitadel SERVICE
+  // USER id, the same not-ours-to-shape identifier as owner erasure's below,
+  // and every owner column in the schema is `text` for the same reason. The
+  // route trims and stores; an unknown id simply never authenticates.
+  'spaces/spaces.controller.ts': ['userId'],
   // Owner erasure's subject (issue #632). This is a Zitadel SUBJECT ID, which
   // is not a uuid and is not ours to shape: every owner column in the schema
   // is `text` for that reason. Demanding a uuid here would refuse the real

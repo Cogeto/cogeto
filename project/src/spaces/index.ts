@@ -5,6 +5,9 @@
 export { SpacesModule } from './spaces.module';
 export { SpaceService } from './space.service';
 export { SpaceNameModule, SpaceNameSource } from './space-name.adapter';
+// Machine callers' space bindings (docs/features/spaces.md section 6c): the
+// identity seam's MachineSpaceBindings port, implemented here.
+export { MachineBindingModule, MachineBindingService } from './machine-binding.service';
 export {
   SpaceErasureService,
   SPACE_ERASE_JOB_TYPE,

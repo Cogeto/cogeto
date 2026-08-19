@@ -37,6 +37,7 @@
   "cover": {
     "generatedAt": "Généré le",
     "reportId": "Identifiant du rapport",
+    "space": "Espace",
     "configuration": "Configuration des modèles",
     "dateRange": "Matière examinée",
     "instanceKey": "Clé de l'instance",
@@ -56,6 +57,7 @@
     "intro": "Ce rapport a été produit automatiquement à partir des documents énumérés dans la section sur le périmètre. Chaque affirmation qu'il contient renvoie à un enregistrement conservé et vérifiable : chaque passage cité nomme son document et son emplacement, et les chiffres sont calculés à partir des mêmes enregistrements que les passages cités.",
     "reportId": "Identifiant du rapport",
     "generatedAt": "Généré le",
+    "space": "Espace",
     "scope": "Périmètre",
     "previousRun": "Comparé à",
     "previousRunValue": "Rapport {{id}} du {{date}}",

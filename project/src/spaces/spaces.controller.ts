@@ -12,16 +12,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import type { SpaceDto, SpaceListDto } from '@cogeto/shared';
-import { parseOrBadRequest } from '../infrastructure/index';
+import type { MachineSpaceBindingDto, SpaceDto, SpaceListDto } from '@cogeto/shared';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 import { AdminGuard, BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { SpaceService } from './space.service';
 import { SpaceErasureService } from './space-erasure.service';
 import type { SpaceDeletionPlan } from './space-erasure.service';
+import { MachineBindingService } from './machine-binding.service';
 
 const nameSchema = z.object({ name: z.string().min(1).max(120) });
 const currentSchema = z.object({ spaceId: z.uuid() });
+const bindSchema = z.object({ spaceId: z.uuid() });
 
 /**
  * The spaces API (docs/features/spaces.md). The switcher (session 3) made
@@ -35,7 +37,41 @@ export class SpacesController {
   constructor(
     private readonly spaces: SpaceService,
     private readonly erasure: SpaceErasureService,
+    private readonly machineBindings: MachineBindingService,
   ) {}
+
+  /**
+   * Machine callers' per-credential space bindings (docs/features/spaces.md
+   * section 6c): administrator-only, because binding a credential to a
+   * partition is an instance-shaping act. The routes are declared before the
+   * `:id` family so 'machine-bindings' can never be read as a space id.
+   */
+  @Get('machine-bindings')
+  @UseGuards(AdminGuard)
+  async listMachineBindings(): Promise<{ bindings: MachineSpaceBindingDto[] }> {
+    return { bindings: await this.machineBindings.list() };
+  }
+
+  @Put('machine-bindings/:userId')
+  @UseGuards(AdminGuard)
+  async bindMachine(
+    @Req() request: AuthenticatedRequest,
+    @Param('userId') userId: string,
+    @Body() body: unknown,
+  ): Promise<MachineSpaceBindingDto> {
+    const parsed = parseOrBadRequest(bindSchema, body);
+    return this.machineBindings.bind(request.principal, userId.trim(), parsed.spaceId);
+  }
+
+  @Delete('machine-bindings/:userId')
+  @UseGuards(AdminGuard)
+  async unbindMachine(
+    @Req() request: AuthenticatedRequest,
+    @Param('userId') userId: string,
+  ): Promise<void> {
+    const removed = await this.machineBindings.unbind(request.principal, userId.trim());
+    if (!removed) throw userError.notFound('spaces.bindingNotFound', 'no binding for that user');
+  }
 
   @Get()
   async list(@Req() request: AuthenticatedRequest): Promise<SpaceListDto> {

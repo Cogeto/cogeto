@@ -61,12 +61,25 @@ export class PassportExportStore {
     return rows[0] ?? null;
   }
 
-  /** Owner-gated read for the status/download endpoints. */
-  async getForOwner(userId: string, id: string): Promise<PassportExportRow | null> {
+  /** Owner-gated read for the status/download endpoints, sealed to the
+   * caller's space (docs/features/spaces.md section 6c): an export in
+   * another space reads as absent, like every other by-id read. Optional
+   * only for legacy harnesses; the service always passes it. */
+  async getForOwner(
+    userId: string,
+    id: string,
+    spaceId?: string,
+  ): Promise<PassportExportRow | null> {
     const rows = await this.db
       .select()
       .from(passportExport)
-      .where(and(eq(passportExport.id, id), eq(passportExport.userId, userId)))
+      .where(
+        and(
+          eq(passportExport.id, id),
+          eq(passportExport.userId, userId),
+          ...(spaceId ? [eq(passportExport.spaceId, spaceId)] : []),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }

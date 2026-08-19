@@ -13,6 +13,10 @@ export interface EmailAllowlistEntryDto {
   /** Normalized: lower-cased; domains are bare (no leading '@'). */
   value: string;
   note: string | null;
+  /** The space this sender's mail lands in (docs/features/spaces.md
+   * section 6c). Every rule names one; the default space preserves the
+   * pre-routing behaviour. */
+  spaceId: string;
   createdAt: string;
 }
 
@@ -20,6 +24,30 @@ export interface EmailAllowlistEntryDto {
 export interface AddEmailAllowlistEntryRequest {
   kind: EmailAllowlistKind;
   value: string;
+  note?: string | null;
+  /** Target space for this sender's mail; absent means the default space. */
+  spaceId?: string;
+}
+
+/**
+ * A per-owner alias routing rule (docs/features/spaces.md section 6c): mail
+ * to the instance address plus-tagged with the alias
+ * (`capture+alias@instance`) lands in the named space. An alias the
+ * recipient has not defined is refused, never defaulted.
+ */
+export interface EmailAliasDto {
+  id: string;
+  /** Normalized: lower-cased tag, letters, digits, dot, dash, underscore. */
+  alias: string;
+  spaceId: string;
+  note: string | null;
+  createdAt: string;
+}
+
+/** Request body for adding an alias routing rule. */
+export interface AddEmailAliasRequest {
+  alias: string;
+  spaceId: string;
   note?: string | null;
 }
 
@@ -45,6 +73,8 @@ export interface EmailCaptureConfigDto {
    * Null when the identity token carries no email. */
   selfAddress: string | null;
   allowlist: EmailAllowlistEntryDto[];
+  /** The caller's alias routing rules (docs/features/spaces.md section 6c). */
+  aliases: EmailAliasDto[];
   recentRefusals: EmailRefusalDto[];
 }
 

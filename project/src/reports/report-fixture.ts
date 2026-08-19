@@ -44,6 +44,8 @@ export function buildReportFixturePayload(): ReportPayload {
         refs: null,
         project_id: null,
         project_name: null,
+        space_id: '00000000-0000-4000-8000-000000000001',
+        space_name: 'Default',
         from: null,
         to: null,
       },

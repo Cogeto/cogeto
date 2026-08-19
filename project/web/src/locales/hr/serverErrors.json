@@ -48,10 +48,14 @@
   "daily_research_limit": "dosegnuto je dnevno ograničenje pretraga za istraživanje ({{max}}), pokušajte ponovno sutra",
   "daily_upload_limit": "dosegnuto je dnevno ograničenje učitavanja ({{max}}), pokušajte ponovno sutra",
   "email": {
+    "aliasExists": "alias s tim imenom već postoji; uklonite ga da biste promijenili kamo usmjerava",
+    "aliasNotFound": "alias nije pronađen",
     "allowlistEntryNotFound": "unos na popisu dopuštenih nije pronađen",
     "invalidAddress": "nije valjana e-adresa",
+    "invalidAlias": "nije valjan alias (slova, znamenke, točka, crtica, donja crta, najviše 64 znaka)",
     "invalidDomain": "nije valjana domena (npr. adriatic-foods.hr)",
-    "notFound": "e-poruka {{id}} nije pronađena"
+    "notFound": "e-poruka {{id}} nije pronađena",
+    "unknownSpace": "Taj prostor više ne postoji"
   },
   "erasure": {
     "confirmationMismatch": "Potvrda mora ponoviti identifikator korisnika koji se briše",
@@ -199,6 +203,7 @@
     "notFound": "za ovaj izvor nema konteksta"
   },
   "spaces": {
+    "bindingNotFound": "nema vezivanja za tog korisnika",
     "defaultUndeletable": "Zadani prostor ne može se izbrisati",
     "nameRequired": "Prostor treba naziv",
     "nameTooLong": "Naziv prostora može imati najviše {{max}} znakova",

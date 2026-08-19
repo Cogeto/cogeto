@@ -18,7 +18,7 @@ import { EmailAllowlistService } from './email-allowlist.service';
 import { UserSettingsService } from '../settings/index';
 import { sniffContentType } from '../files/index';
 import { summarizeCalendarInvites } from './email-calendar';
-import { matchSender, normalizeAddress, sanitizeHtml } from './email-parse';
+import { matchSender, normalizeAddress, sanitizeHtml, splitRecipientAlias } from './email-parse';
 import { emailAttachment, emailMessage } from './persistence/tables';
 import { MAIL_OPTIONS } from './mail-options';
 import type { MailOptions } from './mail-options';
@@ -146,12 +146,17 @@ export class EmailIntakeService {
     const matchedSender = matchSender(envelope.mailFrom, headerFrom);
     const senderAuthenticated = spf === 'pass';
 
-    // (1) Recipient validation — only the instance's configured address.
+    // (1) Recipient validation — the instance's configured address, bare or
+    //     plus-tagged with an alias (docs/features/spaces.md section 6c).
+    //     Unconfigured instance rejects all recipients (closed by default,
+    //     ruling 1): splitRecipientAlias returns null for a null address.
     const rcpt = normalizeAddress(envelope.rcptTo) ?? firstAddress(parsed.to);
-    if (!this.recipientAccepted(rcpt)) {
+    const recipientSplit = splitRecipientAlias(rcpt, this.options.inboundAddress);
+    if (!recipientSplit) {
       await this.refuse(envelope, matchedSender, 'wrong_recipient');
       return { accepted: false, status: 'bad_recipient', reason: 'recipient not accepted here' };
     }
+    const alias = recipientSplit.alias;
 
     // (2) Sender-routed recipients — refuse rather than guess.
     //     The self-route (registered user → self) requires an AUTHENTICATED
@@ -177,26 +182,52 @@ export class EmailIntakeService {
       return { accepted: false, status: 'too_large', reason: 'attachments exceed the size cap' };
     }
 
-    // (4) One retained copy per recipient, each under that user's default
-    //     capture scope. A mid-loop failure aborts with copies already stored
-    //     Haraka receives a transient 451 and retries — thread-aware dedup and
+    // (4) One retained copy per recipient, each ROUTED to a space before
+    //     anything is stored (docs/features/spaces.md section 6c): the
+    //     recipient's alias rule wins (the sender named the partition
+    //     explicitly), else the matched sender rule's target, else the
+    //     default space. An alias the recipient has not defined REFUSES that
+    //     recipient's copy, recorded and owner-attributed, never a fallback:
+    //     a message must never land in a space by accident. Recipients are
+    //     independent; the message is accepted when at least one copy stored.
+    //     A mid-loop failure aborts with copies already stored — Haraka
+    //     receives a transient 451 and retries; thread-aware dedup and
     //     idempotent pipeline jobs absorb the re-delivery.
     const emailIds: string[] = [];
+    let aliasRefusals = 0;
     for (const recipient of recipients) {
-      // The DEFAULT space's default scope, explicitly: inbound mail lands in
-      // the default space this session (the store() comment below), so the
-      // default that governs it is that space's.
-      const scope = await this.settings.defaultScopeFor(recipient.userId, DEFAULT_SPACE_ID);
+      let spaceId: string;
+      if (alias !== null) {
+        const routed = await this.allowlist.aliasRouteFor(recipient.userId, alias);
+        if (!routed) {
+          await this.refuse(envelope, matchedSender, 'alias_not_recognized', recipient.userId);
+          aliasRefusals += 1;
+          continue;
+        }
+        spaceId = routed;
+      } else {
+        spaceId = recipient.spaceId ?? DEFAULT_SPACE_ID;
+      }
+      // The ROUTED space's own capture defaults govern this copy.
+      const scope = await this.settings.defaultScopeFor(recipient.userId, spaceId);
       const result = await this.store(
         raw,
         parsed,
         recipient,
         scope,
+        spaceId,
         matchedSender ?? headerFrom ?? '',
         rcpt ?? '',
         recipient.selfRouted,
       );
       emailIds.push(result);
+    }
+    if (emailIds.length === 0 && aliasRefusals > 0) {
+      return {
+        accepted: false,
+        status: 'refused',
+        reason: 'no recipient has defined this alias',
+      };
     }
     return { accepted: true, emailIds };
   }
@@ -211,7 +242,9 @@ export class EmailIntakeService {
   private async resolveRecipients(
     matchedSender: string | null,
     senderAuthenticated: boolean,
-  ): Promise<Array<{ userId: string; orgId: string; selfRouted: boolean }>> {
+  ): Promise<
+    Array<{ userId: string; orgId: string; selfRouted: boolean; spaceId: string | null }>
+  > {
     if (!matchedSender) return [];
     const adminEmail = normalizeAddress(this.options.adminUserEmail);
     if (adminEmail && matchedSender === adminEmail) return [];
@@ -222,18 +255,27 @@ export class EmailIntakeService {
     // authentication is not required (a closed test instance), the legacy
     // behaviour is kept. An unauthenticated self-claim falls through to the
     // allowlist rule (which is an explicit per-user opt-in), not a hard refuse.
+    // Self-routed mail carries no sender rule, so its un-aliased space is the
+    // default space (spaceId null → the caller resolves the default).
     const self = await this.directory.userByEmail(matchedSender);
     if (self && (senderAuthenticated || !this.options.requireAuthenticatedSender)) {
       // Self-route = the message was written/sent BY the capture user — the
       // structural authorship fact the derivation rule needs.
-      return [{ userId: self.userId, orgId: self.orgId, selfRouted: true }];
+      return [{ userId: self.userId, orgId: self.orgId, selfRouted: true, spaceId: null }];
     }
 
-    const ownerIds = await this.allowlist.ownersMatching(matchedSender);
-    const users = await this.directory.usersByIds(ownerIds);
+    // Sender rules carry their target space (docs/features/spaces.md 6c).
+    const routes = await this.allowlist.routesMatching(matchedSender);
+    const spaceByOwner = new Map(routes.map((route) => [route.ownerId, route.spaceId]));
+    const users = await this.directory.usersByIds(routes.map((route) => route.ownerId));
     return users
       .filter((u) => !adminEmail || (u.email ?? '').toLowerCase() !== adminEmail)
-      .map((u) => ({ userId: u.userId, orgId: u.orgId, selfRouted: false }));
+      .map((u) => ({
+        userId: u.userId,
+        orgId: u.orgId,
+        selfRouted: false,
+        spaceId: spaceByOwner.get(u.userId) ?? null,
+      }));
   }
 
   /** Store one recipient's copy + enqueue in the safe order (object-first,
@@ -243,6 +285,7 @@ export class EmailIntakeService {
     parsed: ParsedMail,
     owner: { userId: string; orgId: string },
     scope: MemoryScope,
+    spaceId: string,
     fromAddr: string,
     toAddr: string,
     authoredByOwner: boolean,
@@ -309,10 +352,13 @@ export class EmailIntakeService {
           ownerId: owner.userId,
           scope,
           sensitive,
-          // spaceId deliberately omitted: intake has no Principal, so inbound
-          // mail lands in the DEFAULT space this session (the schema-level
-          // default). Per-alias and per-sender space routing is
-          // docs/features/spaces.md section 6, a later session.
+          // The space this copy was ROUTED into, resolved before this
+          // transaction from the recipient's alias rule, the matched sender
+          // rule's target, or the default space (docs/features/spaces.md
+          // section 6c). Never omitted: the routing rules are the intake
+          // path's space binding, and the FK is the loud backstop for a
+          // space erased mid-flight.
+          spaceId,
           messageId: parsed.messageId ?? null,
           inReplyTo: parsed.inReplyTo ?? null,
           references: normalizeReferences(parsed.references),
@@ -348,6 +394,9 @@ export class EmailIntakeService {
               ownerId: owner.userId,
               scope,
               sensitive,
+              // The attachment source lands in the SAME routed space as the
+              // message it arrived on, in the same transaction.
+              spaceId,
               checksum: createHash('sha256').update(plan.content).digest('hex'),
               sizeBytes: plan.size,
             });
@@ -401,26 +450,23 @@ export class EmailIntakeService {
     return emailId;
   }
 
-  private recipientAccepted(rcpt: string | null): boolean {
-    const configured = this.options.inboundAddress;
-    // Unconfigured instance rejects all recipients (closed by default, ruling 1).
-    if (!configured) return false;
-    return rcpt !== null && rcpt === normalizeAddress(configured);
-  }
-
   private async refuse(
     envelope: MailEnvelope,
     matchedSender: string | null,
     reason: string,
+    ownerId: string | null = null,
   ): Promise<void> {
     // Metadata only — never a body (ruling 7). Refusals carry no owner under
     // sender routing (nobody matched); a null owner makes the
     // refusal visible to every user's "Recently refused" so any of them can
-    // claim the sender. Best-effort; a logging failure must not turn a clean
-    // refusal into a 500.
+    // claim the sender. A ROUTING refusal (an alias the recipient has not
+    // defined) is owner-attributed: it names the one recipient whose rule
+    // was missing, so the record is legible where it can be acted on.
+    // Best-effort; a logging failure must not turn a clean refusal into a
+    // 500.
     try {
       await this.allowlist.recordRefusal(this.db, {
-        ownerId: null,
+        ownerId,
         fromAddr: matchedSender ?? normalizeAddress(envelope.mailFrom),
         toAddr: normalizeAddress(envelope.rcptTo),
         reason,

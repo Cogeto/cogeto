@@ -1,6 +1,7 @@
 {
   "heading": "Connections",
   "explainer": "External systems Cogeto reads from. A connection only ever reads; every synced page becomes an ordinary source you can inspect, audit and delete.",
+  "spaceNote": "A connection belongs to this space: it was created here, everything it ingests lands here, and it is not visible from any other space. Connecting the same site in another space is a separate, independent connection. The sign-in credential is stored once for the instance; what it ingests stays sealed per space.",
   "list": {
     "error": "We couldn't load your connections just now.",
     "empty": "Nothing is connected yet.",

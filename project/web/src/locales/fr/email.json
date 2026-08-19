@@ -28,7 +28,10 @@
     "domainPlaceholder": "adriatic-foods.hr",
     "note": "Note (facultative)",
     "notePlaceholder": "par ex. fournisseur",
-    "addFailed": "Ajout impossible. Vérifiez la valeur."
+    "addFailed": "Ajout impossible. Vérifiez la valeur.",
+    "spaceField": "Arrive dans l'espace",
+    "spaceTarget": "vers {{space}}",
+    "spaceTargetTitle": "L'espace où arrive le courrier de cet expéditeur"
   },
   "refusals": {
     "heading": "Refusés récemment",
@@ -41,7 +44,17 @@
     "no_owner": "aucun propriétaire de capture n’était configuré (ancien refus)",
     "wrong_recipient": "adressé à un autre destinataire",
     "message_too_large": "le message dépassait la taille maximale",
-    "attachments_too_large": "les pièces jointes dépassaient la taille maximale"
+    "attachments_too_large": "les pièces jointes dépassaient la taille maximale",
+    "alias_not_recognized": "adressé à un alias que vous n'avez pas défini"
   },
-  "spaceNote": "Les e-mails entrants sont pour l'instant capturés dans l'espace par défaut ; le routage d'une adresse vers un espace viendra plus tard."
+  "routingNote": "Chaque règle ci-dessous nomme l'espace où son courrier arrive. Un courrier sans règle correspondante arrive dans {{defaultSpace}}; un courrier envoyé à un alias que vous n'avez pas défini est refusé, jamais placé dans un espace au hasard.",
+  "aliases": {
+    "heading": "Alias d'adresse",
+    "explainer": "Donnez à un expéditeur une adresse avec suffixe plus, par exemple {{example}}, et son courrier arrive dans l'espace de cet alias, quel que soit l'expéditeur. Les alias sont les vôtres; les autres utilisateurs gèrent les leurs.",
+    "exampleAlias": "clientx",
+    "aliasField": "Alias",
+    "aliasPlaceholder": "clientx",
+    "addFailed": "Impossible d'ajouter l'alias. Lettres, chiffres, point, tiret et tiret bas uniquement.",
+    "refuseNote": "Un courrier envoyé à un alias que vous n'avez pas défini est refusé et apparaît parmi les refus récents; rien n'est capturé pour vous tant que l'alias n'existe pas."
+  }
 }

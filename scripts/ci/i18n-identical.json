@@ -12,7 +12,7 @@
     ],
     "connections": ["connect.siteUrlPlaceholder", "detail.runs.kind.webhook"],
     "dashboard": ["stats.donut.segment", "stats.sources.familyTotal", "charts.seriesTotal"],
-    "email": ["allowlist.addressPlaceholder", "allowlist.domainPlaceholder"],
+    "email": ["aliases.aliasField", "allowlist.addressPlaceholder", "allowlist.domainPlaceholder"],
     "extraction": ["rules.class.pdf", "rules.class.csv", "rules.documentClass"],
     "forgotten": ["sourceLabel"],
     "memories": ["drawer.chainEntry"],
@@ -50,7 +50,7 @@
         "audit": ["filter.space"]
       },
       "server": {
-        "report": ["scope.import", "coverage.column.detail"]
+        "report": ["cover.space", "coverage.column.detail", "provenance.space", "scope.import"]
       }
     },
     "fr": {
@@ -106,7 +106,8 @@
         "system": ["health.check.migrations"],
         "audit": ["filter.action"],
         "users": ["column.sources", "sourceType.user_note", "sourceType.chat_conversation"],
-        "spaces": ["settings.sourceType.user_note"]
+        "spaces": ["settings.sourceType.user_note"],
+        "email": ["aliases.aliasPlaceholder", "aliases.exampleAlias"]
       },
       "server": {
         "report": [

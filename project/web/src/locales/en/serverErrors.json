@@ -47,10 +47,14 @@
   "daily_research_limit": "daily research search limit reached ({{max}}), try again tomorrow",
   "daily_upload_limit": "daily upload limit reached ({{max}}), try again tomorrow",
   "email": {
+    "aliasExists": "an alias with this name already exists; remove it first to change where it routes",
+    "aliasNotFound": "alias not found",
     "allowlistEntryNotFound": "allowlist entry not found",
     "invalidAddress": "not a valid email address",
+    "invalidAlias": "not a valid alias (letters, digits, dot, dash, underscore, up to 64 characters)",
     "invalidDomain": "not a valid domain (e.g. adriatic-foods.hr)",
-    "notFound": "email {{id}} not found"
+    "notFound": "email {{id}} not found",
+    "unknownSpace": "that space no longer exists"
   },
   "erasure": {
     "confirmationMismatch": "the confirmation must repeat the user id being erased",
@@ -195,6 +199,7 @@
     "notFound": "no source context for this source"
   },
   "spaces": {
+    "bindingNotFound": "no binding for that user",
     "defaultUndeletable": "the default space cannot be deleted",
     "nameRequired": "a space needs a name",
     "nameTooLong": "a space name is at most {{max}} characters",

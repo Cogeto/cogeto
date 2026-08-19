@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DEFAULT_SPACE_ID, resolveSpaceId, sourceTypeDescriptor } from '@cogeto/shared';
 import type {
   AttentionFeedDto,
@@ -79,8 +79,8 @@ export class AttentionService {
       (await this.userContext.preferredLanguageFor(principal.userId).catch(() => 'en' as const)) ===
       'hr';
     const [lastSeenAt, dismissed] = await Promise.all([
-      this.lastSeenAt(principal.userId),
-      this.dismissedKeys(principal.userId),
+      this.lastSeenAt(principal.userId, resolveSpaceId(principal)),
+      this.dismissedKeys(principal.userId, resolveSpaceId(principal)),
     ]);
 
     const groups = await Promise.all([
@@ -213,10 +213,20 @@ export class AttentionService {
 
   async markSeen(principal: Principal): Promise<string> {
     const now = new Date();
+    // Per (user, space) since migration 0063 (docs/features/spaces.md
+    // section 6c): opening the dashboard in one space must not silence
+    // another space's unread indicator.
     await this.db
       .insert(attentionState)
-      .values({ ownerId: principal.userId, lastSeenAt: now })
-      .onConflictDoUpdate({ target: attentionState.ownerId, set: { lastSeenAt: now } });
+      .values({
+        ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
+        lastSeenAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [attentionState.ownerId, attentionState.spaceId],
+        set: { lastSeenAt: now },
+      });
     return now.toISOString();
   }
 
@@ -226,26 +236,29 @@ export class AttentionService {
     if (!key.startsWith('digest:')) {
       throw userError.badRequest('attention.notDismissible', 'only digest items can be dismissed');
     }
+    // The caller's space is the row's real filter (section 6c): a key naming
+    // another space's segment is stored under THIS space and can never match
+    // an item there, so a forged key suppresses nothing across the wall.
     await this.db
       .insert(attentionDismissal)
-      .values({ ownerId: principal.userId, itemKey: key })
+      .values({ ownerId: principal.userId, spaceId: resolveSpaceId(principal), itemKey: key })
       .onConflictDoNothing();
   }
 
-  private async lastSeenAt(ownerId: string): Promise<Date | null> {
+  private async lastSeenAt(ownerId: string, spaceId: string): Promise<Date | null> {
     const rows = await this.db
       .select({ lastSeenAt: attentionState.lastSeenAt })
       .from(attentionState)
-      .where(eq(attentionState.ownerId, ownerId))
+      .where(and(eq(attentionState.ownerId, ownerId), eq(attentionState.spaceId, spaceId)))
       .limit(1);
     return rows[0]?.lastSeenAt ?? null;
   }
 
-  private async dismissedKeys(ownerId: string): Promise<Set<string>> {
+  private async dismissedKeys(ownerId: string, spaceId: string): Promise<Set<string>> {
     const rows = await this.db
       .select({ itemKey: attentionDismissal.itemKey })
       .from(attentionDismissal)
-      .where(eq(attentionDismissal.ownerId, ownerId));
+      .where(and(eq(attentionDismissal.ownerId, ownerId), eq(attentionDismissal.spaceId, spaceId)));
     return new Set(rows.map((r) => r.itemKey));
   }
 

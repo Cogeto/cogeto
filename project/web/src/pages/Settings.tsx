@@ -7,6 +7,7 @@ import type { EmailAllowlistKind, MemoryScope } from '@cogeto/shared';
 import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import {
   addConnectorSubScope,
+  addEmailAlias,
   addEmailAllowlistEntry,
   addEntityAlias,
   addExtractionGateRule,
@@ -29,6 +30,7 @@ import {
   renameSpace,
   reconnectConfluence,
   removeConnector,
+  removeEmailAlias,
   removeEmailAllowlistEntry,
   removeEntityAlias,
   removeExtractionGateRule,
@@ -544,6 +546,7 @@ const REFUSAL_REASONS = [
   'wrong_recipient',
   'message_too_large',
   'attachments_too_large',
+  'alias_not_recognized',
 ];
 
 /** Only sender-identity refusals are fixable by allowlisting. */
@@ -560,17 +563,29 @@ function EmailCaptureSection({ session }: { session: Session }) {
   const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const config = useQuery({ queryKey: ['email-config'], queryFn: () => fetchEmailConfig(session) });
+  // The routing targets (docs/features/spaces.md section 6c): every rule
+  // names the space its mail lands in, chosen here, visibly.
+  const spaces = useQuery({ queryKey: ['spaces'], queryFn: () => fetchSpaces(session) });
+  const spaceNameById = new Map((spaces.data?.spaces ?? []).map((s) => [s.id, s.name]));
+  const boundSpace = currentSpaceId() ?? DEFAULT_SPACE_ID;
 
   const [kind, setKind] = useState<EmailAllowlistKind>('address');
   const [value, setValue] = useState('');
   const [note, setNote] = useState('');
+  const [targetSpace, setTargetSpace] = useState<string | null>(null);
+  const [aliasValue, setAliasValue] = useState('');
+  const [aliasSpace, setAliasSpace] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['email-config'] });
 
   const add = useMutation({
-    mutationFn: (entry: { kind: EmailAllowlistKind; value: string; note?: string | null }) =>
-      addEmailAllowlistEntry(session, entry),
+    mutationFn: (entry: {
+      kind: EmailAllowlistKind;
+      value: string;
+      note?: string | null;
+      spaceId?: string;
+    }) => addEmailAllowlistEntry(session, entry),
     onSuccess: async () => {
       setValue('');
       setNote('');
@@ -581,16 +596,44 @@ function EmailCaptureSection({ session }: { session: Session }) {
     mutationFn: (id: string) => removeEmailAllowlistEntry(session, id),
     onSuccess: invalidate,
   });
+  const addAlias = useMutation({
+    mutationFn: (request: { alias: string; spaceId: string }) => addEmailAlias(session, request),
+    onSuccess: async () => {
+      setAliasValue('');
+      await invalidate();
+    },
+  });
+  const removeAlias = useMutation({
+    mutationFn: (id: string) => removeEmailAlias(session, id),
+    onSuccess: invalidate,
+  });
 
   const submit = () => {
     const trimmed = value.trim();
-    if (trimmed) add.mutate({ kind, value: trimmed, note: note.trim() || null });
+    if (trimmed)
+      add.mutate({
+        kind,
+        value: trimmed,
+        note: note.trim() || null,
+        spaceId: targetSpace ?? boundSpace,
+      });
+  };
+  const submitAlias = () => {
+    const trimmed = aliasValue.trim();
+    if (trimmed) addAlias.mutate({ alias: trimmed, spaceId: aliasSpace ?? boundSpace });
   };
 
   const allowlist = config.data?.allowlist ?? [];
+  const aliases = config.data?.aliases ?? [];
   const refusals = config.data?.recentRefusals ?? [];
   // Senders already listed shouldn't be offered as one-click adds.
   const listed = new Set(allowlist.map((e) => e.value));
+  const spaceLabel = (id: string) => spaceNameById.get(id) ?? id;
+  const aliasAddressFor = (alias: string) => {
+    const inbound = config.data?.inboundAddress ?? '';
+    const at = inbound.indexOf('@');
+    return at > 0 ? `${inbound.slice(0, at)}+${alias}${inbound.slice(at)}` : alias;
+  };
 
   return (
     <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
@@ -599,12 +642,11 @@ function EmailCaptureSection({ session }: { session: Session }) {
         <p className="mt-1 text-xs text-slate-400">
           <Trans i18nKey="explainer" ns="email" components={{ b: <strong /> }} />
         </p>
-        {/* Honest interim (docs/features/spaces.md section 6): inbound mail
-            has no space header, so it lands in the DEFAULT space until
-            per-alias routing ships. Stated here rather than implied away,
-            because this page otherwise speaks for one space. */}
-        <p className="mt-1.5 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-          {t('spaceNote')}
+        {/* The routing rule, stated where it is configured
+            (docs/features/spaces.md section 6c): every rule names its target
+            space, and mail matching no rule lands in the default space. */}
+        <p className="mt-1.5 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          {t('routingNote', { defaultSpace: spaceLabel(DEFAULT_SPACE_ID) })}
         </p>
       </div>
 
@@ -705,7 +747,13 @@ function EmailCaptureSection({ session }: { session: Session }) {
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
                         {entry.kind}
                       </span>{' '}
-                      <span className="font-mono">{entry.value}</span>
+                      <span className="font-mono">{entry.value}</span>{' '}
+                      <span
+                        className="rounded bg-brand-teal/10 px-1.5 py-0.5 text-xs text-brand-teal-ink dark:text-brand-teal"
+                        title={t('allowlist.spaceTargetTitle')}
+                      >
+                        {t('allowlist.spaceTarget', { space: spaceLabel(entry.spaceId) })}
+                      </span>
                       {entry.note && (
                         <span className="block truncate text-xs text-slate-400">{entry.note}</span>
                       )}
@@ -762,6 +810,20 @@ function EmailCaptureSection({ session }: { session: Session }) {
                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
               />
             </label>
+            <label className="text-xs text-slate-500">
+              <span className="block">{t('allowlist.spaceField')}</span>
+              <select
+                value={targetSpace ?? boundSpace}
+                onChange={(e) => setTargetSpace(e.target.value)}
+                className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              >
+                {(spaces.data?.spaces ?? []).map((space) => (
+                  <option key={space.id} value={space.id}>
+                    {space.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               onClick={submit}
@@ -776,6 +838,80 @@ function EmailCaptureSection({ session }: { session: Session }) {
               {apiError(add.error, 'allowlist.addFailed')}
             </p>
           )}
+
+          <div>
+            <div className="text-sm font-medium text-slate-700">{t('aliases.heading')}</div>
+            <p className="text-xs text-slate-400">
+              {t('aliases.explainer', {
+                example: aliasAddressFor(t('aliases.exampleAlias')),
+              })}
+            </p>
+            {aliases.length > 0 && (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {aliases.map((alias) => (
+                  <li key={alias.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 text-sm text-slate-700">
+                      <span className="font-mono">{aliasAddressFor(alias.alias)}</span>{' '}
+                      <span className="rounded bg-brand-teal/10 px-1.5 py-0.5 text-xs text-brand-teal-ink dark:text-brand-teal">
+                        {t('allowlist.spaceTarget', { space: spaceLabel(alias.spaceId) })}
+                      </span>
+                      {alias.note && (
+                        <span className="block truncate text-xs text-slate-400">{alias.note}</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeAlias.mutate(alias.id)}
+                      disabled={removeAlias.isPending}
+                      className="shrink-0 text-xs text-red-700 dark:text-red-300 hover:underline"
+                    >
+                      {t('common:action.remove')}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="min-w-[12rem] flex-1 text-xs text-slate-500">
+                <span className="block">{t('aliases.aliasField')}</span>
+                <input
+                  value={aliasValue}
+                  onChange={(e) => setAliasValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submitAlias()}
+                  placeholder={t('aliases.aliasPlaceholder')}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                />
+              </label>
+              <label className="text-xs text-slate-500">
+                <span className="block">{t('allowlist.spaceField')}</span>
+                <select
+                  value={aliasSpace ?? boundSpace}
+                  onChange={(e) => setAliasSpace(e.target.value)}
+                  className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                >
+                  {(spaces.data?.spaces ?? []).map((space) => (
+                    <option key={space.id} value={space.id}>
+                      {space.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={submitAlias}
+                disabled={addAlias.isPending || !aliasValue.trim()}
+                className={btnPrimary}
+              >
+                {t('common:action.add')}
+              </button>
+            </div>
+            {addAlias.isError && (
+              <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+                {apiError(addAlias.error, 'aliases.addFailed')}
+              </p>
+            )}
+            <p className="mt-1.5 text-xs text-slate-400">{t('aliases.refuseNote')}</p>
+          </div>
 
           {refusals.length > 0 && (
             <div>
@@ -801,7 +937,8 @@ function EmailCaptureSection({ session }: { session: Session }) {
                         <button
                           type="button"
                           onClick={() =>
-                            r.fromAddr && add.mutate({ kind: 'address', value: r.fromAddr })
+                            r.fromAddr &&
+                            add.mutate({ kind: 'address', value: r.fromAddr, spaceId: boundSpace })
                           }
                           disabled={add.isPending}
                           className="shrink-0 text-xs text-brand-teal-ink dark:text-brand-teal hover:underline"
@@ -970,6 +1107,14 @@ function ConnectionsSection({ session }: { session: Session }) {
       <div>
         <SectionTitle>{t('heading')}</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">{t('explainer')}</p>
+        {/* A connector belongs to ONE space, chosen at connect time and
+            immutable (docs/features/spaces.md section 6c): everything it
+            ingests lands here, and this page lists this space's connectors
+            only. The credential is authorised once, instance-level; the
+            ingestion is sealed per space. */}
+        <p className="mt-1.5 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          {t('spaceNote')}
+        </p>
       </div>
 
       {connectors.isPending && <Skeleton className="h-16 w-full" />}

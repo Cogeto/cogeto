@@ -79,6 +79,41 @@ export function senderMatchesAllowlist(
   return false;
 }
 
+/** A normalized alias tag: lower-cased letters, digits, dot, dash,
+ * underscore, 1 to 64 characters. Null when the value is not a valid alias. */
+export function normalizeAlias(raw: string | null | undefined): string | null {
+  const value = (raw ?? '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]{1,64}$/.test(value)) return null;
+  return value;
+}
+
+/**
+ * Split a recipient into the instance's base inbound address and an optional
+ * plus-addressed alias tag (docs/features/spaces.md section 6c):
+ * `capture+clientx@instance` matches a configured `capture@instance` with
+ * alias `clientx`. Returns null when the recipient does not resolve to the
+ * configured address at all (the wrong-recipient refusal), and
+ * `{ alias: null }` for the bare address. A present-but-invalid tag (empty,
+ * or characters outside the alias charset) is NOT accepted as the bare
+ * address: the sender addressed something specific and we could not read it.
+ */
+export function splitRecipientAlias(
+  rcpt: string | null,
+  configured: string | null | undefined,
+): { alias: string | null } | null {
+  const recipient = normalizeAddress(rcpt);
+  const inbound = normalizeAddress(configured);
+  if (!recipient || !inbound) return null;
+  if (recipient === inbound) return { alias: null };
+  const at = inbound.indexOf('@');
+  const local = inbound.slice(0, at);
+  const domain = inbound.slice(at);
+  if (!recipient.startsWith(`${local}+`) || !recipient.endsWith(domain)) return null;
+  const tag = recipient.slice(local.length + 1, recipient.length - domain.length);
+  const alias = normalizeAlias(tag);
+  return alias ? { alias } : null;
+}
+
 /**
  * The sender used for allowlist matching (ruling 2a): the verified
  * envelope sender (SMTP MAIL FROM) when present, else the header From.

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
+import { REPORT_SPACE_NAMES } from './space-name.port';
+import type { ReportSpaceNameResolver } from './space-name.port';
 import { UserContextModule } from '../infrastructure/index';
 import { SuppressedFactLog, SourceContextStore, SourceRevisionStore } from '../ingestion/index';
 import { FileReadReportStore } from '../files/index';
@@ -46,7 +48,13 @@ export class ReportsModule {
 
   /** Worker slice: generation, signing, retention. */
   static forWorker(
-    options: ReportOptions & { imports?: ModuleMetadata['imports'] },
+    options: ReportOptions & {
+      imports?: ModuleMetadata['imports'];
+      /** The space-name resolver for the scope block (schema 1.2, section
+       * 6c): the spaces module implements it, the root binds it here (the
+       * passport's spaceNames precedent). Absent → `space_name: null`. */
+      spaceNames?: Type<ReportSpaceNameResolver>;
+    },
   ): DynamicModule {
     return {
       module: ReportsModule,
@@ -60,6 +68,9 @@ export class ReportsModule {
         SourceContextStore,
         SourceRevisionStore,
         FileReadReportStore,
+        ...(options.spaceNames
+          ? [{ provide: REPORT_SPACE_NAMES, useExisting: options.spaceNames }]
+          : []),
       ],
       exports: [ReportExportExecutor, ReportStore],
     };

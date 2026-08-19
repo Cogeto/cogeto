@@ -1,6 +1,7 @@
 {
   "heading": "Veze",
   "explainer": "Vanjski sustavi iz kojih Cogeto čita. Veza uvijek samo čita; svaka sinkronizirana stranica postaje običan izvor koji možete pregledati, revidirati i izbrisati.",
+  "spaceNote": "Veza pripada ovom prostoru: ovdje je stvorena, sve što unese slijeće ovdje i nije vidljiva iz drugih prostora. Spajanje istog izvora u drugom prostoru zasebna je, neovisna veza. Vjerodajnica za prijavu pohranjuje se jednom za instancu; ono što unese ostaje zapečaćeno po prostoru.",
   "list": {
     "error": "Trenutačno nismo mogli učitati vaše veze.",
     "empty": "Još ništa nije povezano.",

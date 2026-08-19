@@ -70,8 +70,12 @@ export class ReportExportExecutor {
     const principal = ownerPrincipal(run.userId, run.orgId, run.spaceId);
 
     await this.store.reportProgress(reportId, { stage: 'enumerating', done: 0, total: 0 });
+    // The delta baseline lives in the run's OWN space (section 6c): a first
+    // run in a new space says "first run", never a delta against another
+    // space's run over the same scope key.
     const previous = await this.store.previousReady(
       run.userId,
+      run.spaceId,
       run.scopeKey,
       run.createdAt,
       run.id,

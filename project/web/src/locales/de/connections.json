@@ -1,6 +1,7 @@
 {
   "heading": "Verbindungen",
   "explainer": "Externe Systeme, aus denen Cogeto liest. Eine Verbindung liest ausschließlich; jede synchronisierte Seite wird eine gewöhnliche Quelle, die Sie einsehen, prüfen und löschen können.",
+  "spaceNote": "Eine Verbindung gehört zu diesem Space: sie wurde hier angelegt, alles, was sie einliest, landet hier, und sie ist aus keinem anderen Space sichtbar. Dieselbe Site in einem anderen Space zu verbinden ergibt eine eigene, unabhängige Verbindung. Die Anmelde-Zugangsdaten werden einmal für die Instanz gespeichert; das Eingelesene bleibt pro Space versiegelt.",
   "list": {
     "error": "Ihre Verbindungen konnten gerade nicht geladen werden.",
     "empty": "Es ist noch nichts verbunden.",

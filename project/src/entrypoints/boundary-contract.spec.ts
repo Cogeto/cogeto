@@ -100,6 +100,10 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   email_attachment: 'email',
   email_allowlist: 'email',
   email_refusal: 'email',
+  // Per-owner alias routing rules (V3 spaces session 4, migration 0063,
+  // docs/features/spaces.md section 6c): mail to the plus-tagged inbound
+  // address routes to the named space; an undefined alias is refused.
+  email_alias: 'email',
   web_page: 'research',
   research_run: 'research',
   skill_run: 'skills',
@@ -142,6 +146,10 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   // resolution, nothing more.
   space: 'spaces',
   user_space_state: 'spaces',
+  // Machine callers' per-credential space bindings (V3 spaces session 4,
+  // migration 0063, section 6c): administrator-managed; the identity seam's
+  // guard refuses an unbound machine principal.
+  machine_space_binding: 'spaces',
 
   app_user: 'identity',
   // Connector credential material, sealed under the instance master key
@@ -288,6 +296,12 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // The per-space passport manifest's space-name lookup (V3 spaces session
   // 1): passport defines the port, spaces implements it, the roots bind it.
   SPACE_NAME_RESOLVER: 'passport',
+  // The report scope block's space-name lookup (V3 spaces session 4, schema
+  // 1.2): the same pattern, defined by reports.
+  REPORT_SPACE_NAMES: 'reports',
+  // Machine callers' space bindings (session 4, section 6c): identity
+  // defines the port, spaces implements it, the roots bind it.
+  MACHINE_SPACE_BINDINGS: 'identity',
   // Space deletion's container cleanups (V3 spaces session 2): spaces
   // defines the port, each container-owning module implements it over its
   // own tables, the roots bind the array — the DerivedCascade pattern.

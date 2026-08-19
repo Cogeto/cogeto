@@ -281,9 +281,11 @@ export class SourceCatalogService {
         decidedAt: row.decidedAt?.toISOString() ?? null,
       })),
       origin:
-        (await this.originsFor(principal.userId, [{ sourceType, sourceId }])).get(
-          `${sourceType} ${sourceId}`,
-        ) ?? null,
+        (
+          await this.originsFor(principal.userId, resolveSpaceId(principal), [
+            { sourceType, sourceId },
+          ])
+        ).get(`${sourceType} ${sourceId}`) ?? null,
       // Which project groups this source (V2.5 item 8.3 issue C3).
       projectId:
         (await this.projects?.projectIdsForRefs(principal.userId, sourceType, [sourceId]))?.get(
@@ -618,7 +620,7 @@ export class SourceCatalogService {
         contextNamesForSources(this.db, principal.userId, keys),
       ]);
     const names = await this.fileNames(refs, contextNames);
-    const origins = await this.originsFor(principal.userId, keys);
+    const origins = await this.originsFor(principal.userId, resolveSpaceId(principal), keys);
     // Each row's project (V2.5 item 8.3 issue C3), for the whole page in one
     // indexed read per source type rather than one per row.
     const projects = await this.projectsFor(principal.userId, keys);
@@ -680,6 +682,7 @@ export class SourceCatalogService {
    */
   private async originsFor(
     ownerId: string,
+    spaceId: string,
     keys: readonly { sourceType: string; sourceId: string }[],
   ): Promise<Map<string, SourceOriginDto>> {
     const out = new Map<string, SourceOriginDto>();
@@ -689,7 +692,7 @@ export class SourceCatalogService {
     const [pages, upstream] = await Promise.all([
       this.confluencePages.forOwnerSources(ownerId, fileKeys),
       this.connectorItems
-        ? this.connectorItems.upstreamStateForSources(ownerId, fileKeys)
+        ? this.connectorItems.upstreamStateForSources(ownerId, spaceId, fileKeys)
         : Promise.resolve(new Map<string, { state: string; reason: string | null }>()),
     ]);
     for (const [key, row] of pages) {

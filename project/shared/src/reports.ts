@@ -9,14 +9,17 @@
 /**
  * Version stamped into every generated report and its published schema.
  *
- * 1.1 (V2.5 item 8.3) is ADDITIVE over 1.0: the scope block gained
+ * 1.2 (V3 spaces session 4) is ADDITIVE over 1.1: the scope block gained
+ * `space_id` and `space_name`, because a report forwarded to an auditor must
+ * say which sealed partition it describes (docs/features/spaces.md section
+ * 6c). 1.1 (V2.5 item 8.3) was ADDITIVE over 1.0: the scope block gained
  * `project_id` and `project_name`, and its `kind` gained `project`, so a
  * client-facing report names the client it is about. Nothing about the
- * integrity block, the canonicalization or the signing procedure moved, and
- * every 1.0 artifact keeps verifying against the 1.0 schema, which stays
- * published forever (the passport rule).
+ * integrity block, the canonicalization or the signing procedure has ever
+ * moved, and every older artifact keeps verifying against its own schema,
+ * which stays published forever (the passport rule).
  */
-export const FINDINGS_REPORT_VERSION = '1.1';
+export const FINDINGS_REPORT_VERSION = '1.2';
 
 export const FINDINGS_REPORT_STATUSES = [
   'pending',

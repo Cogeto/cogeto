@@ -55,6 +55,27 @@ An empty allowlist therefore means "no external senders", not "nothing is
 captured": a registered user forwarding from their own address is captured on
 day one.
 
+## Which SPACE a message lands in (V3 spaces session 4)
+
+Since spaces (docs/features/spaces.md section 6c), routing resolves a message
+to exactly one space **before anything is stored**, per recipient:
+
+1. **An alias in the recipient address wins.** The inbound address accepts
+   plus-tagged variants (`capture+clientx@instance`); the recipient's alias
+   rule, managed beside the allowlist in Settings, names the space. An alias
+   the recipient has **not** defined is refused and recorded, never guessed
+   into a space, because the sender explicitly targeted a partition.
+2. **Otherwise the matched sender rule's target.** Every allowlist entry names
+   the space its mail lands in (an address rule outranks a domain rule).
+3. **Otherwise the default space** (self-routed mail with no alias, and rules
+   created before spaces existed).
+
+A routing rule **dies with its target space**: after a space is deleted, mail
+that targeted it refuses legibly (`alias_not_recognized` or
+`sender_not_recognized`) and shows under "Recently refused". The Haraka RCPT
+gate accepts the bare configured address and its plus-tagged variants; the
+app resolves and enforces the routing authoritatively.
+
 ---
 
 ## Local test-send (no real DNS)
