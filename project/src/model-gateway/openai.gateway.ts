@@ -147,6 +147,16 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
    */
   private readonly capParamOverride = new Map<string, 'max_completion_tokens'>();
   private readonly temperatureRefused = new Set<string>();
+  /**
+   * Models whose server refused the thinking-control block (the template flag
+   * or any of its non-OpenAI sampler fields). The hosted OpenAI API rejects
+   * unrecognized arguments outright, and "any OpenAI-compatible endpoint"
+   * includes OpenAI itself, so the block is learned away exactly like the
+   * other dialect facts: on the specific 400 that names one of its fields,
+   * once per model, retried once. A server that accepts the block keeps
+   * receiving it byte-identically.
+   */
+  private readonly thinkingRefused = new Set<string>();
   private reachabilityCache?: { at: number; value: GatewayReachability };
 
   constructor(options: OpenAiCompatibleGatewayOptions) {
@@ -189,8 +199,8 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
    *   get a profile at all (temperature 0 rules, and the penalty tested
    *   unnecessary against JSON).
    */
-  private thinkingFields(mode: 'on' | 'off' | undefined): Record<string, unknown> {
-    if (!this.thinkingControl || mode === undefined) return {};
+  private thinkingFields(model: string, mode: 'on' | 'off' | undefined): Record<string, unknown> {
+    if (!this.thinkingControl || mode === undefined || this.thinkingRefused.has(model)) return {};
     const samplers =
       this.temperature !== undefined
         ? {}
@@ -364,6 +374,17 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       this.temperatureRefused.add(model);
       learned = true;
     }
+    if (
+      /chat_template_kwargs|top_k|min_p|repetition_penalty/i.test(message) &&
+      /unrecognized|unknown|unexpected/i.test(message) &&
+      !this.thinkingRefused.has(model)
+    ) {
+      // The whole thinking-control block is one dialect fact: the server
+      // names whichever of its fields it hits first, and dropping only that
+      // one would spend a retry per field on the same lesson.
+      this.thinkingRefused.add(model);
+      learned = true;
+    }
     return learned;
   }
 
@@ -392,7 +413,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       model: this.upstreamModelId(model),
       ...this.capField(model, this.capFor(model, request.maxTokens)),
       ...this.temperatureField(model, this.temperature),
-      ...this.thinkingFields(request.thinking),
+      ...this.thinkingFields(model, request.thinking),
       messages: [
         ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
         { role: 'user' as const, content: request.input },
@@ -494,8 +515,11 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
               // Structured tasks never display thinking, so on a controllable
               // endpoint they never pay for it (issue #424). Temperature stays
               // 0 and no sampler profile applies; JSON tested clean without the
-              // anti-loop penalty.
-              ...(this.thinkingControl ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+              // anti-loop penalty. A server that refused the flag (the hosted
+              // OpenAI API) simply never sees it again.
+              ...(this.thinkingControl && !this.thinkingRefused.has(model)
+                ? { chat_template_kwargs: { enable_thinking: false } }
+                : {}),
               response_format: { type: 'json_object' },
               messages: [
                 { role: 'system' as const, content: request.system },
@@ -560,8 +584,11 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       ...this.temperatureField(model, 0),
       // Transcription never displays thinking either (issue #424): pages read
       // several times faster on a controllable reasoning endpoint. The probe
-      // and headroom stay as the safety net for servers ignoring the flag.
-      ...(this.thinkingControl ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      // and headroom stay as the safety net for servers ignoring the flag; a
+      // server that refused it (the hosted OpenAI API) never sees it again.
+      ...(this.thinkingControl && !this.thinkingRefused.has(model)
+        ? { chat_template_kwargs: { enable_thinking: false } }
+        : {}),
       messages: [
         ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
         {
