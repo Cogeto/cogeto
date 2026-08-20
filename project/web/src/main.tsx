@@ -3,8 +3,14 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import { applyLanguage, browserLocale } from './i18n';
+import { installBfcacheGuard } from './space';
 import { applyTheme, resolveInitialTheme } from './theme';
 import './index.css';
+
+// A page restored from the back/forward cache resumes with the PREVIOUS page
+// load's bound space (docs/features/spaces.md section 3; verification F4):
+// hide it and reload before anything can act under the stale binding.
+installBfcacheGuard();
 
 // Safety net: the pre-paint /theme-init.js normally sets the theme before
 // this bundle runs. If it was ever blocked or failed, apply the resolved theme as

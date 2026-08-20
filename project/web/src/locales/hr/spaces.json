@@ -16,7 +16,9 @@
     "spaceSettings": "Postavke prostora",
     "switchFailed": "Prebacivanje nije uspjelo; i dalje ste u prostoru {{name}}.",
     "createFailed": "Prostor nije stvoren.",
-    "renameFailed": "Prostor nije preimenovan."
+    "renameFailed": "Prostor nije preimenovan.",
+    "switching": "Prebacivanje u {{name}}…",
+    "reloading": "Ponovno učitavanje…"
   },
   "deleted": {
     "title": "Ovaj prostor je izbrisan",

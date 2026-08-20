@@ -96,7 +96,7 @@ private material through the ordinary deletion saga, with one signed receipt
 per source. It works from the stored owner id alone, so it still works after
 the account has been deactivated or deleted in Zitadel.
 
-It is a page: sign in as an administrator and open **Users** in the left rail.
+It is a page: sign in as an administrator and open **Users** in the instance area (the gear icon at the right end of the navbar, /instance/users).
 That page lists everyone the instance has seen, shows what an erasure would
 remove and what it would keep before you commit, and asks you to type the
 person's email address to confirm.

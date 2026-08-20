@@ -42,6 +42,17 @@ export class ConnectorSpaceCleanup implements SpaceCleanup {
       .select({ id: connector.id, ownerId: connector.ownerId, orgId: connector.orgId })
       .from(connector)
       .where(eq(connector.spaceId, spaceId));
+    // The credential store is @Optional only so a root without the identity
+    // seam can still construct the class. A root that then actually DELETES a
+    // space holding connectors must fail loudly here rather than silently
+    // skip credential destruction (spaces verification F13): the erasure job
+    // retries visibly, and a sealed credential surviving its space would be
+    // exactly the quiet leftover the FK proof exists to prevent.
+    if (rows.length > 0 && !this.credentials) {
+      throw new Error(
+        'connector space cleanup has no credential store bound: refusing to delete connectors without destroying their credentials',
+      );
+    }
     for (const row of rows) {
       await this.db.transaction(async (tx) => {
         await this.credentials?.destroy(tx, {

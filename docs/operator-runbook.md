@@ -338,7 +338,7 @@ onto a yellow instance.
 ### 4b. Model configuration and local runtimes
 
 Model configuration lives in the **interface**, not in `.env` and not in the
-script: **Providers** (left rail) is where an administrator adds a provider
+script: **Providers** (in the instance area behind the gear icon, /instance/providers) is where an administrator adds a provider
 record and its API key (Mistral, OpenAI, Anthropic, or **Self-hosted** for any
 OpenAI-compatible endpoint), and **Models** is where the four tiers (pipeline,
 answer, embeddings, vision) are assigned. Changes apply **without a restart**,
@@ -485,7 +485,7 @@ deletion receipt per source; **shared material always stays**.
 
 **Do it from the interface: Users.**
 
-Sign in as an administrator and open **Users** in the left rail. The page lists
+Sign in as an administrator and open **Users** in the instance area (the gear icon at the right end of the navbar, /instance/users). The page lists
 everyone this instance has seen, with how many private and shared sources each
 of them owns, and it opens with a warning naming its own limits: it lists only
 people who have **signed in at least once**, and it **only erases data**.

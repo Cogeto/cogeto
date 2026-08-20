@@ -103,9 +103,20 @@ Receipts are **hash-chained, one chain per space**
 receipt links via `prev_hash` to the previous confirmed receipt **within its
 space**, back to a fixed genesis constant that is the same for every space
 (chains are distinguished by the receipt's `space_id` column, which sits
-beside the hashed payload, never inside it). Each space owns its own genesis,
-its own sequence and its own tip, so a space's receipts verify standalone,
-which is what the per-space passport exports. The pre-spaces chain is the
+beside the hashed payload, never inside it: so WHICH chain a receipt belongs
+to is integrity-protected against everyone without database write access, and
+no further: consistent with the threat model, since a database writer could
+do strictly worse, but stated here so nobody reads the partition itself as
+signed. Folding the space into the payload of FUTURE receipts would close
+this without invalidating any historical receipt, and is recorded as a
+possible owner decision, not done casually, because the receipt payload is
+the most change-averse structure in the product). Each space owns its own
+genesis, its own sequence and its own tip. Each receipt verifies
+individually from its payload and signature alone (the `prev_hash` link is
+inside the signed payload); a full genesis-to-tip walk of one space's chain
+needs every receipt in that space, which the per-owner passport carries only
+when the space has a single erasing owner; otherwise the server-side
+GET /api/receipts/verify performs the walk. The pre-spaces chain is the
 default space's chain, byte-identical: every historical receipt verifies
 exactly as it did. Crucially, **linkage defines the chain order, never
 timestamps**, confirmation serializes on a per-space advisory lock and finds

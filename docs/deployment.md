@@ -76,7 +76,7 @@ sudo ./cogeto install --domain <your.domain> --acme-email <you>
 ```
 
 After first login, configure a model provider in the interface (Providers in the
-left rail); the printed checklist says so.
+gear menu, /instance/providers); the printed checklist says so.
 
 TLS is automatic (Let's Encrypt via Caddy) as soon as the printed DNS records
 resolve. Self-hosters not on OVHcloud: the runbook's OVH panel steps map

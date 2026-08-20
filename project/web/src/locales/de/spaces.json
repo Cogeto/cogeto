@@ -16,7 +16,9 @@
     "spaceSettings": "Space-Einstellungen",
     "switchFailed": "Der Wechsel hat nicht stattgefunden; Sie sind weiterhin in {{name}}.",
     "createFailed": "Der Space wurde nicht erstellt.",
-    "renameFailed": "Der Space wurde nicht umbenannt."
+    "renameFailed": "Der Space wurde nicht umbenannt.",
+    "switching": "Wechsel zu {{name}}…",
+    "reloading": "Neu laden…"
   },
   "deleted": {
     "title": "Dieser Space wurde gelöscht",

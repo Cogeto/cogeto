@@ -21,7 +21,9 @@
     "loadingApp": "Loading Cogeto…",
     "saving": "Saving…",
     "saved": "Saved.",
-    "spacesFailed": "The list of spaces could not be loaded, so nothing can be shown yet."
+    "spacesFailed": "The list of spaces could not be loaded, so nothing can be shown yet.",
+    "spacesFailedInstanceHint": "The instance area does not depend on spaces and is still reachable:",
+    "spacesFailedInstanceLink": "open System status"
   },
   "memoryStatus": {
     "active": "active",

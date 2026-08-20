@@ -48,7 +48,7 @@ import {
 } from '../api';
 import type { ConnectorDto, ConnectorSettingsDto, ConnectorState } from '../api';
 import type { Session } from '../auth/oidc';
-import { currentSpaceId } from '../space';
+import { commitSpaceChange, currentSpaceId } from '../space';
 import { formatDate } from '../i18n/format';
 import { Shell } from '../components/Shell';
 import {
@@ -226,9 +226,10 @@ function ThisSpaceSection({ session }: { session: Session }) {
     mutationFn: async () => {
       await deleteSpace(session, current!.id);
       // The erased space cannot stay the persisted last-used one; land on the
-      // default space's dashboard, deliberately.
+      // default space's dashboard, deliberately, with the same committed
+      // mechanics as every space change (F8): cover, navigate, retry.
       await putCurrentSpace(session, DEFAULT_SPACE_ID).catch(() => undefined);
-      window.location.assign('/');
+      commitSpaceChange('/', t('switcher.reloading'));
     },
   });
 

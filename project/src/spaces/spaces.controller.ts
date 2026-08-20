@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { MachineSpaceBindingDto, SpaceDto, SpaceListDto } from '@cogeto/shared';
 import { parseOrBadRequest, userError } from '../infrastructure/index';
 import { AdminGuard, BearerAuthGuard } from '../identity/index';
@@ -79,7 +80,13 @@ export class SpacesController {
       this.spaces.list(),
       this.spaces.currentFor(request.principal),
     ]);
-    return { spaces, currentSpaceId };
+    // The two reads run in parallel, so a space deleted BETWEEN them could
+    // hand the client a current space the list does not contain, which the
+    // SPA would bind for up to a poll interval (spaces verification F13).
+    // The list is what the client renders, so the pointer degrades against
+    // it, the same way a deleted last-used space degrades to the default.
+    const current = spaces.some((s) => s.id === currentSpaceId) ? currentSpaceId : DEFAULT_SPACE_ID;
+    return { spaces, currentSpaceId: current };
   }
 
   /** Create, and switch the creator into the new space immediately (the

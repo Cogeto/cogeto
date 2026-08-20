@@ -100,7 +100,7 @@ export function normalizeAlias(raw: string | null | undefined): string | null {
 export function splitRecipientAlias(
   rcpt: string | null,
   configured: string | null | undefined,
-): { alias: string | null } | null {
+): { alias: string | null; malformedTag?: true } | null {
   const recipient = normalizeAddress(rcpt);
   const inbound = normalizeAddress(configured);
   if (!recipient || !inbound) return null;
@@ -111,7 +111,12 @@ export function splitRecipientAlias(
   if (!recipient.startsWith(`${local}+`) || !recipient.endsWith(domain)) return null;
   const tag = recipient.slice(local.length + 1, recipient.length - domain.length);
   const alias = normalizeAlias(tag);
-  return alias ? { alias } : null;
+  // OUR address with a tag that cannot be an alias (`capture+@`,
+  // `capture+!!!@`): the sender plainly tried to name a partition, so the
+  // refusal must say the alias was not recognized rather than that the
+  // recipient was wrong (spaces verification F13; the intake refuses either
+  // way, only the recorded reason differs).
+  return alias ? { alias } : { alias: null, malformedTag: true };
 }
 
 /**
