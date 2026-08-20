@@ -1,5 +1,4 @@
 import { bigint, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { FindingsReportCountsDto, ReportProgressDto, ReportScopeDto } from '@cogeto/shared';
 
 /**
@@ -20,7 +19,7 @@ export const findingsReport = pgTable(
     /** The space the run enumerates within (docs/features/spaces.md,
      * migration 0060): a findings run is space-bounded by construction, since
      * every gated read during assembly rides a principal carrying this. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     status: text('status')
       .$type<'pending' | 'running' | 'ready' | 'failed' | 'expired'>()
       .notNull()

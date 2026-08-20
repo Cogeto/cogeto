@@ -32,8 +32,10 @@ export interface SuppressedFactEntry {
   sensitive: boolean;
   /** The source's space (docs/features/spaces.md), inherited at write time
    * exactly like owner and scope: an entry is gated as the fact it explains.
-   * Absent (legacy harnesses) falls to the schema-level default space. */
-  spaceId?: string;
+   * REQUIRED (section 6d, spaces verification F2): an entry without a space
+   * is unrepresentable in compiled code, because the one that fell to the
+   * schema default filed one space's content into another space's log. */
+  spaceId: string;
   sourceType: string;
   sourceId: string;
   factContent: string;

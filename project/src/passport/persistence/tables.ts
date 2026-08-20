@@ -1,5 +1,4 @@
 import { bigint, boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 
 /**
  * Tables owned by the passport module (migration 0022). Module-private — the
@@ -15,7 +14,7 @@ export const passportExport = pgTable(
     /** The ONE space this export covers (docs/features/spaces.md section 5
      * as amended, migration 0060): a passport is per space. Stamped from the
      * caller's current space at trigger time. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     status: text('status').notNull().default('pending'),
     passportVersion: text('passport_version').notNull(),
     includeOriginals: boolean('include_originals').notNull().default(false),

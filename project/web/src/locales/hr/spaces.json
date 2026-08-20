@@ -61,7 +61,9 @@
       "findings_reports": "Izvještaji o nalazima",
       "passport_exports": "Izvozi putovnice pamćenja",
       "connectors": "Konektori",
-      "extraction_gates": "Postavke filtra izdvajanja"
+      "extraction_gates": "Postavke filtra izdvajanja",
+      "email_routing_rules": "Pravila usmjeravanja pošte",
+      "approvals": "Odobrenja"
     }
   },
   "firstRun": {

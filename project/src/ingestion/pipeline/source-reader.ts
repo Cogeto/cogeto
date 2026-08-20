@@ -17,11 +17,11 @@ export interface SourceItem {
   /**
    * The space the SOURCE ROW carries (docs/features/spaces.md), reported by
    * each reader from its own table: the authoritative stamp every derived
-   * fact inherits. Readers whose row predates the column report it all the
-   * same (the column is NOT NULL); omitted only by legacy test doubles,
-   * where admission falls to the schema-level default space.
+   * fact inherits. REQUIRED (section 6d): the column is NOT NULL on every
+   * source table, so a reader always has it, and a reader that cannot
+   * determine it must fail loudly rather than let admission fall anywhere.
    */
-  spaceId?: string;
+  spaceId: string;
   content: string;
   /** The source timestamp: relative temporal expressions resolve against it. */
   createdAt: Date;

@@ -61,7 +61,9 @@
       "findings_reports": "Findings reports",
       "passport_exports": "Passport exports",
       "connectors": "Connectors",
-      "extraction_gates": "Extraction gate settings"
+      "extraction_gates": "Extraction gate settings",
+      "email_routing_rules": "Email routing rules",
+      "approvals": "Approvals"
     }
   },
   "firstRun": {

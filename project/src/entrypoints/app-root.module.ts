@@ -40,7 +40,13 @@ import {
   ChatSourceModule,
   ConversationSourceDeletion,
 } from '../chat/index';
-import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
+import {
+  AgentsModule,
+  AgentsSpaceCleanup,
+  AgentsSpaceCleanupModule,
+  ReplyDraftCascade,
+  ReplyDraftCascadeModule,
+} from '../agents/index';
 import {
   ResearchChatModule,
   ResearchModule,
@@ -478,6 +484,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
             PassportSpaceCleanupModule,
             ConnectorSpaceCleanupModule,
             EmailRoutingSpaceCleanupModule,
+            AgentsSpaceCleanupModule,
           ],
           adapters: [
             ProjectSpaceCleanup,
@@ -490,6 +497,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
             PassportSpaceCleanup,
             ConnectorSpaceCleanup,
             EmailRoutingSpaceCleanup,
+            AgentsSpaceCleanup,
           ],
         },
       }),

@@ -180,6 +180,10 @@ export class ChatAttachmentsService {
     attachmentIds: string[],
   ): Promise<void> {
     if (attachmentIds.length === 0) return;
+    // Sealed through the conversation (docs/features/spaces.md): linking is
+    // a write into a conversation, so it carries the same space gate as
+    // reading one.
+    await this.requireConversation(principal, conversationId);
     await this.db
       .update(chatAttachment)
       .set({ messageId })
@@ -219,6 +223,9 @@ export class ChatAttachmentsService {
       throw userError.notFound('chat.attachmentNotFound', 'attachment {{id}} not found', {
         id: attachmentId,
       });
+    // An attachment's space is its conversation's (chat_attachment carries no
+    // space column): the card read is sealed like listForConversation above.
+    await this.requireConversation(principal, row.conversationId);
     return this.resolve(row);
   }
 

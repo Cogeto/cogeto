@@ -56,10 +56,13 @@ export interface NewFact {
   content: string;
   scope: MemoryScope;
   /**
-   * The space the fact lives in (docs/features/spaces.md). The pipeline
-   * stamps it from the SOURCE row's space; the user-capture path resolves it
-   * from the caller's Principal. Absent, the schema-level DEFAULT lands the
-   * row in the default space, which is a real space, never "all spaces".
+   * The space the fact lives in (docs/features/spaces.md section 6d). The
+   * pipeline stamps it from the SOURCE row's space, and `admitExtractedFact`
+   * requires it. It is optional HERE for exactly one documented reason: the
+   * Principal-facing `createFromFact` resolves an absent space from the
+   * caller (the x-cogeto-space rule), and supersession always overrides it
+   * with the predecessor's. The write itself never falls to a schema
+   * default; `insertFact` requires the resolved value.
    */
   spaceId?: string;
   sourceType: SourceType;
@@ -398,10 +401,11 @@ export class MemoryStore {
    * receipt from another space. Each receipt stays independently verifiable
    * against its space's chain and the instance key.
    */
-  async confirmedReceiptsForOwner(
-    userId: string,
-    spaceId: string = DEFAULT_SPACE_ID,
-  ): Promise<ConfirmedReceipt[]> {
+  async confirmedReceiptsForOwner(userId: string, spaceId: string): Promise<ConfirmedReceipt[]> {
+    // Required at the type (section 6d); this reassignment is a runtime
+    // backstop for unedited legacy harnesses only (allowlisted in
+    // spaces-are-a-gate.spec.ts).
+    spaceId = spaceId ?? DEFAULT_SPACE_ID;
     const rows = await this.db
       .select()
       .from(deletionReceipt)
@@ -697,7 +701,11 @@ export class MemoryStore {
    * uncertain) and admits the fact inside the pipeline job's transaction, so
    * admission and the job's idempotency row commit atomically.
    */
-  async admitExtractedFact(tx: Tx, ownerId: string, fact: NewFact): Promise<MemoryRow> {
+  async admitExtractedFact(
+    tx: Tx,
+    ownerId: string,
+    fact: NewFact & { spaceId: string },
+  ): Promise<MemoryRow> {
     return this.insertFact(tx, ownerId, fact, 'verification');
   }
 
@@ -867,6 +875,7 @@ export class MemoryStore {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
     return this.db.transaction(async (tx) => {
       const row = await this.lockRow(tx, memoryId, actor);
+      this.sealToPrincipalSpace(row, principal);
       if (row.sensitive === sensitive) return row; // idempotent no-op, no audit noise
       const [updated] = await tx
         .update(memory)
@@ -902,6 +911,7 @@ export class MemoryStore {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
     return this.db.transaction(async (tx) => {
       const row = await this.lockRow(tx, memoryId, actor);
+      this.sealToPrincipalSpace(row, principal);
       if (row.scope === scope) return row; // idempotent no-op, no audit noise
       const [updated] = await tx
         .update(memory)
@@ -954,6 +964,7 @@ export class MemoryStore {
   ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
     const old = await this.lockRow(tx, memoryId, actor);
+    this.sealToPrincipalSpace(old, principal);
     if (old.status === 'replaced') {
       throw userError.badRequest(
         'memory.alreadyReplacedEdit',
@@ -1017,6 +1028,7 @@ export class MemoryStore {
       if (actor.kind === 'user' && row.ownerId !== actor.userId) {
         throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id: memoryId });
       }
+      this.sealToPrincipalSpace(row, principal);
       if (row.status !== 'uncertain') {
         throw untranslatedError.badRequest(
           `only an uncertain memory can be rejected in review (this one is ${row.status}); ` +
@@ -1559,7 +1571,7 @@ export class MemoryStore {
   private async insertFact(
     tx: Tx,
     ownerId: string,
-    fact: NewFact,
+    fact: NewFact & { spaceId: string },
     actor: string,
   ): Promise<MemoryRow> {
     // Provenance is NOT NULL, always: the aggregate rejects orphans even
@@ -1598,9 +1610,10 @@ export class MemoryStore {
       .values({
         ownerId,
         scope: fact.scope,
-        // Omitted means the schema-level DEFAULT: the default space, which is
-        // a real space. Every live write path resolves it explicitly.
-        ...(fact.spaceId ? { spaceId: fact.spaceId } : {}),
+        // Required, resolved by the caller (docs/features/spaces.md section
+        // 6d): the Drizzle schema declares no default, so an unresolved
+        // space cannot compile out of product code.
+        spaceId: fact.spaceId,
         sourceType: fact.sourceType,
         sourceId: fact.sourceId,
         status,
@@ -1643,6 +1656,19 @@ export class MemoryStore {
    * reported as NotFound so the API does not leak the existence of other
    * users' memories.
    */
+  /**
+   * The wall has no owner exception on WRITES either (spaces verification F3's
+   * relative): a Principal-driven mutation refuses a row outside the caller's
+   * space as not found, exactly like every gated read. Worker and system
+   * actors are not principals and are sealed by the fabricated per-row
+   * principals their engines already carry.
+   */
+  private sealToPrincipalSpace(row: MemoryRow, principal: Principal): void {
+    if (row.spaceId !== resolveSpaceId(principal)) {
+      throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id: row.id });
+    }
+  }
+
   private async lockRow(tx: Tx, memoryId: string, actor: MemoryActor): Promise<MemoryRow> {
     const rows = await tx.select().from(memory).where(eq(memory.id, memoryId)).for('update');
     const row = rows[0];

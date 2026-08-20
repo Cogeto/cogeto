@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import type { ApprovalDto, Principal } from '@cogeto/shared';
-import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
+import { EMAIL_REPLY_DRAFT_ACTION, resolveSpaceId } from '@cogeto/shared';
 import type { EmailReplyDraftPayload } from '@cogeto/shared';
 import { DRIZZLE, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -75,7 +75,17 @@ export class EmailReplyDraftService {
     const rows = await this.db
       .select()
       .from(emailMessage)
-      .where(and(eq(emailMessage.id, emailId), eq(emailMessage.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(emailMessage.id, emailId),
+          eq(emailMessage.ownerId, principal.userId),
+          // Sealed with its space like the email source drawer's read
+          // (docs/features/spaces.md): the drafted body would otherwise carry
+          // a space-A email's content into an approval row created in the
+          // caller's current space.
+          eq(emailMessage.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     const email = rows[0];
     if (!email)

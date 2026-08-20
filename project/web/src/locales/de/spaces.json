@@ -61,7 +61,9 @@
       "findings_reports": "Befundberichte",
       "passport_exports": "Wissenspass-Exporte",
       "connectors": "Konnektoren",
-      "extraction_gates": "Extraktionsfilter-Einstellungen"
+      "extraction_gates": "Extraktionsfilter-Einstellungen",
+      "email_routing_rules": "E-Mail-Routing-Regeln",
+      "approvals": "Genehmigungen"
     }
   },
   "firstRun": {

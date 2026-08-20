@@ -402,6 +402,72 @@ unresolvable space fails loudly rather than defaulting quietly.
   receipts verify standalone against the space's own chain using only the
   archive and the instance public key.
 
+## 6d. Wall-holes remediation decisions (2026-08-20)
+
+Recorded with the session that closed the spaces verification's correctness
+findings (F1, F2, F3, F6), the way 6a, 6b and 6c were. The three defects
+shared one cause: the space could be ABSENT, and absence silently resolved
+somewhere. That cause is now a standing constraint:
+
+- **In this feature the space is never optional, never defaulted, and never
+  inferred. A path that cannot determine it fails loudly.** No optional
+  space field exists for a legacy caller's convenience; no Drizzle column
+  default silently supplies one (the DB-level DEFAULT from migrations 0060
+  through 0063 remains, as the applied migrations' backfill contract, but no
+  compiled write path can reach it); a store parameter is required, not
+  defaulted. Where absence is genuinely legitimate it is explicit and
+  documented: the audit trail's nullable space attribute (6a), the deletion
+  saga's two administrator passes (owner erasure and space erasure, which
+  pass an explicit `sealedSpace: null` because they enumerate their set
+  upstream), and the mail-intake terminal arm (the recipient default IS the
+  instance default, 6c). `spaces-are-a-gate.spec.ts` holds a census of every
+  `?? DEFAULT_SPACE_ID` in product code against an allowlist with reasons,
+  so a new silent fallback fails a test rather than a customer.
+- **Approvals die with their space.** The `approval` table gained the
+  agents-owned cleanup leg it was missing (verification F1): a space holding
+  any approval row was permanently undeletable, because nothing anywhere
+  deletes an approval row. The disposition is DELETION for every approval
+  kind, checked kind by kind: a reply draft's payload is content-bearing and
+  content dies with its space; a bulk-outdate approval references memories
+  that die with the space and carries the requester's free text about them,
+  and the decision trail survives regardless in the instance audit log
+  (approval.created / approved / rejected / executed, space-attributed).
+  Re-homing was rejected: a space's rows appearing in another partition is
+  the misplacement this feature forbids. The deletion plan counts approvals,
+  so the confirmation states them.
+- **The wall has no owner exception, on every branch.** The by-id and
+  fallback arms that authorized by owner alone were sealed (verification F3
+  and its relatives): the files service's discarded-source and reprocess
+  arms, the report assembler's file-scope check, research approve/cancel and
+  the web-page read, the project by-id funnel, the memory drawer's mutations
+  (sensitive, scope, edit, reject, approve, mark-outdated), chat message
+  capture/context and attachment card reads, the reply-draft email read, the
+  anchoring context read and edit, extraction-gate rule removal, the skill
+  run read, and the interactive source deletion (sealed to the caller's
+  space; the administrator passes stay explicitly unsealed). One deliberate
+  exception stands as recorded in code: an entity alias is removable by its
+  owner from any space, because the id is globally unique and the alias is
+  vocabulary configuration, not content.
+- **Space deletion enumerates discarded sources from provenance.** The
+  session's mandated hand walk found F1's sibling live: a space holding a
+  DISCARD-mode file source could never finish deleting, because the
+  erasure's enumeration listed adapters' rows and `file_metadata` only, and
+  a discarded source has neither: only memories carrying the key as
+  provenance. The final row delete refused forever, loudly but with no
+  remedy, exactly F1's shape. The pass (and the plan's counts) now add a
+  third arm: every distinct provenance pair the space's memory rows still
+  name, restricted to object-backed types, the one family whose row can be
+  legitimately absent while memories persist. The ordinary saga already
+  handles rowless sources; nothing else changed.
+- **Suppressed facts land in their source's space** (verification F2): the
+  structurally-invalid arm stamps `spaceId` exactly like the demoted arm,
+  `SuppressedFactEntry.spaceId` is required, and a behavioural fixture
+  ingests into a non-default space and reads the log from both sides of the
+  wall. No backfill for misfiled rows was written: there are no production
+  instances, so the honest remedy for an affected database is a fresh
+  instance, and a backfill would be untestable machinery for data nobody
+  holds.
+
 ## 7. Decisions and non-goals
 
 Decided by the owner, 2026-08-19:

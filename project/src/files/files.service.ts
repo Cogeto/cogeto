@@ -507,13 +507,15 @@ export class FilesService {
    */
   async reprocess(principal: Principal, objectKey: string): Promise<{ queued: boolean } | null> {
     const metadata = await this.files.get(objectKey);
-    const ownerId =
-      metadata?.ownerId ?? (await this.memory.describeSource('file', objectKey))?.ownerId ?? null;
+    const derived = metadata ? null : await this.memory.describeSource('file', objectKey);
+    const ownerId = metadata?.ownerId ?? derived?.ownerId ?? null;
     if (!ownerId || ownerId !== principal.userId) return null;
-    // A stored source in another space is invisible here, same user included
-    // (docs/features/spaces.md). Discarded sources fall to the memory-derived
-    // check above, whose rows are gated by the same principal downstream.
-    if (metadata && metadata.spaceId !== resolveSpaceId(principal)) return null;
+    // A source in another space is invisible here, same user included, on
+    // EVERY arm (docs/features/spaces.md; spaces verification F3): a stored
+    // source checks its metadata row's space, a discarded one the space its
+    // derived memories carry. The wall has no owner exception.
+    const sourceSpace = metadata?.spaceId ?? derived?.spaceId ?? null;
+    if (sourceSpace !== resolveSpaceId(principal)) return null;
     // A discarded original has no bytes to re-read; saying so is better than
     // queueing a job that can only fail.
     if (!metadata && !(await this.objects.statObject(objectKey))) return { queued: false };
@@ -594,6 +596,9 @@ export class FilesService {
     // facts fall back to the derived memories (F1 handoff §3).
     const derived = await this.memory.describeSource('file', objectKey);
     if (!derived || derived.ownerId !== principal.userId) return null;
+    // A discarded source in another space reads as not found too (spaces
+    // verification F3): the wall has no owner exception on THIS arm either.
+    if (derived.spaceId !== resolveSpaceId(principal)) return null;
     return {
       objectKey,
       filename: null,

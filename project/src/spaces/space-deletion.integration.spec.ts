@@ -35,6 +35,7 @@ import {
 import type { ConfirmedReceipt } from '../memory/index';
 import { EntityAliasSpaceCleanup, EntityAliasStore } from '../ingestion/index';
 import { ProjectSpaceCleanup } from '../projects/index';
+import { AgentsSpaceCleanup } from '../agents/index';
 import { SpaceService } from './space.service';
 import { SpaceErasureService } from './space-erasure.service';
 import { space } from './persistence/tables';
@@ -97,6 +98,7 @@ describe('space deletion (integration: real Postgres + Qdrant + MinIO)', () => {
     erasure = new SpaceErasureService(tdb.db, saga, objects, adapters, [
       new ProjectSpaceCleanup(tdb.db),
       new EntityAliasSpaceCleanup(tdb.db),
+      new AgentsSpaceCleanup(tdb.db),
     ]);
     spaces = new SpaceService(tdb.db);
     const [row] = await tdb.db.insert(space).values({ name: 'Doomed' }).returning();
@@ -210,6 +212,19 @@ describe('space deletion (integration: real Postgres + Qdrant + MinIO)', () => {
     });
     await store.upsertVectors([fileFact], [fakeEmbedding(fileFact.id, DIMS)]);
 
+    // A DISCARD-mode file source (verification F1's sibling, found by the
+    // wall-holes hand walk): no file_metadata row and no bytes by design,
+    // only derived memories carrying the key as provenance. Without the
+    // provenance-enumeration net this space could never finish deleting.
+    const discardKey = `org-del/${alice.userId}/private/file-${randomUUID()}`;
+    const discardFact = await store.createFromFact(alice, {
+      content: 'The discarded memo names a spare thermocouple in cabinet 7.',
+      scope: 'private',
+      sourceType: 'file',
+      sourceId: discardKey,
+    });
+    await store.upsertVectors([discardFact], [fakeEmbedding(discardFact.id, DIMS)]);
+
     // Containers: an alias and a project in the doomed space (raw seed rows;
     // the cleanups under test remove them through their owning classes).
     await new EntityAliasStore(tdb.db).add(alice.userId, 'Kiln One', 'Pec broj jedan', doomed);
@@ -218,41 +233,57 @@ describe('space deletion (integration: real Postgres + Qdrant + MinIO)', () => {
       doomed,
       'Kiln overhaul',
     ]);
+    // An approval raised in the doomed space (spaces verification F1): the
+    // table's NO ACTION space FK made a space with any approval row
+    // permanently undeletable until the agents cleanup leg existed, and this
+    // seed is what keeps that leg mandatory.
+    await tdb.pool.query(
+      `INSERT INTO approval (action_type, payload_json, status, org_id, requested_by, space_id)
+       VALUES ('bulk_outdate', '{"memoryIds":["00000000-0000-4000-8000-00000000dead"]}', 'pending_approval', $1, $2, $3)`,
+      ['org-del', alice.userId, doomed],
+    );
     // The space is someone's persisted last-used space.
     await spaces.setCurrent(alice, doomed);
     expect(await spaces.currentFor(alice)).toBe(doomed);
 
     // The plan states exactly what will be erased.
     const plan = await erasure.plan(doomed);
-    expect(plan.totalSources).toBe(3);
+    expect(plan.totalSources).toBe(4);
     expect(plan.sources).toEqual(
       expect.arrayContaining([
         { sourceType: 'user_note', count: 2 },
-        { sourceType: 'file', count: 1 },
+        // The stored file AND the discard-mode one: the plan counts what the
+        // pass will actually erase, discarded provenance included.
+        { sourceType: 'file', count: 2 },
       ]),
     );
     expect(plan.containers).toEqual(
       expect.arrayContaining([
         { artifact: 'projects', count: 1 },
         { artifact: 'entity_aliases', count: 1 },
+        { artifact: 'approvals', count: 1 },
       ]),
     );
 
     // The pass: one ordinary saga per source, then cleanups, then the row.
     const result = await erasure.run(doomed, 'user:space-admin', 'org-del');
     expect(result.failed).toEqual([]);
-    expect(result.erased).toHaveLength(3);
+    expect(result.erased).toHaveLength(4);
     expect(result.erased.every((entry) => entry.receiptId !== null)).toBe(true);
-    expect(result.containersRemoved).toMatchObject({ projects: 1, entity_aliases: 1 });
+    expect(result.containersRemoved).toMatchObject({
+      projects: 1,
+      entity_aliases: 1,
+      approvals: 1,
+    });
     expect(result.spaceRowDeleted).toBe(true);
 
     // The worker leg confirms each receipt; the DELETED space's chain
     // verifies standalone, from the receipts, with no space row anywhere.
     await pumpDeletions();
     const receipts = await confirmedIn(doomed);
-    expect(receipts).toHaveLength(3);
+    expect(receipts).toHaveLength(4);
     const publicKey = await loadInstancePublicKey(keyDir);
-    expect(verifyChain(receipts, publicKey)).toEqual({ ok: true, verified: 3, confirmed: 3 });
+    expect(verifyChain(receipts, publicKey)).toEqual({ ok: true, verified: 4, confirmed: 4 });
 
     // Nothing left in ANY store, by enumeration, not assumption.
     expect(await countWhere('SELECT count(*) AS n FROM memory WHERE space_id = $1', [doomed])).toBe(
@@ -269,6 +300,9 @@ describe('space deletion (integration: real Postgres + Qdrant + MinIO)', () => {
     ).toBe(0);
     expect(
       await countWhere('SELECT count(*) AS n FROM entity_alias WHERE space_id = $1', [doomed]),
+    ).toBe(0);
+    expect(
+      await countWhere('SELECT count(*) AS n FROM approval WHERE space_id = $1', [doomed]),
     ).toBe(0);
     expect(await objects.statObject(fileKey)).toBeNull();
     const vectorHits = await store.vectorSearch(

@@ -46,8 +46,9 @@ export interface GateDecisionInput {
   ownerId: string;
   /** The SOURCE ROW'S space (migration 0062, the settings split): the gate
    * that admits a source is the one configured in the space the source lives
-   * in. Absent resolves to the default space like every space column. */
-  spaceId?: string;
+   * in. REQUIRED (section 6d); the runtime coalesce in decisionFor survives
+   * only for unedited legacy harnesses that predate the required field. */
+  spaceId: string;
   sourceType: string;
   sourceId: string;
   /** The reading layer's detected format, when the reader stamped one. */
@@ -109,6 +110,9 @@ export class ExtractionGateStore {
    *   chat, email bodies, web pages) are untouched by class rules.
    */
   async decisionFor(tx: DbOrTx, input: GateDecisionInput): Promise<GateDecision> {
+    // The type above requires the space; this coalesce is a RUNTIME backstop
+    // for unedited legacy harnesses only (allowlisted in
+    // spaces-are-a-gate.spec.ts), never a path compiled product code can take.
     const spaceId = input.spaceId ?? DEFAULT_SPACE_ID;
     const [gates, rules] = await Promise.all([
       tx
@@ -146,9 +150,10 @@ export class ExtractionGateStore {
     tx: Tx,
     entry: {
       ownerId: string;
-      /** The refused source's space (docs/features/spaces.md, 0061); absent
-       * resolves to the default space like every space column. */
-      spaceId?: string;
+      /** The refused source's space (docs/features/spaces.md, 0061).
+       * REQUIRED (section 6d): a refusal is the record that a source in THIS
+       * space was gated, and misfiling it makes the source look processed. */
+      spaceId: string;
       sourceType: string;
       sourceId: string;
       reason: ExtractionRefusalReason;
@@ -157,7 +162,7 @@ export class ExtractionGateStore {
   ): Promise<void> {
     await tx.insert(extractionGateRefusal).values({
       ownerId: entry.ownerId,
-      ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
+      spaceId: entry.spaceId,
       sourceType: entry.sourceType,
       sourceId: entry.sourceId,
       reason: entry.reason,
@@ -331,7 +336,16 @@ export class ExtractionGateStore {
     return this.db.transaction(async (tx) => {
       const removed = await tx
         .delete(extractionGateRule)
-        .where(and(eq(extractionGateRule.id, id), eq(extractionGateRule.ownerId, principal.userId)))
+        .where(
+          and(
+            eq(extractionGateRule.id, id),
+            eq(extractionGateRule.ownerId, principal.userId),
+            // The gate is sealed with its space (docs/features/spaces.md
+            // section 6b), so removing a rule is too: a foreign-space id
+            // removes nothing, exactly like a foreign owner's.
+            eq(extractionGateRule.spaceId, resolveSpaceId(principal)),
+          ),
+        )
         .returning({ id: extractionGateRule.id });
       if (removed.length === 0) return false;
       await writeAudit(tx, {
@@ -341,6 +355,7 @@ export class ExtractionGateStore {
         entityId: id,
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
       return true;
     });
@@ -525,7 +540,9 @@ export async function refusalsForSources(
 export async function sourceRefsWithRefusals(
   db: DbOrTx,
   ownerId: string,
-  options: { spaceId?: string; limit?: number } = {},
+  // The space is required at the type (section 6d); the coalesce below is
+  // pinned by spaces-isolation-depth.spec.ts and inert for compiled callers.
+  options: { spaceId: string; limit?: number },
 ): Promise<{ sourceType: string; sourceId: string }[]> {
   const rows = await db
     .select({

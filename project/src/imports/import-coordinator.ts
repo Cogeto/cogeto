@@ -178,7 +178,7 @@ export class ImportCoordinator {
    * links, the safe direction). Below the bar, nothing is recorded.
    */
   private async linkRevision(
-    principal: Principal,
+    principal: RunPrincipal,
     run: ImportRunRow,
     item: ImportItemRow,
   ): Promise<void> {
@@ -360,7 +360,7 @@ export class ImportCoordinator {
  * RUN's space (docs/features/spaces.md): a worker acting on a row acts in
  * that row's space, so every document this run feeds through the one upload
  * path is stamped into it. */
-function principalFor(run: ImportRunRow): Principal {
+function principalFor(run: ImportRunRow): RunPrincipal {
   return {
     userId: run.ownerId,
     name: '',
@@ -371,3 +371,8 @@ function principalFor(run: ImportRunRow): Principal {
     spaceId: run.spaceId,
   };
 }
+
+/** The run's fabricated principal always carries the run row's space
+ * (docs/features/spaces.md section 6d): required at the type, so a write
+ * that needs it cannot compile against an unresolved space. */
+type RunPrincipal = Principal & { spaceId: string };

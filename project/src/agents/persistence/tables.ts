@@ -1,5 +1,4 @@
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 
 /**
  * Tables owned by the agents module (migration 0001,; support columns
@@ -23,7 +22,7 @@ export const approval = pgTable(
     /** The space whose content the action is over (docs/features/spaces.md,
      * migration 0061): the approvals queue is a space-scoped sidebar surface,
      * so a pending approval is counted and listed only in its own space. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     actionType: text('action_type').notNull(),
     payloadJson: jsonb('payload_json'),
     status: approvalStatusEnum('status').notNull().default('draft'),

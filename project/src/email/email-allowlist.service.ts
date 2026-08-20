@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, isNull, lt, or } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
+import { resolveSpaceId } from '@cogeto/shared';
 import type {
   AddEmailAliasRequest,
   AddEmailAllowlistEntryRequest,
@@ -114,7 +114,12 @@ export class EmailAllowlistService {
           );
     }
     const note = request.note?.trim() || null;
-    const spaceId = request.spaceId ?? DEFAULT_SPACE_ID;
+    // The rule's TARGET space. Absent, it resolves to the CALLER's current
+    // space (the x-cogeto-space rule), never to a constant: a caller standing
+    // in space B who names no target routes that sender's mail to B, and a
+    // headerless caller resolves to the default space, byte-identical to the
+    // prior behaviour (spaces verification F6).
+    const spaceId = request.spaceId ?? resolveSpaceId(principal);
 
     return this.db.transaction(async (tx) => {
       const [inserted] = await tx

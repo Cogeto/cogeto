@@ -1,7 +1,12 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { DEFAULT_SPACE_ID, isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
+import {
+  DEFAULT_SPACE_ID,
+  isRegisteredSourceType,
+  resolveSpaceId,
+  SOURCE_TYPES,
+} from '@cogeto/shared';
 import type { MemoryScope, Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
@@ -83,6 +88,43 @@ export interface OwnedSourceRef {
 export interface SpaceSourceRef {
   sourceId: string;
   ownerId: string;
+}
+
+/**
+ * EVERY distinct provenance pair the space's memory rows still name, with the
+ * rows' owner — space deletion's completeness net (found by the wall-holes
+ * hand walk, 2026-08-20). The adapter and file_metadata enumerations list
+ * sources whose ROW exists; a discard-mode file source deliberately has no
+ * row and exists only as its derived memories' provenance, so without this
+ * arm a space holding one could never finish deleting: the memory rows kept
+ * naming the space and the final row delete refused forever — loudly, as
+ * designed, but with no remedy inside the product, the exact shape of
+ * verification F1. Pairs already enumerated elsewhere are deduplicated by
+ * the caller; the ordinary saga handles a rowless source (its memories are
+ * the enumeration and carry the receipt's space).
+ *
+ * OBJECT-BACKED types only, deliberately: they are the one family whose row
+ * can be legitimately absent while memories persist (discard mode). A chat
+ * capture's memories are erased through its conversation's cascade, and a
+ * note/email/web row can only vanish together with its memories via the
+ * saga, so enumerating those from provenance would double-list content and
+ * report phantom not-found failures.
+ */
+export async function listDerivedSourceRefsForSpace(
+  db: DbOrTx,
+  spaceId: string,
+): Promise<{ sourceType: string; sourceId: string; ownerId: string }[]> {
+  const rows = await db
+    .selectDistinct({
+      sourceType: memory.sourceType,
+      sourceId: memory.sourceId,
+      ownerId: memory.ownerId,
+    })
+    .from(memory)
+    .where(eq(memory.spaceId, spaceId));
+  return rows.filter(
+    (row) => isRegisteredSourceType(row.sourceType) && SOURCE_TYPES[row.sourceType].objectBacked,
+  );
 }
 
 /**
@@ -552,6 +594,17 @@ export class DeletionSaga {
         sourceId,
         { lock: false },
       );
+      // The wall has no owner exception on deletion either (spaces
+      // verification F3's relative): previewing a source from another space
+      // reads as not found, exactly like the drawer read behind it.
+      const sourceSpace = await this.sourceSpaceOf(tx, fileRow, adapter, rows, sourceId);
+      if (sourceSpace !== resolveSpaceId(principal)) {
+        throw userError.notFound(
+          'source.notFound',
+          'source {{sourceType}}/{{sourceId}} not found',
+          { sourceType, sourceId },
+        );
+      }
       let memoryCount = rows.length;
       let objectCount = fileRow ? 1 : 0;
       let messageCount: number | undefined;
@@ -619,7 +672,9 @@ export class DeletionSaga {
       `user:${principal.userId}`,
       rawSourceType,
       sourceId,
-      { retainShared: false },
+      // The interactive delete is sealed to the caller's current space: a
+      // source in another space is not found, even for its owner.
+      { retainShared: false, sealedSpace: resolveSpaceId(principal) },
     );
   }
 
@@ -644,6 +699,9 @@ export class DeletionSaga {
   ): Promise<{ receiptId: string | null; retained?: RetentionReason }> {
     return this.deleteSourceForSubject(subject, actor, sourceType, sourceId, {
       retainShared: true,
+      // Explicitly unsealed: owner erasure removes a departed subject's
+      // material wherever it lives, and the subject has no current space.
+      sealedSpace: null,
     });
   }
 
@@ -669,6 +727,9 @@ export class DeletionSaga {
   ): Promise<{ receiptId: string | null }> {
     return this.deleteSourceForSubject(subject, actor, sourceType, sourceId, {
       retainShared: false,
+      // Explicitly unsealed: the space-erasure pass already enumerated
+      // exactly one space's sources and acts for each source's own owner.
+      sealedSpace: null,
     });
   }
 
@@ -698,7 +759,18 @@ export class DeletionSaga {
     actor: string,
     rawSourceType: string,
     sourceId: string,
-    options: { retainShared: boolean },
+    options: {
+      retainShared: boolean;
+      /**
+       * The acting caller's space, or an EXPLICIT null (docs/features/
+       * spaces.md section 6d: absence is never implicit). Sealed: the
+       * deletion refuses as NotFound when the source lives in another space.
+       * Null is legal only for the two administrator passes (owner erasure,
+       * space erasure), which enumerate their set upstream and act for a
+       * subject who has no current space.
+       */
+      sealedSpace: string | null;
+    },
   ): Promise<{ receiptId: string | null; retained?: RetentionReason }> {
     const sourceType = assertSourceType(rawSourceType);
     if (!sourceId.trim()) throw untranslatedError.badRequest('source id must not be blank');
@@ -842,11 +914,20 @@ export class DeletionSaga {
         // the two can only agree), else the default space — reachable only
         // by legacy harness adapters that predate spaceOf, since every real
         // path has a row or a memory.
-        const spaceId =
-          fileRow?.spaceId ??
-          (adapter?.spaceOf ? await adapter.spaceOf(tx, sourceId) : null) ??
-          rows[0]?.spaceId ??
-          DEFAULT_SPACE_ID;
+        const spaceId = await this.sourceSpaceOf(tx, fileRow, adapter, rows, sourceId);
+
+        // The interactive seal (spaces verification F3's relative): a caller
+        // deleting by id from another space is refused as NotFound. Thrown so
+        // the transaction ROLLS BACK, restoring the pipeline idempotency key
+        // the ingestion guard consumed above (the SourceRetainedError
+        // reasoning, same mechanics).
+        if (options.sealedSpace !== null && spaceId !== options.sealedSpace) {
+          throw userError.notFound(
+            'source.notFound',
+            'source {{sourceType}}/{{sourceId}} not found',
+            { sourceType, sourceId },
+          );
+        }
 
         // Contradiction lift: surviving partners of
         // unresolved relations touching a doomed row are restored to their
@@ -1161,6 +1242,31 @@ export class DeletionSaga {
       sourceOwner,
     });
     return { rows, fileRow, adapter };
+  }
+
+  /**
+   * Which space a source lives in: the source row's, else the adapter's
+   * answer, else the space its derived memories carry (stamped from the
+   * source, so the two can only agree). The terminal default-space arm is an
+   * EXPLICIT legacy rule, not an inference: it is reachable only for a
+   * source that left no row, whose adapter predates `spaceOf`, and whose
+   * memories are gone — pre-spaces defunct types (task_conclusion) and
+   * legacy harness adapters — and everything pre-spaces lives in the default
+   * space by migration.
+   */
+  private async sourceSpaceOf(
+    tx: Tx,
+    fileRow: typeof fileMetadata.$inferSelect | undefined,
+    adapter: SourceDeletion | undefined,
+    rows: readonly { spaceId: string }[],
+    sourceId: string,
+  ): Promise<string> {
+    return (
+      fileRow?.spaceId ??
+      (adapter?.spaceOf ? await adapter.spaceOf(tx, sourceId) : null) ??
+      rows[0]?.spaceId ??
+      DEFAULT_SPACE_ID
+    );
   }
 
   /** Resolves (and under `lock` FOR UPDATE-locks) the source row + its owner. */

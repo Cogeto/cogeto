@@ -61,7 +61,9 @@
       "findings_reports": "Rapports de constats",
       "passport_exports": "Exports du passeport de mémoire",
       "connectors": "Connecteurs",
-      "extraction_gates": "Paramètres du filtre d'extraction"
+      "extraction_gates": "Paramètres du filtre d'extraction",
+      "email_routing_rules": "Règles de routage du courrier",
+      "approvals": "Approbations"
     }
   },
   "firstRun": {

@@ -59,11 +59,21 @@ export class ProjectStore {
       .orderBy(asc(project.archived), desc(project.updatedAt), project.id);
   }
 
-  async getForOwner(ownerId: string, id: string): Promise<ProjectRow | null> {
+  async getForOwner(ownerId: string, id: string, spaceId: string): Promise<ProjectRow | null> {
     const rows = await this.db
       .select()
       .from(project)
-      .where(and(eq(project.id, id), eq(project.ownerId, ownerId)))
+      .where(
+        and(
+          eq(project.id, id),
+          eq(project.ownerId, ownerId),
+          // The by-id read is sealed like the listing (docs/features/
+          // spaces.md): a project in another space is not found, even for
+          // its owner, so no update, archive, delete or assignment can act
+          // across the wall through this funnel.
+          eq(project.spaceId, spaceId),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }
@@ -72,16 +82,17 @@ export class ProjectStore {
     ownerId: string,
     orgId: string | null,
     write: ProjectWrite,
-    spaceId?: string,
+    spaceId: string,
   ): Promise<ProjectRow> {
     const [row] = await this.db
       .insert(project)
       .values({
         ownerId,
         orgId,
-        // The caller's current space; omitted (legacy harnesses) falls to the
-        // schema-level default space.
-        ...(spaceId ? { spaceId } : {}),
+        // The caller's current space, required: in this feature the space is
+        // never optional, never defaulted, never inferred
+        // (docs/features/spaces.md section 6d).
+        spaceId,
         name: write.name,
         description: write.description ?? null,
         marker: (write.marker ?? null) as ProjectRow['marker'],

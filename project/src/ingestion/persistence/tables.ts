@@ -13,7 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID, MEMORY_SCOPES, UNCERTAINTY_REASONS } from '@cogeto/shared';
+import { MEMORY_SCOPES, UNCERTAINTY_REASONS } from '@cogeto/shared';
 import type { ReadLocator } from '@cogeto/shared';
 
 /**
@@ -102,7 +102,7 @@ export const suppressedFactLog = pgTable(
     /** The source's space (docs/features/spaces.md, migration 0060): this
      * table participates in the access gate, so it carries the dimension
      * directly, inherited at write time exactly like owner and scope. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     /** Provenance, as plain text: the memory-owned `source_type` enum is not
      * ingestion's to depend on, and item 3.6 turns it into a registry. */
     sourceType: text('source_type').notNull(),
@@ -157,7 +157,7 @@ export const extractionGate = pgTable(
     ownerId: text('owner_id').notNull(),
     /** The space this gate governs (migration 0062, the settings split): a
      * gate decides what is EXTRACTED, so it is sealed with its space. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     sourceType: text('source_type').notNull(),
     enabled: boolean('enabled').notNull().default(true),
     /** NULL: the source-type registry's budget (and the parse cap) decide. */
@@ -176,7 +176,7 @@ export const extractionGateRule = pgTable(
     ownerId: text('owner_id').notNull(),
     /** The space the rule applies in (migration 0062): a rule written for one
      * space must not govern admission in another. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     sourceType: text('source_type').notNull(),
     dimension: text('dimension').notNull(),
     value: text('value').notNull(),
@@ -212,7 +212,7 @@ export const extractionGateRefusal = pgTable(
     /** The refused source's space (docs/features/spaces.md, migration 0061):
      * the badge scan is limit-bounded per owner, so without the column one
      * space's refusals would consume another's window. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     sourceType: text('source_type').notNull(),
     sourceId: text('source_id').notNull(),
     reason: text('reason').$type<ExtractionRefusalReason>().notNull(),
@@ -263,7 +263,7 @@ export const sourceContext = pgTable(
     /** The source's space (docs/features/spaces.md, migration 0060): a
      * content-bearing root reached by a loose source ref, so it carries the
      * dimension directly rather than by join. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     sourceType: text('source_type').notNull(),
     sourceId: text('source_id').notNull(),
     subjects: jsonb('subjects').$type<SourceContextSubject[]>().notNull().default([]),
@@ -376,7 +376,7 @@ export const sourceRevision = pgTable(
     /** The link's space (docs/features/spaces.md, migration 0060): both
      * endpoints live in one space by construction, because candidates are
      * paired within a space only, so the link carries that space directly. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     successorType: text('successor_type').notNull(),
     successorId: text('successor_id').notNull(),
     predecessorType: text('predecessor_type').notNull(),
@@ -422,7 +422,7 @@ export const checkedPair = pgTable(
      * uniqueness key is over globally unique memory ids, so a coincidence in
      * another space structurally cannot suppress a pairing; this column makes
      * the partition explicit and the rows attributable. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     aMemoryId: uuid('a_memory_id').notNull(),
     bMemoryId: uuid('b_memory_id').notNull(),
     family: text('family').$type<'dedup' | 'contradiction'>().notNull(),
@@ -457,7 +457,7 @@ export const entityAlias = pgTable(
     /** The vocabulary's space (docs/features/spaces.md, migration 0060):
      * aliases are sealed with the corpus they describe, and the unique pair
      * index includes the space so the same pair may recur across spaces. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     canonical: text('canonical').notNull(),
     alias: text('alias').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -401,6 +401,11 @@ export class IngestionPipeline {
         ownerId: source.ownerId,
         scope: source.scope ?? 'private',
         sensitive: source.sensitive ?? false,
+        // The source row's space, exactly like the demoted arm in
+        // embed-store.stage.ts (spaces verification F2): a withheld claim is
+        // content and must land in the space its source lives in, never in
+        // the default space's log.
+        spaceId: source.spaceId,
         sourceType: source.sourceType,
         sourceId: source.sourceId,
         factContent: fact.claim,

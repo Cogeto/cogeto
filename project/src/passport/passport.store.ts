@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, lte } from 'drizzle-orm';
 import type { PassportExportDto } from '@cogeto/shared';
-import { DEFAULT_SPACE_ID, PASSPORT_VERSION } from '@cogeto/shared';
+import { PASSPORT_VERSION } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { passportExport } from './persistence/tables';
@@ -33,10 +33,9 @@ export class PassportExportStore {
     orgId: string | undefined,
     includeOriginals: boolean,
     /** The space this export covers (docs/features/spaces.md): the passport
-     * exports one space. Optional with the default space so pre-spaces
-     * harness calls keep their meaning; the service always passes the
+     * exports one space, REQUIRED (section 6d). The service passes the
      * caller's resolved space. */
-    spaceId: string = DEFAULT_SPACE_ID,
+    spaceId: string,
   ): Promise<PassportExportRow> {
     const [row] = await tx
       .insert(passportExport)

@@ -1,5 +1,4 @@
 import { bigint, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { MemoryScope } from '@cogeto/shared';
 
 /**
@@ -20,7 +19,7 @@ export const importRun = pgTable(
     /** The space every document this run ingests lands in
      * (docs/features/spaces.md, migration 0060), stamped at run creation
      * from the caller's current space. Items inherit through the run. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     kind: text('kind').$type<'zip' | 'folder' | 's3'>().notNull(),
     state: text('state')
       .$type<'manifest' | 'running' | 'completed' | 'cancelled' | 'failed'>()

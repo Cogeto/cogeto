@@ -48,6 +48,10 @@ function principalFor(copy: DuplicateCopy): Principal {
     orgId: copy.objectKey.split('/')[0] ?? '',
     orgName: '',
     roles: [],
+    // The copy's own space: the saga's interactive path is sealed to the
+    // acting principal's space (docs/features/spaces.md), and this CLI acts
+    // per copy, in that copy's space.
+    spaceId: copy.spaceId,
   };
 }
 

@@ -12,6 +12,7 @@ import type {
   ChatStreamEvent,
   Principal,
 } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import { applyMigrations, createDb, UserContextService } from '../infrastructure/index';
 import {
   createMemoryReconciliation,
@@ -628,10 +629,10 @@ async function main(): Promise<void> {
         const e = testCase.emails[i]!;
         await db.execute(sql`
           INSERT INTO email_message
-            (owner_id, scope, from_addr, to_addr, subject, message_id, received_at,
+            (owner_id, space_id, scope, from_addr, to_addr, subject, message_id, received_at,
              raw_object_key, text_body, headers_json, has_attachments)
           VALUES
-            (${principal.userId}, 'private', ${e.from}, ${EVAL_INBOUND}, ${e.subject ?? null},
+            (${principal.userId}, ${DEFAULT_SPACE_ID}, 'private', ${e.from}, ${EVAL_INBOUND}, ${e.subject ?? null},
              ${e.message_id ?? null}, ${anchor.toISOString()},
              ${`eval/${testCase.case_id}/email-${i}`}, ${e.text}, '{}'::jsonb, false)
         `);
@@ -649,6 +650,9 @@ async function main(): Promise<void> {
             sourceType: 'user_note',
             sourceId,
             ownerId: principal.userId,
+            // The eval instance is single-space by construction: the seed
+            // names the default space explicitly (section 6d: never omitted).
+            spaceId: DEFAULT_SPACE_ID,
             content: testCase.notes[i]!,
             // Mirror the note SourceReader: a note is the user's own voice, so
             // its obligations pass the first-person rule and reach open loops.
@@ -826,6 +830,7 @@ async function main(): Promise<void> {
                   sourceType: 'web',
                   sourceId: pageId,
                   ownerId: principal.userId,
+                  spaceId: DEFAULT_SPACE_ID,
                   content: page.title ? `${page.title}\n\n${page.retainedText}` : page.retainedText,
                   // Mirror the web SourceReader: a fetched page is not the user's voice.
                   authoredByUser: false,
@@ -928,6 +933,7 @@ async function main(): Promise<void> {
                   sourceType: 'web',
                   sourceId: page.id,
                   ownerId: principal.userId,
+                  spaceId: DEFAULT_SPACE_ID,
                   content: page.title ? `${page.title}\n\n${page.text}` : page.text,
                   // Mirror the web SourceReader: a fetched page is not the user's voice.
                   authoredByUser: false,

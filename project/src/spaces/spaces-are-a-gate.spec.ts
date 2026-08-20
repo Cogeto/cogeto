@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import { buildGateFilter, memoryPointFor, GENESIS_HASH } from '../memory/index';
@@ -148,6 +148,134 @@ describe('spaces are a gate', () => {
     // chains are distinguished by the space column, never by the constant,
     // which is what keeps every historical receipt verifying unchanged.
     expect(GENESIS_HASH).toBe('cogeto:deletion-receipt-chain:genesis');
+  });
+
+  // ── The write side of the wall (spaces verification F2/F6, section 6d) ────
+  //
+  // The three audit findings were all OMISSIONS the schema permitted: an
+  // optional space field whose absence fell to a column default. The guards
+  // below make that class fail a test instead of a customer. What they still
+  // CANNOT catch, stated plainly: raw SQL inserts (the retained DB-level
+  // DEFAULT, kept for the applied migrations' backfill contract and the
+  // unedited legacy harnesses, files those into the default space rather
+  // than failing them); a JS caller ignoring the types at runtime; a NEW
+  // table whose author never adds it to SPACED_ROOTS; and the two seams whose
+  // optional shape is pinned by older structural specs (passport
+  // getForOwner/listForOwner's conditional predicate). The compile-time
+  // requirement plus the fallback census below is the practical ceiling
+  // without runtime schema reflection.
+
+  /** Product sources: every .ts under project/src except specs, test doubles
+   * and build output. */
+  const productFiles = (): string[] => {
+    const entries = readdirSync(SRC, { recursive: true, encoding: 'utf8' });
+    return entries
+      .filter((rel) => rel.endsWith('.ts'))
+      .filter((rel) => !rel.endsWith('.spec.ts'))
+      .filter((rel) => !rel.split(sep).includes('testing'))
+      .filter((rel) => !rel.split(sep).includes('dist'))
+      .filter((rel) => !rel.split(sep).includes('node_modules'))
+      .map((rel) => relative('', rel));
+  };
+
+  it('no_space_column_declares_a_drizzle_default: an insert without its space cannot compile', () => {
+    // The Drizzle-level `.default(DEFAULT_SPACE_ID)` is what made F2
+    // representable: the insert type accepted an entry with no space and the
+    // column default filed it into the default partition. With the default
+    // gone from every table declaration, `space_id` is required in every
+    // compiled insert. (The DB-level DEFAULT from migrations 0060-0063 is
+    // deliberately retained; see the block comment above.)
+    const tables = productFiles().filter((rel) => rel.endsWith(join('persistence', 'tables.ts')));
+    expect(tables.length).toBeGreaterThanOrEqual(17);
+    for (const rel of tables) {
+      expect(readFileSync(join(SRC, rel), 'utf8'), rel).not.toContain('.default(DEFAULT_SPACE_ID)');
+    }
+  });
+
+  it('no_space_parameter_defaults_and_no_unlisted_fallbacks: silence is never how a space gets chosen', () => {
+    // Every `?? DEFAULT_SPACE_ID` in product code is either a RESOLUTION rule
+    // the decision record names, or a runtime backstop for an unedited legacy
+    // harness behind a type that already requires the space. Each is listed
+    // here with its reason; an unlisted occurrence (or an extra one in a
+    // listed file) is the F6 pattern coming back and fails this test.
+    const ALLOWED_FALLBACKS: Record<string, { count: number; reason: string }> = {
+      // Resolution rules the record names:
+      'spaces/space.service.ts': {
+        count: 1,
+        reason: 'a deleted last-used space degrades to the default space (section 2)',
+      },
+      'email/email-intake.service.ts': {
+        count: 1,
+        reason: 'mail routing terminal arm: the recipient default IS the instance default (6c)',
+      },
+      'memory/deletion-saga.ts': {
+        count: 1,
+        reason:
+          'receipt chain for a rowless pre-spaces defunct source: all pre-spaces content lives in the default space',
+      },
+      // Runtime backstops behind required types, for unedited legacy harnesses:
+      'ingestion/persistence/extraction-gate.store.ts': {
+        count: 2,
+        reason: 'decisionFor backstop + the refusal listing pinned by spaces-isolation-depth',
+      },
+      'files/persistence/file-read-report.ts': {
+        count: 2,
+        reason: 'record() no-options harness call + the listing pinned by spaces-isolation-depth',
+      },
+      'memory/memory.store.ts': {
+        count: 1,
+        reason: 'confirmedReceiptsForOwner backstop for a pre-spaces harness call',
+      },
+      'memory/file-store.ts': {
+        count: 1,
+        reason: 'findStoredDuplicate, the per-space dedup line pinned by spaces-isolation-depth',
+      },
+      'chat/conversation-search.ts': {
+        count: 1,
+        reason: 'searchConversations called with no options by a pre-spaces harness',
+      },
+    };
+    const found = new Map<string, number>();
+    for (const rel of productFiles()) {
+      const normalized = readFileSync(join(SRC, rel), 'utf8').replace(/\s+/g, ' ');
+      const posix = rel.split(sep).join('/');
+      // A parameter default is the compile-time omission channel: zero, ever.
+      expect(normalized, posix).not.toMatch(/:\s*string\s*=\s*DEFAULT_SPACE_ID/);
+      const hits = normalized.match(/\?\?\s*DEFAULT_SPACE_ID/g)?.length ?? 0;
+      if (hits > 0) found.set(posix, hits);
+    }
+    const report = Object.fromEntries([...found.entries()].sort());
+    const expected = Object.fromEntries(
+      Object.entries(ALLOWED_FALLBACKS)
+        .map(([file, { count }]) => [file, count] as const)
+        .sort(),
+    );
+    expect(report).toEqual(expected);
+  });
+
+  it('the_write_seams_require_the_space: the entry types cannot be constructed without one', () => {
+    // Textual pins on the load-bearing types (the build's tsc is what
+    // actually enforces them; these keep a revert from being quiet).
+    expect(read('ingestion/persistence/suppressed-fact-log.ts')).toContain('spaceId: string;');
+    expect(read('ingestion/persistence/suppressed-fact-log.ts')).not.toContain('spaceId?: string');
+    expect(read('ingestion/pipeline/source-reader.ts')).toContain('spaceId: string;');
+    expect(read('ingestion/pipeline/source-reader.ts')).not.toContain('spaceId?: string');
+    // The F2 site itself: the structurally-invalid arm stamps the source's
+    // space exactly like its demoted sibling in embed-store.stage.ts.
+    const pipeline = read('ingestion/pipeline/pipeline.service.ts');
+    expect(pipeline.match(/spaceId: source\.spaceId/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+    // And no STORE spreads the space conditionally into a write any more: a
+    // conditional spread is the omission channel the required types close.
+    // (The one surviving spread of this shape is the instance-level audit
+    // page's optional space FILTER, a read over the documented instance
+    // trail, which is why the scan covers the persistence layer.)
+    for (const rel of productFiles()) {
+      const posix = rel.split(sep).join('/');
+      if (!posix.includes('/persistence/') && !posix.endsWith('store.ts')) continue;
+      expect(readFileSync(join(SRC, rel), 'utf8'), posix).not.toMatch(
+        /\.\.\.\((?:\w+\.)?spaceId \? \{ spaceId/,
+      );
+    }
   });
 
   it('projects_stay_the_lens: the sibling rule survives this feature', () => {

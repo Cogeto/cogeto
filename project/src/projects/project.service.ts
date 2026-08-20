@@ -273,7 +273,7 @@ export class ProjectService {
   }
 
   private async require(principal: Principal, id: string): Promise<ProjectRow> {
-    const row = await this.store.getForOwner(principal.userId, id);
+    const row = await this.store.getForOwner(principal.userId, id, resolveSpaceId(principal));
     if (!row) throw userError.notFound('project.notFound', 'project {{id}} not found', { id });
     return row;
   }

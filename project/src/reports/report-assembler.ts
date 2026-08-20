@@ -2,13 +2,19 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { FindingsReportCountsDto, Principal } from '@cogeto/shared';
-import { FINDINGS_REPORT_VERSION, isRegisteredSourceType, resolveSpaceId } from '@cogeto/shared';
+import {
+  DEFAULT_SPACE_ID,
+  FINDINGS_REPORT_VERSION,
+  isRegisteredSourceType,
+  resolveSpaceId,
+} from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   MemoryObjectStore,
   MemoryReconciliation,
   MemoryStore,
+  fileKeySpaces,
   listFileSourceRefs,
 } from '../memory/index';
 import type { MemoryRow, SourceType } from '../memory/index';
@@ -882,10 +888,21 @@ export class ReportAssembler {
     sourceId: string,
   ): Promise<boolean> {
     if (sourceType === 'file') {
+      const spaceId = resolveSpaceId(principal);
       const parts = sourceId.split('/');
       if (parts[0] !== principal.orgId || parts[1] !== principal.userId) return false;
       const described = await this.memory.describeSource('file', sourceId);
-      if (described) return described.ownerId === principal.userId;
+      // The space seals report scoping like every read (spaces verification
+      // F3's relative): a caller must not pull another space's file into a
+      // report assembled here. Same three arms as the source catalog's
+      // ownsSource, which is the reference implementation of this check.
+      if (described) return described.ownerId === principal.userId && described.spaceId === spaceId;
+      const stored = await fileKeySpaces(this.db, principal.userId, [sourceId]);
+      const storedSpace = stored.get(sourceId);
+      if (storedSpace !== undefined) return storedSpace === spaceId;
+      // No metadata row and no derived memories: the remaining traces carry
+      // no space of their own and can only be default-space material.
+      if (spaceId !== DEFAULT_SPACE_ID) return false;
       const stat = await this.objects.statObject(sourceId).catch(() => null);
       if (stat) return true;
       const outcomes = await readOutcomesForKeys(this.db, [sourceId]);

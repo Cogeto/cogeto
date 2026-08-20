@@ -47,6 +47,9 @@ export async function seedObjectFixture(options: SeedObjectOptions): Promise<See
   await db.insert(fileMetadata).values({
     objectKey,
     ownerId: principal.userId,
+    // The dev fixture lives in the default space, named explicitly (the
+    // Qdrant payload below already said so; the row now agrees in code).
+    spaceId: DEFAULT_SPACE_ID,
     scope: 'private',
     sensitive: false,
     checksum: createHash('sha256').update(bytes).digest('hex'),
