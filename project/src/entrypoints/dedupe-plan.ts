@@ -15,6 +15,9 @@ import type { Db } from '../infrastructure/index';
 export interface DuplicateCopy {
   objectKey: string;
   ownerId: string;
+  /** The copy's space: dedup groups per space, and the deleting principal
+   * must stand in the copy's own space (docs/features/spaces.md). */
+  spaceId: string;
   /** Memories whose provenance is this copy. Deleting it deletes them. */
   facts: number;
   /** Stored answers citing at least one of those memories. */
@@ -206,6 +209,7 @@ export async function loadDuplicateGroups(db: Db): Promise<DuplicateGroup[]> {
     group.copies.push({
       objectKey: row.object_key,
       ownerId: row.owner_id,
+      spaceId: row.space_id,
       facts: Number(row.facts),
       citedByAnswers: Number(row.cited),
       uploadDate: new Date(row.upload_date),

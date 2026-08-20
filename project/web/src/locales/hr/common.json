@@ -21,7 +21,9 @@
     "loadingApp": "Cogeto se učitava…",
     "saving": "Spremanje…",
     "saved": "Spremljeno.",
-    "spacesFailed": "Popis prostora nije bilo moguće učitati, pa se još ništa ne može prikazati."
+    "spacesFailed": "Popis prostora nije bilo moguće učitati, pa se još ništa ne može prikazati.",
+    "spacesFailedInstanceHint": "Instancijsko područje ne ovisi o prostorima i dalje je dostupno:",
+    "spacesFailedInstanceLink": "otvori stanje sustava"
   },
   "memoryStatus": {
     "active": "aktivno",

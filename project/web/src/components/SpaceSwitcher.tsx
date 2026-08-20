@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { SpaceDto } from '@cogeto/shared';
 import { createSpace, fetchSpaces, putCurrentSpace, renameSpace } from '../api';
 import type { Session } from '../auth/oidc';
-import { currentSpaceId } from '../space';
+import { commitSpaceChange, currentSpaceId } from '../space';
 import { useApiErrorMessage } from '../i18n/api-error';
 import { CogIcon } from './CogIcon';
 import { btnPrimary, btnSecondary } from './ui';
@@ -124,9 +124,11 @@ export function SpaceSwitcher({ session }: { session: Session }) {
     try {
       await putCurrentSpace(session, space.id);
       // Same path, params dropped: ?c= / ?src= / ?open= name objects of the
-      // space being left. The reload rebinds the space and recomputes
-      // everything, so no badge or list can briefly show the previous space.
-      window.location.assign(window.location.pathname);
+      // space being left. commitSpaceChange covers the page and navigates;
+      // the reload rebinds the space and recomputes everything, so no badge
+      // or list can briefly show the previous space, and a stalled
+      // navigation retries instead of leaving the old page interactive (F8).
+      commitSpaceChange(window.location.pathname, t('switcher.switching', { name: space.name }));
     } catch (cause) {
       setBusy(null);
       setError(
@@ -145,8 +147,9 @@ export function SpaceSwitcher({ session }: { session: Session }) {
     try {
       await createSpace(session, name);
       // The server has already switched the creator; land on the new space's
-      // dashboard, whose first-run state points at Chat and Sources.
-      window.location.assign('/');
+      // dashboard, whose first-run state points at Chat and Sources. Same
+      // committed mechanics as a switch (F8): cover, navigate, retry.
+      commitSpaceChange('/', t('switcher.switching', { name }));
     } catch (cause) {
       setBusy(null);
       setError(errorMessage(cause, 'switcher.createFailed'));

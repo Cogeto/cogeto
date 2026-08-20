@@ -10,7 +10,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID, MEMORY_SCOPES } from '@cogeto/shared';
+import { MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
  * Tables owned by the email module (migration 0021; split from the connectors
@@ -38,7 +38,7 @@ export const emailMessage = pgTable(
     // else the default space. Intake has no Principal, so the routing rules
     // are the machine path's space binding; an alias without a rule is
     // refused, never defaulted.
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     messageId: text('message_id'),
     inReplyTo: text('in_reply_to'),
     references: text('references').array().notNull().default([]),
@@ -117,7 +117,7 @@ export const emailAllowlist = pgTable(
     // an inbound message is exactly the unknown routing must resolve. The
     // DEFAULT keeps every pre-routing rule landing where it always did; the
     // email space cleanup leg removes rules whose target space is erased.
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('email_allowlist_owner_kind_value_idx').on(t.ownerId, t.kind, t.value)],

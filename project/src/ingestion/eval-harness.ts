@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { z } from 'zod';
-import { isRegisteredSourceType } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, isRegisteredSourceType } from '@cogeto/shared';
 import { ModelGateway } from '../model-gateway/index';
 import type { SourceType } from '../memory/index';
 import { loadPrompt } from '../model-gateway/index';
@@ -311,6 +311,9 @@ export async function runGoldenEval(options: {
       sourceType,
       sourceId: `golden-${testCase.caseId}`,
       ownerId: 'golden-eval',
+      // The eval harness runs against a throwaway single-space database: the
+      // default space, named explicitly (section 6d: never omitted).
+      spaceId: DEFAULT_SPACE_ID,
       content,
       createdAt: caseAnchor,
       authoredByUser: authoredByUser ?? undefined,

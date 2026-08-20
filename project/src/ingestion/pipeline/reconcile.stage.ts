@@ -253,7 +253,7 @@ export const RECONCILE_MODEL_CONFIG = Symbol('RECONCILE_MODEL_CONFIG');
  * across spaces, and carrying the row's space through the gate is what
  * enforces it in every candidate read.
  */
-function ownerPrincipal(ownerId: string, spaceId?: string): Principal {
+function ownerPrincipal(ownerId: string, spaceId: string): Principal {
   return { userId: ownerId, name: '', email: null, orgId: '', orgName: '', roles: [], spaceId };
 }
 

@@ -6,9 +6,19 @@ anti-lock-in promise made concrete: leave whenever you want.
 
 **A passport is per space** (docs/features/spaces.md section 5 as amended): the export
 covers the space you triggered it from, the manifest names that space, and the receipts
-it carries belong to that space's own chain, which is what makes them verifiable
-standalone. A receipt in the export never references a receipt from another space,
-because since the chains became per space no receipt anywhere does.
+it carries belong to that space's own chain. A receipt in the export never references a
+receipt from another space, because since the chains became per space no receipt
+anywhere does.
+
+Precisely what "verifiable standalone" means here: **every receipt in the archive
+verifies individually** from the archive and the shipped public key alone, because the
+signature covers the canonical payload including its `prev_hash` link. A full
+genesis-to-tip WALK of the space's chain from the archive alone additionally requires
+that every receipt in the space is yours: the export carries the exporting owner's
+receipts, and in a space where colleagues also erased material, the walk would cross
+their receipts, which the export must not contain. In that case the links between your
+receipts are still attested by the signatures; re-walking the whole chain offline needs
+the instance (GET /api/receipts/verify), which walks it server-side.
 
 The published schemas and the verification steps live in
 [`../passport-schema/`](../passport-schema/).

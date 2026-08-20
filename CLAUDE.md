@@ -670,6 +670,33 @@ one space no longer silences another's unread dot). Read
 [`docs/features/spaces.md`](docs/features/spaces.md) before changing anything
 near an intake path, a machine credential, or an exported artifact.
 
+**The spaces verification follow-up closed the audit of the four V3 sessions**
+(2026-08-20, two work sessions merged as one change; decisions recorded in
+[`docs/features/spaces.md`](docs/features/spaces.md) sections 6d and 6e). The
+correctness half fixed the three findings and removed their shared cause: the
+space can no longer be ABSENT anywhere. Approvals gained the cleanup leg that
+made a space holding one undeletable; the structurally invalid suppressed
+facts stamp their source's space; every owner-gated multi-arm lookup compares
+the space on EVERY branch; `SourceItem.spaceId` and every store's space
+parameter are REQUIRED, all 29 Drizzle-level space column defaults are gone
+(the DB DEFAULT stays as the applied migrations' backfill contract), and
+`spaces-are-a-gate.spec.ts` holds a reasoned census of every remaining
+`?? DEFAULT_SPACE_ID`. The hand walk found and fixed a sibling live: space
+deletion now enumerates DISCARD-mode sources from memory provenance, so a
+space holding one can actually finish deleting. The hardening half made the
+switcher machinery tested and bfcache-proof (a page restored from the
+back/forward cache hides itself and reloads before anything can act under
+the previous page load's binding; every space change leaves through one
+committed cover-navigate-retry mechanism), un-trapped the instance area from
+the space boot gate (a failed spaces fetch no longer blocks the very pages
+that diagnose it), degraded `GET /api/spaces`' pointer against its own list,
+and wrote the two outstanding upgrade notes (machine tokens must be bound to
+a space; pre-existing vectors are recall-invisible to the vector arm until
+the nightly sweep or a flagless `cogeto reindex` backfills their payloads).
+**The standing constraint is section 6d: the space is never optional, never
+defaulted, never inferred, and a path that cannot determine it fails
+loudly.**
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

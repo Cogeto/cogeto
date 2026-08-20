@@ -34,7 +34,13 @@ import {
   SuppressedFactCascade,
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
-import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
+import {
+  AgentsModule,
+  AgentsSpaceCleanup,
+  AgentsSpaceCleanupModule,
+  ReplyDraftCascade,
+  ReplyDraftCascadeModule,
+} from '../agents/index';
 import {
   SKILL_ADVANCE_JOB_TYPE,
   SkillsModule,
@@ -493,6 +499,7 @@ export function createWorkerRootModule(
             PassportSpaceCleanupModule,
             ConnectorSpaceCleanupModule,
             EmailRoutingSpaceCleanupModule,
+            AgentsSpaceCleanupModule,
           ],
           adapters: [
             ProjectSpaceCleanup,
@@ -505,6 +512,7 @@ export function createWorkerRootModule(
             PassportSpaceCleanup,
             ConnectorSpaceCleanup,
             EmailRoutingSpaceCleanup,
+            AgentsSpaceCleanup,
           ],
         },
       }),

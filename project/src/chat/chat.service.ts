@@ -477,11 +477,22 @@ export class ChatService {
    */
   async rememberMessage(principal: Principal, messageId: string): Promise<ChatRememberedDto> {
     const rows = await this.db
-      .select()
+      .select({ message: chatMessage })
       .from(chatMessage)
-      .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
+      .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
+      .where(
+        and(
+          eq(chatMessage.id, messageId),
+          eq(chatMessage.ownerId, principal.userId),
+          // A message's space is its conversation's (chat_message carries no
+          // space column): capturing is sealed like every conversation read
+          // (docs/features/spaces.md), so a space-A message cannot be pushed
+          // through the pipeline from space B.
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
-    const message = rows[0];
+    const message = rows[0]?.message;
     if (!message)
       throw userError.notFound('chat.messageNotFound', 'message {{id}} not found', {
         id: messageId,
@@ -514,7 +525,15 @@ export class ChatService {
     const owned = await this.db
       .select({ id: chatMessage.id })
       .from(chatMessage)
-      .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
+      .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
+      .where(
+        and(
+          eq(chatMessage.id, messageId),
+          eq(chatMessage.ownerId, principal.userId),
+          // Sealed through the conversation, like rememberMessage above.
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     if (owned.length === 0)
       throw userError.notFound('chat.messageNotFound', 'message {{id}} not found', {
@@ -535,11 +554,21 @@ export class ChatService {
    */
   async messageContext(principal: Principal, messageId: string): Promise<ChatContextDto> {
     const rows = await this.db
-      .select()
+      .select({ message: chatMessage })
       .from(chatMessage)
-      .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
+      .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
+      .where(
+        and(
+          eq(chatMessage.id, messageId),
+          eq(chatMessage.ownerId, principal.userId),
+          // Sealed through the conversation, like rememberMessage above: the
+          // drawer's surrounding turns are content from another space
+          // otherwise.
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
-    const target = rows[0];
+    const target = rows[0]?.message;
     if (!target)
       throw userError.notFound('chat.messageNotFound', 'message {{id}} not found', {
         id: messageId,

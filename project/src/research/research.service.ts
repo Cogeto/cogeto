@@ -200,7 +200,15 @@ export class ResearchService {
       const rows = await tx
         .select()
         .from(researchRun)
-        .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
+        .where(
+          and(
+            eq(researchRun.id, runId),
+            eq(researchRun.ownerId, principal.userId),
+            // Approving is space-sealed like reading (docs/features/spaces.md):
+            // a run in another space is not found, even for its owner.
+            eq(researchRun.spaceId, resolveSpaceId(principal)),
+          ),
+        )
         .for('update');
       const row = rows[0];
       if (!row) throw userError.notFound('research.runNotFound', 'no such research run');
@@ -265,7 +273,15 @@ export class ResearchService {
       const rows = await tx
         .select()
         .from(researchRun)
-        .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
+        .where(
+          and(
+            eq(researchRun.id, runId),
+            eq(researchRun.ownerId, principal.userId),
+            // Cancelling is space-sealed like approving, and for the same
+            // reason (docs/features/spaces.md).
+            eq(researchRun.spaceId, resolveSpaceId(principal)),
+          ),
+        )
         .for('update');
       const row = rows[0];
       if (!row) throw userError.notFound('research.runNotFound', 'no such research run');
@@ -526,7 +542,15 @@ export class ResearchService {
     const rows = await this.db
       .select()
       .from(webPage)
-      .where(and(eq(webPage.id, id), eq(webPage.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(webPage.id, id),
+          eq(webPage.ownerId, principal.userId),
+          // The retained page body is content: sealed with its space like
+          // every other by-id read (docs/features/spaces.md).
+          eq(webPage.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }

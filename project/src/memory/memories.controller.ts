@@ -175,6 +175,12 @@ export class MemoriesController {
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<MemoryListItem> {
+    // The gated read seals the space (docs/features/spaces.md): a memory in
+    // another space is not found here, so the transition below cannot act
+    // across the wall (the user actor it takes carries no space of its own).
+    if (!(await this.store.getForPrincipal(request.principal, id, { includeSensitive: true }))) {
+      throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id });
+    }
     const row = await this.store.transition(
       { kind: 'user', userId: request.principal.userId },
       id,
@@ -198,6 +204,10 @@ export class MemoriesController {
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<MemoryListItem> {
+    // Space-sealed exactly like the approve endpoint above.
+    if (!(await this.store.getForPrincipal(request.principal, id, { includeSensitive: true }))) {
+      throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id });
+    }
     const row = await this.store.transition(
       { kind: 'user', userId: request.principal.userId },
       id,

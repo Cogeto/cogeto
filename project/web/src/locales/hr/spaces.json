@@ -16,7 +16,9 @@
     "spaceSettings": "Postavke prostora",
     "switchFailed": "Prebacivanje nije uspjelo; i dalje ste u prostoru {{name}}.",
     "createFailed": "Prostor nije stvoren.",
-    "renameFailed": "Prostor nije preimenovan."
+    "renameFailed": "Prostor nije preimenovan.",
+    "switching": "Prebacivanje u {{name}}…",
+    "reloading": "Ponovno učitavanje…"
   },
   "deleted": {
     "title": "Ovaj prostor je izbrisan",
@@ -61,7 +63,9 @@
       "findings_reports": "Izvještaji o nalazima",
       "passport_exports": "Izvozi putovnice pamćenja",
       "connectors": "Konektori",
-      "extraction_gates": "Postavke filtra izdvajanja"
+      "extraction_gates": "Postavke filtra izdvajanja",
+      "email_routing_rules": "Pravila usmjeravanja pošte",
+      "approvals": "Odobrenja"
     }
   },
   "firstRun": {

@@ -10,7 +10,7 @@ import {
   fetchSpaces,
 } from '../api';
 import type { Session } from '../auth/oidc';
-import { currentSpaceId } from '../space';
+import { commitSpaceChange, currentSpaceId } from '../space';
 import { CogIcon } from './CogIcon';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
@@ -206,7 +206,10 @@ export function Shell({
                 type="button"
                 className={btnPrimary}
                 autoFocus
-                onClick={() => window.location.assign('/')}
+                // The same committed mechanics as every space change (F8):
+                // cover, navigate, retry on a stall. The reload rebinds to
+                // the server-resolved space, which has already fallen back.
+                onClick={() => commitSpaceChange('/', t('spaces:switcher.reloading'))}
               >
                 {t('spaces:deleted.cta')}
               </button>

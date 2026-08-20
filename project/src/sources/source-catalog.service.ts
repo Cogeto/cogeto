@@ -408,7 +408,9 @@ export class SourceCatalogService {
    * trace is their facts' provenance. Names resolve per page below. */
   private async enumerateFiles(
     principal: Principal,
-    options: { cursor?: Date; order?: 'asc' | 'desc'; limit: number },
+    // spaceId is part of the type (spaces verification F6): the caller
+    // supplies it and this signature must not drop it on the floor.
+    options: { cursor?: Date; order?: 'asc' | 'desc'; limit: number; spaceId: string },
   ): Promise<CatalogRef[]> {
     const [stored, derived] = await Promise.all([
       listFileSourceRefs(this.db, principal.userId, options),

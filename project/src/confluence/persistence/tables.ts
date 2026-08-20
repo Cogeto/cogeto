@@ -1,5 +1,4 @@
 import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 
 /**
  * The provenance table owned by `confluence` (V2.5 item 8.2, migration
@@ -19,7 +18,7 @@ export const confluencePage = pgTable(
     /** The COGETO space (docs/features/spaces.md, migration 0060), inherited
      * from the connector at materialization. Not to be confused with the
      * Confluence space, which is `space_key` / `space_name` below. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     connectorId: uuid('connector_id').notNull(),
     sourceType: text('source_type').notNull(),
     sourceId: text('source_id').notNull(),

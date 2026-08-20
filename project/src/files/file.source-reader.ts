@@ -89,7 +89,7 @@ export class FileSourceReader implements SourceReader {
   private async readAndRecord(
     sourceId: string,
     ownerId: string,
-    spaceId: string | undefined,
+    spaceId: string,
     bytes: Buffer,
     contentType: string | null,
     filename: string | null,
@@ -198,10 +198,19 @@ export class FileSourceReader implements SourceReader {
     // enters file_metadata, provenance or any receipt (F1 handoff §3), and the
     // report has to survive the staging object it describes.
     const discardFilename = decodeFilename(md['original-filename']);
+    // A discard-mode upload's space rides ONLY the staging object's metadata
+    // (stamped by uploadDiscard beside owner/scope/sensitive). Losing it must
+    // not file the extraction anywhere: fail loudly, never infer
+    // (docs/features/spaces.md section 6d). The job dead-letters visibly and
+    // the staging backstop cleans the bytes.
+    const stagingSpace = md['space-id'];
+    if (!stagingSpace) {
+      throw new Error(`discard-mode staging object for ${sourceId} carries no space-id metadata`);
+    }
     const { text, segments, report } = await this.readAndRecord(
       sourceId,
       md['owner-id'] ?? '',
-      md['space-id'] ?? undefined,
+      stagingSpace,
       object.body,
       object.contentType,
       discardFilename,
@@ -218,8 +227,9 @@ export class FileSourceReader implements SourceReader {
       scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
       sensitive: md['sensitive'] === 'true',
       // Discard mode has no row, so the space rides the staging object's
-      // metadata beside owner/scope/sensitive (docs/features/spaces.md).
-      spaceId: md['space-id'] ?? undefined,
+      // metadata beside owner/scope/sensitive (docs/features/spaces.md),
+      // verified present above.
+      spaceId: stagingSpace,
       // Same rule as the durable path: a document is not the user's own voice.
       authoredByUser: false,
       // Same rule as the durable path: the sniffed format for the gate's

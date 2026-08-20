@@ -9,14 +9,51 @@ Nothing here is optional reading for the releases it names.
 
 ---
 
-## Outstanding notes: none
+## Outstanding notes: the first release carrying spaces
+
+The next release introduces spaces (migrations 0060 through 0063), fully
+sealed partitions of the instance. A single-space instance behaves as before,
+with two exceptions an operator or integrator must know BEFORE upgrading. In
+full: [`../features/spaces.md`](../features/spaces.md).
+
+**1. Machine tokens are refused until an administrator binds them to a
+space.** This is a deliberate breaking change for API integrations. A machine
+caller is any bearer token that resolves without a human profile (no email
+claim): every Zitadel service-user token, and any token minted by a non-SPA
+client without the email scope. Such a token must be bound to exactly one
+space, there is no ambient default for machines, and a call that cannot
+resolve a space is refused with 403. The refusal itself names the remedy:
+
+```
+PUT /api/spaces/machine-bindings/<service user id>   (administrator role)
+```
+
+with body `{"spaceId": "<space id>"}`. A space header that disagrees with the
+binding is also refused, never honored. An integration that worked before the
+upgrade returns 403 after it until the binding exists; nothing is lost, and
+binding it restores the integration unchanged within its bound space.
+
+**2. Pre-existing memories are invisible to VECTOR search until their index
+payloads carry the space.** The vector gate now requires the space inside the
+query, and vectors written before the upgrade do not carry it yet. The
+Postgres arms (keyword, entity, temporal) still return everything, so this is
+a partial recall dip, never a leak, and it is temporary: the nightly
+integrity sweep (03:00 UTC) backfills the payloads, so the window closes on
+its own within a day. To close it immediately, run the flagless
+
+```
+cogeto reindex
+```
+
+after the upgrade: it rebuilds every vector with its current payload, space
+included. Fresh installs are unaffected.
+
+---
 
 Every note below is historical. The releases that carried them are at or below
 the current release line, and no instance exists that predates it, so there is
 no upgrade path any of them applies to. They stay as a record of what changed
 and, more usefully, as pointers to where each subject is now documented in full.
-
-An operator installing or upgrading today needs nothing from this file.
 
 ---
 

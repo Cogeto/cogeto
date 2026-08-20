@@ -21,7 +21,9 @@
     "loadingApp": "Cogeto wird geladen…",
     "saving": "Wird gespeichert…",
     "saved": "Gespeichert.",
-    "spacesFailed": "Die Liste der Spaces konnte nicht geladen werden, daher kann noch nichts angezeigt werden."
+    "spacesFailed": "Die Liste der Spaces konnte nicht geladen werden, daher kann noch nichts angezeigt werden.",
+    "spacesFailedInstanceHint": "Der Instanzbereich hängt nicht von Spaces ab und bleibt erreichbar:",
+    "spacesFailedInstanceLink": "Systemstatus öffnen"
   },
   "memoryStatus": {
     "active": "aktiv",

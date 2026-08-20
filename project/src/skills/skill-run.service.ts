@@ -69,7 +69,16 @@ export class SkillRunService {
     const rows = await this.db
       .select()
       .from(skillRun)
-      .where(and(eq(skillRun.id, runId), eq(skillRun.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(skillRun.id, runId),
+          eq(skillRun.ownerId, principal.userId),
+          // The by-id read is sealed like the listing below
+          // (docs/features/spaces.md): a run in another space is not found,
+          // even for its owner, and its step payloads with it.
+          eq(skillRun.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }

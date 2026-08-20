@@ -40,9 +40,9 @@ export class SourceRevisionStore {
       ownerId: string;
       /** The space both endpoints live in (docs/features/spaces.md): callers
        * nominate candidates within one container, which lives in one space,
-       * so a link can only ever join same-space sources. Absent (legacy
-       * harnesses) falls to the schema-level default space. */
-      spaceId?: string;
+       * so a link can only ever join same-space sources. REQUIRED (section
+       * 6d): both machine writers carry their row's space. */
+      spaceId: string;
       successor: RevisionRef;
       predecessor: RevisionRef;
       status: 'auto' | 'proposed';
@@ -53,7 +53,7 @@ export class SourceRevisionStore {
       .insert(sourceRevision)
       .values({
         ownerId: entry.ownerId,
-        ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
+        spaceId: entry.spaceId,
         successorType: entry.successor.sourceType,
         successorId: entry.successor.sourceId,
         predecessorType: entry.predecessor.sourceType,

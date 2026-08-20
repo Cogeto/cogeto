@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, eq } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db } from '../../infrastructure/index';
 import { EntityAliasIndex } from '../domain/entity-match';
@@ -16,17 +15,14 @@ import type { EntityAliasRow } from './tables';
  *
  * Aliases are space-scoped (docs/features/spaces.md): the vocabulary is
  * sealed with the corpus it describes, so every read and write is keyed by
- * (owner, space). The parameter defaults to the default space so a caller
- * that predates spaces reads exactly what it always read.
+ * (owner, space), and the space parameter is REQUIRED (section 6d): a
+ * caller cannot forget it and silently get the default partition.
  */
 @Injectable()
 export class EntityAliasStore {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
-  async listForOwner(
-    ownerId: string,
-    spaceId: string = DEFAULT_SPACE_ID,
-  ): Promise<EntityAliasRow[]> {
+  async listForOwner(ownerId: string, spaceId: string): Promise<EntityAliasRow[]> {
     return this.db
       .select()
       .from(entityAlias)
@@ -36,10 +32,7 @@ export class EntityAliasStore {
 
   /** The alias index for one owner in one space — what reconciliation loads
    * per batch. */
-  async indexForOwner(
-    ownerId: string,
-    spaceId: string = DEFAULT_SPACE_ID,
-  ): Promise<EntityAliasIndex> {
+  async indexForOwner(ownerId: string, spaceId: string): Promise<EntityAliasIndex> {
     const rows = await this.listForOwner(ownerId, spaceId);
     return new EntityAliasIndex(rows);
   }
@@ -48,7 +41,7 @@ export class EntityAliasStore {
     ownerId: string,
     canonical: string,
     alias: string,
-    spaceId: string = DEFAULT_SPACE_ID,
+    spaceId: string,
   ): Promise<EntityAliasRow | null> {
     const rows = await this.db
       .insert(entityAlias)

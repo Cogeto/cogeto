@@ -156,6 +156,13 @@ export class EmailIntakeService {
       await this.refuse(envelope, matchedSender, 'wrong_recipient');
       return { accepted: false, status: 'bad_recipient', reason: 'recipient not accepted here' };
     }
+    if (recipientSplit.malformedTag) {
+      // Our address, a tag that cannot be an alias: the sender named a
+      // partition and got it wrong, so the ledger says so (F13); the mail is
+      // refused exactly as before, only the recorded reason changed.
+      await this.refuse(envelope, matchedSender, 'alias_not_recognized');
+      return { accepted: false, status: 'bad_recipient', reason: 'recipient alias not usable' };
+    }
     const alias = recipientSplit.alias;
 
     // (2) Sender-routed recipients — refuse rather than guess.

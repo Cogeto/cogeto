@@ -1,6 +1,5 @@
 import { and, asc, desc, eq, gt, ilike, inArray, lt, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { DbOrTx } from '../infrastructure/index';
 import { emailMessage } from './persistence/tables';
 
@@ -25,14 +24,14 @@ export async function listEmailSources(
     order?: 'asc' | 'desc';
     limit?: number;
     q?: string;
-    /** The caller's space (docs/features/spaces.md); absent means the
-     * default space, never all spaces. */
-    spaceId?: string;
-  } = {},
+    /** The caller's space (docs/features/spaces.md), required (section 6d):
+     * one space's listing, never all spaces and never a silent default. */
+    spaceId: string;
+  },
 ): Promise<SourceListingRow[]> {
   const clauses: (SQL | undefined)[] = [
     eq(emailMessage.ownerId, ownerId),
-    eq(emailMessage.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+    eq(emailMessage.spaceId, options.spaceId),
   ];
   const order = options.order ?? 'desc';
   if (options.cursor) {
@@ -68,7 +67,7 @@ export async function hydrateEmailSources(
   db: DbOrTx,
   ownerId: string,
   ids: readonly string[],
-  spaceId?: string,
+  spaceId: string,
 ): Promise<Map<string, SourceListingRow>> {
   if (ids.length === 0) return new Map();
   const rows = await db
@@ -82,7 +81,7 @@ export async function hydrateEmailSources(
     .where(
       and(
         eq(emailMessage.ownerId, ownerId),
-        eq(emailMessage.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        eq(emailMessage.spaceId, spaceId),
         inArray(emailMessage.id, [...ids]),
       ),
     );
@@ -97,13 +96,11 @@ export async function hydrateEmailSources(
 export async function countEmailSources(
   db: DbOrTx,
   ownerId: string,
-  spaceId?: string,
+  spaceId: string,
 ): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(emailMessage)
-    .where(
-      and(eq(emailMessage.ownerId, ownerId), eq(emailMessage.spaceId, spaceId ?? DEFAULT_SPACE_ID)),
-    );
+    .where(and(eq(emailMessage.ownerId, ownerId), eq(emailMessage.spaceId, spaceId)));
   return rows[0]?.n ?? 0;
 }

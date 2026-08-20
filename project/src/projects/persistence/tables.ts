@@ -1,5 +1,4 @@
 import { boolean, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { ProjectAssignmentKind, ProjectMarker } from '@cogeto/shared';
 
 /**
@@ -25,7 +24,7 @@ export const project = pgTable(
     orgId: text('org_id'),
     /** The space this project nests inside (docs/features/spaces.md,
      * migration 0060): projects stay a lens WITHIN a space, never a gate. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     name: text('name').notNull(),
     description: text('description'),
     /** A design-system colour token key, never a hex value. */

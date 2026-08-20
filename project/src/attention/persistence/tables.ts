@@ -1,5 +1,4 @@
 import { primaryKey, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 
 /**
  * Attention read-state (migration 0026; per-space since 0063).
@@ -26,7 +25,7 @@ export const attentionState = pgTable(
   'attention_state',
   {
     ownerId: text('owner_id').notNull(),
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.spaceId] })],
@@ -39,7 +38,7 @@ export const attentionDismissal = pgTable(
     /** The space whose visible line list the key's index positions into: the
      * REAL filter, where the key string's space segment (6a) was only a
      * naming convention a forged key could sidestep. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     /** Content-free key (run ids + within-run indices); never memory text. */
     itemKey: text('item_key').notNull(),
     dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),

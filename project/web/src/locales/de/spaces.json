@@ -16,7 +16,9 @@
     "spaceSettings": "Space-Einstellungen",
     "switchFailed": "Der Wechsel hat nicht stattgefunden; Sie sind weiterhin in {{name}}.",
     "createFailed": "Der Space wurde nicht erstellt.",
-    "renameFailed": "Der Space wurde nicht umbenannt."
+    "renameFailed": "Der Space wurde nicht umbenannt.",
+    "switching": "Wechsel zu {{name}}…",
+    "reloading": "Neu laden…"
   },
   "deleted": {
     "title": "Dieser Space wurde gelöscht",
@@ -61,7 +63,9 @@
       "findings_reports": "Befundberichte",
       "passport_exports": "Wissenspass-Exporte",
       "connectors": "Konnektoren",
-      "extraction_gates": "Extraktionsfilter-Einstellungen"
+      "extraction_gates": "Extraktionsfilter-Einstellungen",
+      "email_routing_rules": "E-Mail-Routing-Regeln",
+      "approvals": "Genehmigungen"
     }
   },
   "firstRun": {

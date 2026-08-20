@@ -11,7 +11,6 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { ConnectorState } from '../domain/lifecycle';
 
 /**
@@ -32,7 +31,7 @@ export const connector = pgTable(
     /** A connector belongs to ONE space (docs/features/spaces.md section 6,
      * migration 0060): connecting the same site into two spaces is two
      * independent connectors, by design. Children inherit through the FK. */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     kind: text('kind').notNull(),
     /** User-chosen display name; cleared to NULL on removal (tombstone). */
     name: text('name'),

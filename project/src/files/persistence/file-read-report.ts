@@ -27,8 +27,10 @@ export class FileReadReportStore {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
   /** Records (or replaces) the report for one file source. Never throws.
-   * `spaceId` is the file's own space (row or staging metadata); absent means
-   * the default space, the resolution rule every space column follows. */
+   * `spaceId` is the file's own space (row or staging metadata). Both product
+   * callers pass it; the optional shape and the coalesce below survive ONLY
+   * for an unedited legacy harness that calls with no options at all
+   * (allowlisted in spaces-are-a-gate.spec.ts). */
   async record(
     objectKey: string,
     ownerId: string,
@@ -200,7 +202,9 @@ export async function keysWithReadOutcome(
   db: DbOrTx,
   ownerId: string,
   outcomes: readonly string[],
-  options: { spaceId?: string; limit?: number } = {},
+  // The space is required at the type (section 6d); the coalesce below is
+  // pinned by spaces-isolation-depth.spec.ts and inert for compiled callers.
+  options: { spaceId: string; limit?: number },
 ): Promise<string[]> {
   if (outcomes.length === 0) return [];
   const rows = await db

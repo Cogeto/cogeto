@@ -70,8 +70,10 @@ export async function searchConversations(
   query: string,
   options: { spaceId?: string; limit?: number } = {},
 ): Promise<ConversationSearchRow[]> {
-  // Absence means the DEFAULT space, which is a real space, never "all
-  // spaces" — the same resolution rule every gated read follows.
+  // The one product caller passes the resolved space. The optional shape and
+  // this coalesce survive ONLY for an unedited legacy harness that calls with
+  // no options at all (allowlisted in spaces-are-a-gate.spec.ts); absence
+  // resolves to the DEFAULT space, which is a real space, never "all spaces".
   const spaceId = options.spaceId ?? DEFAULT_SPACE_ID;
   const limit = options.limit ?? SEARCH_LIMIT;
   const trimmed = query.trim();

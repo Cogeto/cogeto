@@ -48,8 +48,9 @@ export class SourceContextStore {
     entry: {
       ownerId: string;
       /** The source row's space (docs/features/spaces.md), stamped with the
-       * row; absent (legacy harnesses) falls to the schema-level default. */
-      spaceId?: string;
+       * row. REQUIRED (section 6d): the anchoring context is the document's
+       * own words and must land where the document lives. */
+      spaceId: string;
       sourceType: string;
       sourceId: string;
       context: SourceContextValue;
@@ -75,7 +76,7 @@ export class SourceContextStore {
     }
     await tx.insert(sourceContext).values({
       ownerId: entry.ownerId,
-      ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
+      spaceId: entry.spaceId,
       sourceType: entry.sourceType,
       sourceId: entry.sourceId,
       subjects: entry.context.subjects,
@@ -101,6 +102,10 @@ export class SourceContextStore {
           eq(sourceContext.ownerId, principal.userId),
           eq(sourceContext.sourceType, sourceType),
           eq(sourceContext.sourceId, sourceId),
+          // Sealed with its space like every principal read
+          // (docs/features/spaces.md): the row's subjects and revision are
+          // the document's own words.
+          eq(sourceContext.spaceId, resolveSpaceId(principal)),
         ),
       )
       .limit(1);
@@ -121,7 +126,13 @@ export class SourceContextStore {
   ): Promise<SourceContextRow> {
     return this.db.transaction(async (tx) => {
       const existing = await this.get(tx, sourceType, sourceId);
-      if (existing && existing.ownerId !== principal.userId) {
+      if (
+        existing &&
+        (existing.ownerId !== principal.userId ||
+          // The wall has no owner exception (docs/features/spaces.md): a row
+          // in another space is not the caller's to edit either.
+          existing.spaceId !== resolveSpaceId(principal))
+      ) {
         // A foreign source's context is not the caller's to edit; behave as if
         // it does not exist rather than confirm it does.
         throw new Error('source context not found for this owner');

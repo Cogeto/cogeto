@@ -1,5 +1,5 @@
 import { boolean, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID, MEMORY_SCOPES } from '@cogeto/shared';
+import { MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
  * Tables owned by the settings module (migration 0016; split from the
@@ -23,7 +23,7 @@ export const userSettings = pgTable(
     userId: text('user_id').notNull(),
     /** The space these defaults govern; cascades with it (a preference row is
      * per-user state about a space, never content). */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     orgId: text('org_id').notNull(),
     discardByDefault: boolean('discard_by_default').notNull().default(false),
     defaultScope: scopeEnum('default_scope').notNull().default('private'),

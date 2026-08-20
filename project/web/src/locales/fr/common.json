@@ -21,7 +21,9 @@
     "loadingApp": "Chargement de Cogeto…",
     "saving": "Enregistrement…",
     "saved": "Enregistré.",
-    "spacesFailed": "La liste des espaces n'a pas pu être chargée, rien ne peut donc encore s'afficher."
+    "spacesFailed": "La liste des espaces n'a pas pu être chargée, rien ne peut donc encore s'afficher.",
+    "spacesFailedInstanceHint": "La zone d'instance ne dépend pas des espaces et reste accessible :",
+    "spacesFailedInstanceLink": "ouvrir l'état du système"
   },
   "memoryStatus": {
     "active": "actif",

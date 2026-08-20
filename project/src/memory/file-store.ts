@@ -28,9 +28,10 @@ export interface FileMetadataInsert {
   scope: MemoryScope;
   sensitive: boolean;
   /** The caller's current space (docs/features/spaces.md), stamped by the
-   * upload path inside the transaction that creates the source. Omitted
-   * (legacy harnesses) falls to the schema-level default space. */
-  spaceId?: string;
+   * upload path inside the transaction that creates the source. REQUIRED
+   * (section 6d): a metadata row without its space is unrepresentable in
+   * compiled code. */
+  spaceId: string;
   checksum: string;
   sizeBytes: number;
 }
@@ -49,7 +50,7 @@ export class MemoryFileStore {
   async findDuplicate(
     ownerId: string,
     checksum: string,
-    spaceId?: string,
+    spaceId: string,
   ): Promise<{ objectKey: string; scope: MemoryScope; sensitive: boolean } | null> {
     return findStoredDuplicate(this.db, ownerId, checksum, spaceId);
   }
@@ -61,7 +62,7 @@ export class MemoryFileStore {
       ownerId: row.ownerId,
       scope: row.scope,
       sensitive: row.sensitive,
-      ...(row.spaceId ? { spaceId: row.spaceId } : {}),
+      spaceId: row.spaceId,
       checksum: row.checksum,
       sizeBytes: row.sizeBytes,
     });
@@ -109,15 +110,11 @@ export interface FileSourceRefRow {
 export async function listFileSourceRefs(
   db: DbOrTx,
   ownerId: string,
-  options: { cursor?: Date; order?: 'asc' | 'desc'; limit?: number; spaceId?: string } = {},
+  options: { cursor?: Date; order?: 'asc' | 'desc'; limit?: number; spaceId: string },
 ): Promise<FileSourceRefRow[]> {
   // The caller's current space (docs/features/spaces.md): a catalog listing
-  // enumerates one space, never across the wall. Absent resolves to the
-  // default space, which is where every pre-spaces row lives.
-  const clauses = [
-    eq(fileMetadata.ownerId, ownerId),
-    eq(fileMetadata.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
-  ];
+  // enumerates one space, never across the wall. Required (section 6d).
+  const clauses = [eq(fileMetadata.ownerId, ownerId), eq(fileMetadata.spaceId, options.spaceId)];
   const order = options.order ?? 'desc';
   if (options.cursor) {
     clauses.push(
@@ -215,14 +212,12 @@ export async function hydrateFileSourceRefs(
 export async function countFileSourceRefs(
   db: DbOrTx,
   ownerId: string,
-  spaceId?: string,
+  spaceId: string,
 ): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(fileMetadata)
-    .where(
-      and(eq(fileMetadata.ownerId, ownerId), eq(fileMetadata.spaceId, spaceId ?? DEFAULT_SPACE_ID)),
-    );
+    .where(and(eq(fileMetadata.ownerId, ownerId), eq(fileMetadata.spaceId, spaceId)));
   return rows[0]?.n ?? 0;
 }
 
@@ -246,7 +241,9 @@ export async function findStoredDuplicate(
   db: DbOrTx,
   ownerId: string,
   checksum: string,
-  spaceId?: string,
+  // Required at the type (section 6d); the coalesce below is pinned by
+  // spaces-isolation-depth.spec.ts and inert for compiled callers.
+  spaceId: string,
 ): Promise<{ objectKey: string; scope: MemoryScope; sensitive: boolean } | null> {
   const rows = await db
     .select({
@@ -277,7 +274,7 @@ export async function checksumsKnownForOwner(
   db: DbOrTx,
   ownerId: string,
   checksums: readonly string[],
-  spaceId?: string,
+  spaceId: string,
 ): Promise<Set<string>> {
   if (checksums.length === 0) return new Set();
   const rows = await db
@@ -286,7 +283,7 @@ export async function checksumsKnownForOwner(
     .where(
       and(
         eq(fileMetadata.ownerId, ownerId),
-        eq(fileMetadata.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        eq(fileMetadata.spaceId, spaceId),
         inArray(fileMetadata.checksum, [...checksums]),
       ),
     );

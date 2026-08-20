@@ -1,6 +1,5 @@
 import { and, asc, desc, eq, gt, ilike, inArray, lt, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { DbOrTx } from '../infrastructure/index';
 import { note } from './persistence/tables';
 
@@ -31,14 +30,14 @@ export async function listNoteSources(
     order?: 'asc' | 'desc';
     limit?: number;
     q?: string;
-    /** The caller's space (docs/features/spaces.md); absent means the
-     * default space, never all spaces. */
-    spaceId?: string;
-  } = {},
+    /** The caller's space (docs/features/spaces.md), required (section 6d):
+     * one space's listing, never all spaces and never a silent default. */
+    spaceId: string;
+  },
 ): Promise<SourceListingRow[]> {
   const clauses: (SQL | undefined)[] = [
     eq(note.ownerId, ownerId),
-    eq(note.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+    eq(note.spaceId, options.spaceId),
   ];
   const order = options.order ?? 'desc';
   if (options.cursor) {
@@ -63,19 +62,13 @@ export async function hydrateNoteSources(
   db: DbOrTx,
   ownerId: string,
   ids: readonly string[],
-  spaceId?: string,
+  spaceId: string,
 ): Promise<Map<string, SourceListingRow>> {
   if (ids.length === 0) return new Map();
   const rows = await db
     .select({ id: note.id, content: note.content, createdAt: note.createdAt })
     .from(note)
-    .where(
-      and(
-        eq(note.ownerId, ownerId),
-        eq(note.spaceId, spaceId ?? DEFAULT_SPACE_ID),
-        inArray(note.id, [...ids]),
-      ),
-    );
+    .where(and(eq(note.ownerId, ownerId), eq(note.spaceId, spaceId), inArray(note.id, [...ids])));
   return new Map(
     rows.map((row) => [row.id, { sourceId: row.id, name: nameOf(row.content), at: row.createdAt }]),
   );
@@ -84,11 +77,11 @@ export async function hydrateNoteSources(
 export async function countNoteSources(
   db: DbOrTx,
   ownerId: string,
-  spaceId?: string,
+  spaceId: string,
 ): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(note)
-    .where(and(eq(note.ownerId, ownerId), eq(note.spaceId, spaceId ?? DEFAULT_SPACE_ID)));
+    .where(and(eq(note.ownerId, ownerId), eq(note.spaceId, spaceId)));
   return rows[0]?.n ?? 0;
 }

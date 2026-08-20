@@ -1,5 +1,5 @@
 import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { DEFAULT_SPACE_ID, MEMORY_SCOPES } from '@cogeto/shared';
+import { MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
  * Tables owned by the notes module (migration 0003; split from the connectors
@@ -22,7 +22,7 @@ export const note = pgTable(
     scope: scopeEnum('scope').notNull().default('private'),
     // The space the note was captured into (docs/features/spaces.md,
     // migration 0060); derived memories inherit it through the reader.
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('note_owner_created_idx').on(t.ownerId, t.createdAt)],

@@ -11,7 +11,6 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import {
-  DEFAULT_SPACE_ID,
   FACT_KINDS,
   MEMORY_SCOPES,
   MEMORY_STATUSES,
@@ -67,7 +66,7 @@ export const memory = pgTable(
      * space as the schema-level DEFAULT, so an un-spaced row is
      * unrepresentable; write paths stamp the caller's current space.
      */
-    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+    spaceId: uuid('space_id').notNull(),
     sourceType: text('source_type').$type<SourceType>().notNull(),
     sourceId: text('source_id').notNull(),
     status: memoryStatusEnum('status').notNull().default('active'),
@@ -136,7 +135,7 @@ export const fileMetadata = pgTable('file_metadata', {
   ownerId: text('owner_id').notNull(),
   scope: scopeEnum('scope').notNull(),
   sensitive: boolean('sensitive').notNull().default(false),
-  spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+  spaceId: uuid('space_id').notNull(),
   uploadDate: timestamp('upload_date', { withTimezone: true }).notNull().defaultNow(),
   checksum: text('checksum'),
   sizeBytes: bigint('size_bytes', { mode: 'number' }),
@@ -156,7 +155,7 @@ export const deletionReceipt = pgTable('deletion_receipt', {
    * historical receipt (now the default space's chain) verifies
    * byte-identically.
    */
-  spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
+  spaceId: uuid('space_id').notNull(),
   countsJson: jsonb('counts_json'),
   status: receiptStatusEnum('status').notNull().default('pending'),
   prevHash: text('prev_hash'),

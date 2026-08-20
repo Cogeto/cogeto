@@ -1,6 +1,5 @@
 import { and, asc, desc, eq, gt, ilike, inArray, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { DbOrTx } from '../infrastructure/index';
 import { webPage } from './persistence/tables';
 
@@ -25,14 +24,14 @@ export async function listWebSources(
     order?: 'asc' | 'desc';
     limit?: number;
     q?: string;
-    /** The caller's space (docs/features/spaces.md); absent means the
-     * default space, never all spaces. */
-    spaceId?: string;
-  } = {},
+    /** The caller's space (docs/features/spaces.md), required (section 6d):
+     * one space's listing, never all spaces and never a silent default. */
+    spaceId: string;
+  },
 ): Promise<SourceListingRow[]> {
   const clauses: (SQL | undefined)[] = [
     eq(webPage.ownerId, ownerId),
-    eq(webPage.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+    eq(webPage.spaceId, options.spaceId),
   ];
   const order = options.order ?? 'desc';
   if (options.cursor) {
@@ -71,7 +70,7 @@ export async function hydrateWebSources(
   db: DbOrTx,
   ownerId: string,
   ids: readonly string[],
-  spaceId?: string,
+  spaceId: string,
 ): Promise<Map<string, SourceListingRow>> {
   if (ids.length === 0) return new Map();
   const rows = await db
@@ -85,7 +84,7 @@ export async function hydrateWebSources(
     .where(
       and(
         eq(webPage.ownerId, ownerId),
-        eq(webPage.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        eq(webPage.spaceId, spaceId),
         inArray(webPage.id, [...ids]),
       ),
     );
@@ -100,11 +99,11 @@ export async function hydrateWebSources(
 export async function countWebSources(
   db: DbOrTx,
   ownerId: string,
-  spaceId?: string,
+  spaceId: string,
 ): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(webPage)
-    .where(and(eq(webPage.ownerId, ownerId), eq(webPage.spaceId, spaceId ?? DEFAULT_SPACE_ID)));
+    .where(and(eq(webPage.ownerId, ownerId), eq(webPage.spaceId, spaceId)));
   return rows[0]?.n ?? 0;
 }

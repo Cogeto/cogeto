@@ -16,7 +16,9 @@
     "spaceSettings": "Space settings",
     "switchFailed": "The switch did not happen; you are still in {{name}}.",
     "createFailed": "The space was not created.",
-    "renameFailed": "The space was not renamed."
+    "renameFailed": "The space was not renamed.",
+    "switching": "Switching to {{name}}…",
+    "reloading": "Reloading…"
   },
   "deleted": {
     "title": "This space was deleted",
@@ -61,7 +63,9 @@
       "findings_reports": "Findings reports",
       "passport_exports": "Passport exports",
       "connectors": "Connectors",
-      "extraction_gates": "Extraction gate settings"
+      "extraction_gates": "Extraction gate settings",
+      "email_routing_rules": "Email routing rules",
+      "approvals": "Approvals"
     }
   },
   "firstRun": {

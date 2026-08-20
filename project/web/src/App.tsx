@@ -113,6 +113,27 @@ export function App() {
     return <Login />;
   }
 
+  // The instance area is space-independent by design (docs/features/spaces.md
+  // section 3) and is exactly what an administrator needs when the backend is
+  // unhealthy, so it renders WITHOUT the space boot gate below: a failed
+  // spaces fetch must never trap the machine room behind the very failure it
+  // would diagnose (spaces verification F9). Its shell degrades on its own
+  // when the spaces list is unavailable (the back link names the product).
+  const instanceSection = INSTANCE_ROUTES[window.location.pathname];
+  if (instanceSection) {
+    return (
+      <ConfirmProvider>
+        <InstanceArea session={session} section={instanceSection} />
+        {demoMode && (
+          <>
+            <DemoIntro />
+            <DemoBanner />
+          </>
+        )}
+      </ConfirmProvider>
+    );
+  }
+
   if (!spaceList) {
     if (spacesFailed) {
       return (
@@ -126,6 +147,15 @@ export function App() {
             >
               {t('action.tryAgain')}
             </button>
+            {/* The door out of the trap (F9): the instance area needs no
+                space, so the person who can fix this can reach the tools
+                that show what is wrong. */}
+            <p className="mt-4 text-xs text-slate-500">
+              {t('state.spacesFailedInstanceHint')}{' '}
+              <a href="/instance/system" className="font-medium underline hover:text-slate-700">
+                {t('state.spacesFailedInstanceLink')}
+              </a>
+            </p>
           </div>
         </main>
       );
@@ -181,8 +211,8 @@ const INSTANCE_ROUTES: Record<string, InstanceSection> = {
 };
 
 function renderPage(session: Session) {
-  const instanceSection = INSTANCE_ROUTES[window.location.pathname];
-  if (instanceSection) return <InstanceArea session={session} section={instanceSection} />;
+  // Instance routes never reach here: App renders them before the space boot
+  // gate (F9), because the instance area is space-independent by design.
   switch (window.location.pathname) {
     case '/memories':
       return <Memories session={session} />;

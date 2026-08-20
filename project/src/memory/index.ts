@@ -36,6 +36,7 @@ export type { OwnerErasurePlan, OwnerErasureResult } from './owner-erasure.servi
  * `file` has no SourceDeletion adapter, so the spaces module reaches the one
  * space-wide listing through the barrel, like owner erasure's owner twin. */
 export { listAllFileSourcesForSpace } from './file-store';
+export { listDerivedSourceRefsForSpace } from './deletion-saga';
 export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
 export type { ConfirmedReceipt } from './domain/receipt-chain';
 export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB, SWEEP_OPTIONS } from './integrity-sweep';

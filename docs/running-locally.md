@@ -20,7 +20,7 @@ around that one command.
  just run the stack.
 - Optional, for model features: an API key from a supported provider (e.g.
  Mistral, [console.mistral.ai](https://console.mistral.ai)), added **in the
- interface** after login (Providers in the left rail). Without one the stack
+ interface** after login (Providers in the instance area, behind the gear icon at the right end of the navbar). Without one the stack
  runs, login, capture, dashboard, queue, and model calls fail with a typed
  error instead of pretending.
 
@@ -40,7 +40,7 @@ and sign in as the dev bootstrap admin:
 > **admin@cogeto.localhost** / **DevPassword1!**
 
 Model providers are not configured in `.env`: after login, add one in the
-interface (**Providers** in the left rail, then assign the tiers under
+interface (**Providers** in the instance area behind the gear icon, then assign the tiers under
 **Models**; keys are stored encrypted in the instance database). To override
 any other default, copy [`.env.example`](../.env.example) to `.env`, edit, and
 `docker compose up -d` again. The dev defaults are safe for localhost only; a
@@ -85,7 +85,7 @@ eval harness needs a model key: `COGETO_MISTRAL_API_KEY=... npm run eval`
  `https://s3.localhost:8443` origin, which needs the `consoles` profile up
  and the `*.localhost` hosts entries.
 - **Chat/extraction returns a model-gateway error**: no model provider is
- configured yet. Add one in the interface (Providers in the left rail); that
+ configured yet. Add one in the interface (Providers in the instance area behind the gear icon); that
  is the designed first-run state, not a crash.
 - **A one-shot init container "exited (0)"**: normal: `preflight`, `db-init`,
  `migrate`, `minio-init`, `zitadel-init`, and the volume-permission jobs run
