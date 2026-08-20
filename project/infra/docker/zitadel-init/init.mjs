@@ -100,6 +100,102 @@ function request(method, path, body, token) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ── Bounded retries around the management API ───────────────────────────────
+// /debug/healthz answers before the management API gateway has finished
+// binding, so on fast hardware the first call (and, since the gateway can
+// accept one request while still settling, ANY later call) can come back 503
+// or with a refused/reset connection. A half-provisioned instance is worse
+// than a failed one, so every management and admin call is retried, bounded by
+// both an attempt count and a wall-clock window.
+export const RETRY_ATTEMPTS = 10;
+export const RETRY_WINDOW_MS = 120_000;
+const RETRY_BASE_DELAY_MS = 500;
+const RETRY_MAX_DELAY_MS = 5_000;
+
+/**
+ * "Not yet" is a gateway that has not finished binding: HTTP 503, and
+ * connection-level failures meaning refused, reset, or a dial/DNS failure.
+ * Everything else was understood by the server — an authentication failure, a
+ * rejected request, any other status — and is handed straight back to the call
+ * site, which already knows which statuses it tolerates. Retrying a rejected
+ * call only hides its cause. A timeout is NOT "not yet": it means the request
+ * may well have been processed, and today it already fails the init.
+ */
+const NOT_YET_ERROR_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EPIPE',
+  'EAI_AGAIN',
+  'ENOTFOUND',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENETDOWN',
+]);
+
+export function isNotYet(outcome) {
+  if (outcome instanceof Error) return NOT_YET_ERROR_CODES.has(outcome.code);
+  return outcome?.status === 503;
+}
+
+const describeOutcome = (outcome) =>
+  outcome instanceof Error
+    ? `${outcome.code ?? 'error'}: ${outcome.message}`
+    : `HTTP ${outcome.status}`;
+
+/**
+ * One management/admin API call, retried while the gateway says "not yet".
+ *
+ * `recheck` keeps a retry idempotent for the call sites that CREATE something:
+ * a connection reset can arrive after the server already applied the change,
+ * so before every retry attempt the caller's existence check runs again and,
+ * when it finds the thing, its answer becomes the result. Nothing is created
+ * twice.
+ */
+export async function api(
+  method,
+  path,
+  body,
+  token,
+  { label, recheck, attempts = RETRY_ATTEMPTS, windowMs = RETRY_WINDOW_MS, call = request } = {},
+) {
+  const what = label ?? `${method} ${path}`;
+  const startedAt = Date.now();
+  let attempt = 0;
+  let last;
+  for (;;) {
+    if (attempt > 0 && recheck) {
+      const existing = await recheck();
+      if (existing) {
+        console.log(`${what}: already applied — retry converged without repeating the call`);
+        return existing;
+      }
+    }
+    attempt += 1;
+    try {
+      const response = await call(method, path, body, token);
+      if (!isNotYet(response)) return response;
+      last = response;
+    } catch (error) {
+      if (!isNotYet(error)) throw error;
+      last = error;
+    }
+    const elapsed = Date.now() - startedAt;
+    if (attempt >= attempts || elapsed >= windowMs) {
+      throw new Error(
+        `${what}: the zitadel management API never became available — ` +
+          `${attempt} attempt(s) over ${Math.round(elapsed / 1000)}s, ` +
+          `last failure ${describeOutcome(last)}`,
+      );
+    }
+    const delay = Math.min(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RETRY_MAX_DELAY_MS);
+    console.log(
+      `${what}: ${describeOutcome(last)} — management API not ready yet, waiting ${delay}ms ` +
+        `(attempt ${attempt}/${attempts}, ${Math.round(elapsed / 1000)}s elapsed)`,
+    );
+    await sleep(delay);
+  }
+}
+
 async function waitFor(description, probe, attempts = 60, delayMs = 2000) {
   for (let i = 0; i < attempts; i++) {
     try {
@@ -152,7 +248,7 @@ function shortCircuitFromState() {
  * revocation took effect.
  */
 async function revokeBootstrapPat(pat) {
-  const users = await request(
+  const users = await api(
     'POST',
     '/management/v1/users/_search',
     {
@@ -161,23 +257,27 @@ async function revokeBootstrapPat(pat) {
       ],
     },
     pat,
+    { label: 'bootstrap machine user search' },
   );
   const userId = users.body.result?.[0]?.id;
   if (!userId) {
     console.warn(`bootstrap machine user '${BOOTSTRAP_USERNAME}' not found — cannot revoke`);
     return false;
   }
-  const pats = await request('POST', `/management/v1/users/${userId}/pats/_search`, {}, pat);
+  const pats = await api('POST', `/management/v1/users/${userId}/pats/_search`, {}, pat, {
+    label: 'bootstrap PAT list',
+  });
   if (pats.status !== 200) {
     console.warn(`PAT list failed (${pats.status}): ${JSON.stringify(pats.body)}`);
     return false;
   }
   for (const token of pats.body.result ?? []) {
-    const removed = await request(
+    const removed = await api(
       'DELETE',
       `/management/v1/users/${userId}/pats/${token.id}`,
       null,
       pat,
+      { label: `bootstrap PAT ${token.id} removal` },
     );
     // Removing the token we are authenticating with may already answer 401 for
     // the LAST delete — the verification below is the arbiter, not this status.
@@ -188,7 +288,9 @@ async function revokeBootstrapPat(pat) {
   // Self-verify: the PAT must no longer authenticate. Zitadel's projections
   // can lag a moment, so poll briefly rather than trust a single read.
   for (let i = 0; i < 15; i++) {
-    const probe = await request('POST', '/management/v1/projects/_search', {}, pat);
+    const probe = await api('POST', '/management/v1/projects/_search', {}, pat, {
+      label: 'bootstrap PAT revocation self-check',
+    });
     if (probe.status === 401 || probe.status === 403) return true;
     await sleep(2000);
   }
@@ -206,18 +308,30 @@ async function main() {
   const pat = readFileSync(PAT_FILE, 'utf8').trim();
 
   // 1. Ensure the project exists.
-  const search = await request(
-    'POST',
-    '/management/v1/projects/_search',
-    { queries: [{ nameQuery: { name: PROJECT_NAME, method: 'TEXT_QUERY_METHOD_EQUALS' } }] },
-    pat,
-  );
+  const findProject = () =>
+    api(
+      'POST',
+      '/management/v1/projects/_search',
+      { queries: [{ nameQuery: { name: PROJECT_NAME, method: 'TEXT_QUERY_METHOD_EQUALS' } }] },
+      pat,
+      { label: 'project search' },
+    );
+  const search = await findProject();
   if (search.status !== 200) {
     throw new Error(`project search failed (${search.status}): ${JSON.stringify(search.body)}`);
   }
   let projectId = search.body.result?.[0]?.id;
   if (!projectId) {
-    const created = await request('POST', '/management/v1/projects', { name: PROJECT_NAME }, pat);
+    // A reset connection can arrive after the create landed, so every retry
+    // re-searches first: the project is created once or not at all.
+    const created = await api('POST', '/management/v1/projects', { name: PROJECT_NAME }, pat, {
+      label: 'project create',
+      recheck: async () => {
+        const again = await findProject();
+        const found = again.status === 200 ? again.body.result?.[0]?.id : undefined;
+        return found ? { status: 200, body: { id: found } } : null;
+      },
+    });
     if (created.status !== 200) {
       throw new Error(`project create failed (${created.status}): ${JSON.stringify(created.body)}`);
     }
@@ -228,14 +342,18 @@ async function main() {
   }
 
   // 2. Ensure the SPA OIDC application exists (authorization code + PKCE).
-  const apps = await request(`POST`, `/management/v1/projects/${projectId}/apps/_search`, {}, pat);
+  const findApps = () =>
+    api('POST', `/management/v1/projects/${projectId}/apps/_search`, {}, pat, {
+      label: 'app search',
+    });
+  const apps = await findApps();
   if (apps.status !== 200) {
     throw new Error(`app search failed (${apps.status}): ${JSON.stringify(apps.body)}`);
   }
   let app = (apps.body.result ?? []).find((a) => a.name === APP_NAME);
   let clientId = app?.oidcConfig?.clientId;
   if (!clientId) {
-    const created = await request(
+    const created = await api(
       'POST',
       `/management/v1/projects/${projectId}/apps/oidc`,
       {
@@ -250,6 +368,19 @@ async function main() {
         devMode: false,
       },
       pat,
+      {
+        label: 'OIDC app create',
+        // Same reasoning as the project create: converge on the app a lost
+        // response may already have created rather than registering a second.
+        recheck: async () => {
+          const again = await findApps();
+          if (again.status !== 200) return null;
+          const existing = (again.body.result ?? []).find((a) => a.name === APP_NAME);
+          return existing?.oidcConfig?.clientId
+            ? { status: 200, body: { clientId: existing.oidcConfig.clientId } }
+            : null;
+        },
+      },
     );
     if (created.status !== 200) {
       throw new Error(`app create failed (${created.status}): ${JSON.stringify(created.body)}`);
@@ -264,18 +395,21 @@ async function main() {
   // the seam's userinfo call carries roles and the AdminGuard on the jobs
   // endpoints can see them. Without this a fresh instance has no roles
   // and the System view returns 403 to everyone.
-  const roleRes = await request(
+  // Naturally idempotent: a second create of the same role key is refused by
+  // Zitadel and the non-200 is already treated as "already present".
+  const roleRes = await api(
     'POST',
     `/management/v1/projects/${projectId}/roles`,
     { roleKey: ADMIN_ROLE, displayName: 'Admin', group: '' },
     pat,
+    { label: `project role '${ADMIN_ROLE}' create` },
   );
   console.log(
     roleRes.status === 200
       ? `created project role '${ADMIN_ROLE}'`
       : `project role '${ADMIN_ROLE}' already present (${roleRes.status})`,
   );
-  const assertRes = await request(
+  const assertRes = await api(
     'PUT',
     `/management/v1/projects/${projectId}`,
     {
@@ -288,6 +422,8 @@ async function main() {
       privateLabelingSetting: 'PRIVATE_LABELING_SETTING_UNSPECIFIED',
     },
     pat,
+    // A full replace with fixed values: repeating it converges by construction.
+    { label: 'enable role assertion' },
   );
   // A re-run finds assertion already on → Zitadel answers 400 "No changes";
   // that is success for an idempotent bootstrap, not a failure.
@@ -303,7 +439,7 @@ async function main() {
   );
 
   // 2c. Grant the FirstInstance admin the 'admin' role (idempotent).
-  const users = await request(
+  const users = await api(
     'POST',
     '/management/v1/users/_search',
     {
@@ -312,28 +448,43 @@ async function main() {
       ],
     },
     pat,
+    { label: 'admin user search' },
   );
   const adminUserId = users.body.result?.[0]?.id;
   if (!adminUserId) {
     console.warn(`admin user '${ADMIN_USERNAME}' not found — skipping role grant`);
   } else {
-    const grants = await request(
-      'POST',
-      '/management/v1/users/grants/_search',
-      { queries: [{ userIdQuery: { userId: adminUserId } }] },
-      pat,
-    );
-    const hasGrant = (grants.body.result ?? []).some(
-      (g) => g.projectId === projectId && (g.roleKeys ?? []).includes(ADMIN_ROLE),
-    );
+    const findGrants = () =>
+      api(
+        'POST',
+        '/management/v1/users/grants/_search',
+        { queries: [{ userIdQuery: { userId: adminUserId } }] },
+        pat,
+        { label: 'admin role grant search' },
+      );
+    const grantExists = (res) =>
+      (res.body.result ?? []).some(
+        (g) => g.projectId === projectId && (g.roleKeys ?? []).includes(ADMIN_ROLE),
+      );
+    const grants = await findGrants();
+    const hasGrant = grantExists(grants);
     if (hasGrant) {
       console.log(`admin '${ADMIN_USERNAME}' already has role '${ADMIN_ROLE}'`);
     } else {
-      const grant = await request(
+      const grant = await api(
         'POST',
         `/management/v1/users/${adminUserId}/grants`,
         { projectId, roleKeys: [ADMIN_ROLE] },
         pat,
+        {
+          label: 'grant admin role',
+          // Zitadel refuses a duplicate grant, but re-checking first keeps the
+          // refusal off the happy path when a retry follows a landed create.
+          recheck: async () => {
+            const again = await findGrants();
+            return again.status === 200 && grantExists(again) ? { status: 200, body: {} } : null;
+          },
+        },
       );
       if (grant.status !== 200) {
         throw new Error(`grant admin role failed (${grant.status}): ${JSON.stringify(grant.body)}`);
@@ -353,7 +504,9 @@ async function main() {
     allowExternalIdp: false,
     ignoreUnknownUsernames: true,
   };
-  const policyRes = await request('GET', '/admin/v1/policies/login', null, pat);
+  const policyRes = await api('GET', '/admin/v1/policies/login', null, pat, {
+    label: 'login policy read',
+  });
   if (policyRes.status !== 200) {
     throw new Error(
       `login policy read failed (${policyRes.status}): ${JSON.stringify(policyRes.body)}`,
@@ -372,11 +525,13 @@ async function main() {
     const restOfPolicy = { ...currentLogin };
     delete restOfPolicy.details;
     delete restOfPolicy.isDefault;
-    const update = await request(
+    const update = await api(
       'PUT',
       '/admin/v1/policies/login',
       { ...restOfPolicy, ...desiredLogin },
       pat,
+      // A whole-policy replace: idempotent, and the re-read below is the arbiter.
+      { label: 'login policy update' },
     );
     const updNoChange =
       typeof update.body?.message === 'string' && update.body.message.includes('No changes');
@@ -385,7 +540,9 @@ async function main() {
         `login policy update failed (${update.status}): ${JSON.stringify(update.body)}`,
       );
     }
-    const verify = await request('GET', '/admin/v1/policies/login', null, pat);
+    const verify = await api('GET', '/admin/v1/policies/login', null, pat, {
+      label: 'login policy re-read',
+    });
     for (const [key, want] of Object.entries(desiredLogin)) {
       if (boolOf(verify.body.policy, key) !== want) {
         throw new Error(
@@ -402,7 +559,9 @@ async function main() {
 
   // 2e. Forbid public org registration at the instance level (single-tenant
   // deployment boundary; same self-verifying pattern).
-  const restrRes = await request('GET', '/admin/v1/restrictions', null, pat);
+  const restrRes = await api('GET', '/admin/v1/restrictions', null, pat, {
+    label: 'restrictions read',
+  });
   if (restrRes.status !== 200) {
     throw new Error(
       `restrictions read failed (${restrRes.status}): ${JSON.stringify(restrRes.body)}`,
@@ -411,11 +570,13 @@ async function main() {
   if ((restrRes.body.disallowPublicOrgRegistration ?? false) === true) {
     console.log('public org registration already disallowed');
   } else {
-    const setRestr = await request(
+    const setRestr = await api(
       'PUT',
       '/admin/v1/restrictions',
       { disallowPublicOrgRegistration: true },
       pat,
+      // Setting a fixed value: repeating it converges by construction.
+      { label: 'restrictions update' },
     );
     const restrNoChange =
       typeof setRestr.body?.message === 'string' && setRestr.body.message.includes('No changes');
@@ -424,7 +585,9 @@ async function main() {
         `restrictions update failed (${setRestr.status}): ${JSON.stringify(setRestr.body)}`,
       );
     }
-    const verifyRestr = await request('GET', '/admin/v1/restrictions', null, pat);
+    const verifyRestr = await api('GET', '/admin/v1/restrictions', null, pat, {
+      label: 'restrictions re-read',
+    });
     if (verifyRestr.body.disallowPublicOrgRegistration !== true) {
       throw new Error(
         `restrictions hardening did not stick: disallowPublicOrgRegistration is ${JSON.stringify(
@@ -474,7 +637,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error('zitadel-init failed:', error.message ?? error);
-  process.exit(1);
-});
+// Running the file provisions; importing it (the retry spec) does not.
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error('zitadel-init failed:', error.message ?? error);
+    process.exit(1);
+  });
+}
