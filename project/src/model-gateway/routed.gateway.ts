@@ -87,6 +87,10 @@ export class TierRoutedModelGateway extends ModelGateway {
     return this.routes.embedding.embeddingModelId();
   }
 
+  override embeddingGeometryId(): string {
+    return this.routes.embedding.embeddingGeometryId();
+  }
+
   /**
    * Probe each DISTINCT underlying adapter serving a TIER; unreachable
    * anywhere → not ok. The user-selectable answer options are deliberately

@@ -64,6 +64,13 @@ export interface OpenAiCompatibleGatewayOptions {
    */
   reasoningHeadroom?: number;
   /**
+   * Served-name to upstream-identifier map (the managed provider). Every
+   * model name this adapter is constructed with, and every name it reports,
+   * is the SERVED name; `upstreamModelId` below is the ONE place a served
+   * name becomes the identifier the wire carries.
+   */
+  modelAliases?: Readonly<Record<string, string>>;
+  /**
    * Enables per-request thinking control (issue #424): the adapter then sends
    * `chat_template_kwargs.enable_thinking` (the flag the reference llama.cpp
    * build honours; top-level `reasoning: "off"` tested NOT honoured) and the
@@ -118,6 +125,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   private readonly localRuntime?: { rootUrl: string };
   private readonly reasoningHeadroom: number;
   private readonly thinkingControl: boolean;
+  private readonly modelAliases?: Readonly<Record<string, string>>;
   /**
    * Models a response has shown to reason, learned from real responses only:
    * the boot/registry probe primes it, and any non-streaming response carrying
@@ -154,6 +162,21 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     this.localRuntime = options.localRuntime;
     this.reasoningHeadroom = options.reasoningHeadroom ?? 4;
     this.thinkingControl = options.thinkingControl ?? false;
+    this.modelAliases = options.modelAliases;
+  }
+
+  /**
+   * THE translation seam (hosted provisioning, task A): the one place in the
+   * system where a served model name becomes the upstream identifier the wire
+   * carries, applied exactly where an outgoing request's `model` field is
+   * written. Everything else, the configuration id, discovery, probes,
+   * errors, the egress trail, `embeddingModelId`, speaks served names only,
+   * and `model-alias-seam.spec.ts` fails the build if a second site ever
+   * reads a map value. A name without a mapping passes through unchanged,
+   * which is what makes every alias-free provider byte-identical.
+   */
+  private upstreamModelId(model: string): string {
+    return this.modelAliases?.[model] ?? model;
   }
 
   /**
@@ -366,7 +389,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   private chatBody(request: CompletionRequest, extra: Record<string, unknown> = {}): object {
     const model = this.modelFor(request.tier ?? 'answer');
     return {
-      model,
+      model: this.upstreamModelId(model),
       ...this.capField(model, this.capFor(model, request.maxTokens)),
       ...this.temperatureField(model, this.temperature),
       ...this.thinkingFields(request.thinking),
@@ -462,7 +485,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
             `${this.baseUrl}/chat/completions`,
             this.headers,
             {
-              model,
+              model: this.upstreamModelId(model),
               // ALWAYS deterministic sampling where the model takes the pin:
               // structured extraction decides what Cogeto remembers — never a
               // dice roll. A model that refuses the pin (issue #492) runs
@@ -530,7 +553,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     // is not sized for the transcript plus the model's deliberation about it.
     // A builder, not a constant: the adaptive retry rebuilds it (issue #492).
     const body = () => ({
-      model,
+      model: this.upstreamModelId(model),
       ...this.capField(model, this.capFor(model, request.maxTokens)),
       // Reading a page is a transcription task, not a creative one; a model
       // that refuses the pin runs without it (issue #492).
@@ -593,18 +616,19 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
-    if (!this.embedModel) {
+    const embedModel = this.embedModel;
+    if (!embedModel) {
       throw new ModelGatewayError('no embeddings model configured for this provider', false);
     }
     if (texts.length === 0) return [];
     const vectors: number[][] = [];
     for (let start = 0; start < texts.length; start += EMBED_BATCH_SIZE) {
       const batch = texts.slice(start, start + EMBED_BATCH_SIZE);
-      const response = await this.call('embedding', this.embedModel, (signal) =>
+      const response = await this.call('embedding', embedModel, (signal) =>
         postJson<EmbeddingsResponse>(
           `${this.baseUrl}/embeddings`,
           this.headers,
-          { model: this.embedModel, input: batch },
+          { model: this.upstreamModelId(embedModel), input: batch },
           signal,
         ),
       );
@@ -625,6 +649,12 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       throw new ModelGatewayError('no embeddings model configured for this provider', false);
     }
     return this.embedModel;
+  }
+
+  /** Calibration is keyed by the geometry actually embedding, which for a
+   * served name is the model behind it; see the base-class contract. */
+  override embeddingGeometryId(): string {
+    return this.upstreamModelId(this.embeddingModelId());
   }
 
   override async reachable(): Promise<GatewayReachability> {

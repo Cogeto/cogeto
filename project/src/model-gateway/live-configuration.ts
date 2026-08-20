@@ -59,10 +59,28 @@ export class LiveModelConfiguration {
  * line waiting to happen.
  */
 function sameConfiguration(a: ResolvedModelProviders, b: ResolvedModelProviders): boolean {
+  // The served-name map is part of what reaches a provider: a reconciled
+  // alias change on an unchanged binding must still rebuild the adapter,
+  // because the wire identifier behind the same served name moved.
+  const aliases = (map?: Readonly<Record<string, string>>): string =>
+    map
+      ? Object.entries(map)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([served, upstream]) => `${served}=${upstream}`)
+          .join(',')
+      : '';
   const binding = (
-    x: { provider: string; model: string; endpoint?: { id: string; baseUrl: string } } | null,
+    x: {
+      provider: string;
+      model: string;
+      endpoint?: { id: string; baseUrl: string; modelAliases?: Readonly<Record<string, string>> };
+    } | null,
   ): string =>
-    x ? `${x.provider}/${x.model}@${x.endpoint?.id ?? ''}:${x.endpoint?.baseUrl ?? ''}` : '-';
+    x
+      ? `${x.provider}/${x.model}@${x.endpoint?.id ?? ''}:${x.endpoint?.baseUrl ?? ''}#${aliases(
+          x.endpoint?.modelAliases,
+        )}`
+      : '-';
   if (a.configured !== b.configured || a.id !== b.id) return false;
   for (const tier of ['pipeline', 'answer', 'embedding'] as const) {
     if (binding(a.tiers[tier]) !== binding(b.tiers[tier])) return false;

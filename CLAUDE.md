@@ -403,7 +403,14 @@ variables, the operator script knows nothing about models, and a stale model
 variable in `.env` has no effect whatsoever (machine-checked by
 `model-config-env.spec.ts`). The eval harness alone still resolves from the
 environment, confined to its entrypoints, because it runs in CI against no
-instance database. An instance with no provider configured is a NORMAL state:
+instance database. The hosted-provisioning work (2026-08-20) added the ONE
+owner-ratified exception: exactly one provider row per instance may be
+MANAGED, reconciled at boot from `COGETO_MANAGED_PROVIDER_FILE` plus
+`COGETO_MANAGED_PROVIDER_API_KEY` (migration 0064), locked in the interface,
+offering only its served model names with the upstream identifier written at
+one adapter seam. Everything else stays interface-only, the amended spec keeps
+forbidding it, and an instance without the managed configuration is
+byte-identical (see `docs/features/models.md`, "The managed provider"). An instance with no provider configured is a NORMAL state:
 it boots, serves, health stays ok with a distinct not-configured wording, the
 shell shows a first-run banner pointing at Providers, and queued pipeline work
 waits under a job key and drains without a restart once a provider is added.

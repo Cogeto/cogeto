@@ -29,11 +29,18 @@ export async function loadModelConfiguration(
   },
 ): Promise<ResolvedModelProviders> {
   const store = new ProviderStore(db);
-  const [providers, assignments, answerOptions, version] = await Promise.all([
+  // The version is read BEFORE the data, never beside it. A configuration
+  // write (the rebuild's switch above all) commits data and version bump in
+  // one transaction, but these reads are not one snapshot: read in parallel,
+  // a resolve straddling the commit can pair PRE-switch data with the
+  // POST-switch version number, and the version poller then believes that
+  // stale content is current forever. Version-first makes the same tear
+  // carry an old number with new data, which the next poll heals.
+  const version = await store.readVersion();
+  const [providers, assignments, answerOptions] = await Promise.all([
     store.listProvidersWithSecrets(),
     store.listAssignments(),
     store.listAnswerOptions(),
-    store.readVersion(),
   ]);
   return resolveFromRecords({
     // A provider whose key cannot be opened is skipped, not fatal: the

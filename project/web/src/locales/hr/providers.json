@@ -37,6 +37,10 @@
       "subtitle": "Lokalno Ollama okruženje, preneseno iz ranije konfiguracije ove instance"
     }
   },
+  "managed": {
+    "byPlan": "Održava ga vaš plan hostinga",
+    "locked": "Ovaj pružatelj dio je vašeg plana hostinga. Njegovu krajnju točku i ključ održavamo za vas i ovdje ih nije moguće mijenjati ni ukloniti; svi ostali pružatelji na ovoj stranici ostaju vaši."
+  },
   "health": {
     "ok": "Odgovorio",
     "unreachable": "Nedostupan",

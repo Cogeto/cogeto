@@ -143,6 +143,22 @@ export abstract class ModelGateway {
   abstract embeddingModelId(): string;
 
   /**
+   * The identity per-embedding-model CALIBRATION is keyed by (the ambiguity
+   * and reconciliation threshold tables). For every ordinary binding this is
+   * `embeddingModelId()`. A served-name binding (the managed provider,
+   * migration 0064) answers the upstream identity behind the name instead,
+   * because a threshold is a fact about vector geometry and the served name
+   * is branding over it; keying by the brand would refuse or miscut a model
+   * whose geometry IS measured. The value is a LOOKUP KEY ONLY: it must
+   * never reach a user, a record, a report or a log line, which is why the
+   * threshold lookups take the display name as a separate argument. Wrappers
+   * forward it like `embeddingModelId`.
+   */
+  embeddingGeometryId(): string {
+    return this.embeddingModelId();
+  }
+
+  /**
    * Reads an image (V2.1 item 4.1). Separate from `complete` because it is a
    * separate CAPABILITY, not a parameter: the same weights are served with and
    * without a multimodal projector, so a gateway that cannot take images must

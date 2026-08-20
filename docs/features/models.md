@@ -167,7 +167,9 @@ names the model that actually received the bytes.
 writer.** The environment carries none of it: there is no seed, no fallback, and a
 stale model variable left in `.env` has no effect at all. Two sources of truth for
 one setting is how an instance ends up running a model nobody selected; this design
-leaves exactly one.
+leaves exactly one. The single deliberate exception is the managed provider on a
+hosted plan, described in its own section below: exactly one locked row, reconciled
+at boot, with the rule intact for everything else.
 
 An instance with **no provider configured is the normal first-run state**, not an
 error: it boots clean, health stays ok, the interface shows a banner pointing at the
@@ -264,6 +266,125 @@ changes the id, and each change is recorded with the id it produced and shown in
 interface. The assignment page shows the **published trust score for the exact
 configuration in force**, and states **"not evaluated"** in words where none matches:
 accuracy is never borrowed from a different configuration.
+
+## The managed provider (hosted provisioning)
+
+### The decision, on the record
+
+The v1.7.0 rule was "the interface is the only place models are configured", and it
+was made so that an instance can never run a model nobody selected. A hosting
+platform provisions instances **unattended**: it renders configuration files and an
+`.env`, runs the deploy compose, and re-renders and re-runs to change things. Nobody
+is present to type a provider into a page. The owner therefore ratified a **narrow,
+deliberate walk-back**: exactly ONE provider row per instance may be **managed**,
+reconciled from provision-time configuration at boot. For every other provider, and
+for every instance without the managed configuration, the v1.7.0 invariant stands
+untouched, and `model-config-env.spec.ts` was amended consciously to permit exactly
+the managed path while continuing to forbid everything else. The scope is fixed:
+one row, by design, and never a general environment path back into model
+configuration.
+
+### The configuration surface
+
+Two inputs, split by sensitivity, and the key in neither file:
+
+- **`COGETO_MANAGED_PROVIDER_FILE`** names a JSON file the platform renders per
+  instance, mounted read-only (`./managed-provider` in both compose channels). It
+  carries the label, the endpoint, the map from **served model names** to upstream
+  model identifiers, the initial tier assignments and the served names offered as
+  answer choices. The committed template,
+  [`project/infra/managed-provider.example.json`](../../project/infra/managed-provider.example.json),
+  documents the shape with placeholders only and holds no real value of any kind.
+- **`COGETO_MANAGED_PROVIDER_API_KEY`** arrives in the environment at bootstrap and
+  is sealed under `COGETO_MASTER_KEY` at reconcile time exactly as an
+  interface-entered key is: write-only forever, covered unchanged by the existing
+  key-confinement invariant.
+
+Both present: reconcile at boot, in both composition roots. Malformed file, file
+without key, or key without file: **refuse the boot** with a message naming
+precisely what is missing. Never guess, never partially apply. Neither present:
+there is no managed provider and the product is byte-identical to today, which is a
+tested property rather than an assumption.
+
+### Reconciliation
+
+The reconciler converges the single managed row (label, endpoint, sealed key, alias
+map, answer options) and **touches nothing else**: a hand-configured provider,
+including one pointing at the same endpoint, is byte-identical before and after
+every boot, and the integration spec compares every field to hold that. Every
+reconcile writes one audit entry carrying structural detail only, never the key and
+never content. **Key rotation is re-render and restart**: the reconciler compares
+the environment's key with the stored one and reseals on change, replacing the
+previous ciphertext rather than keeping it beside a successor. No interface
+involvement.
+
+**Initial assignments apply only when the managed row is first created**, and only
+to tiers nothing else holds; afterwards assignments belong to the instance, because
+the customer may add their own providers and reassign tiers to them, and that
+anti-lock-in property stays true. The managed card is locked, the instance is not.
+Creation-time assignments are probed like any interface save: pipeline and answer
+with a real completion, **vision with a real image** (a refused image leaves vision
+unassigned, which is the designed honest answer, recorded in the log and the audit
+entry), and embeddings with a real embedding whose returned dimension feeds the
+ordinary managed rebuild, so the first embeddings assignment goes through the same
+engine, probed dimension and one-transaction switch as every later one.
+
+### Served names and the single translation seam
+
+A provider row may carry a **model alias map**: served name to upstream identifier.
+When it does, the served names are the only models that provider offers. Discovery
+lists exactly the map's keys without asking the endpoint (whose own list would name
+upstream identifiers); manual entry accepts only served names; the configuration
+id, the egress trail, the index state, probes, errors and every page speak served
+names. Translation to the upstream identifier happens at **exactly one seam**: the
+OpenAI-compatible adapter, at the moment it writes the outgoing request's `model`
+field. `model-alias-seam.spec.ts` asserts structurally that the map is dereferenced
+nowhere else in the server or the SPA, because a second translation site is how an
+upstream name eventually leaks into something published. Probes ride the same seam,
+so validating a served name genuinely exercises the upstream model behind it.
+
+Repointing a served name at a different upstream model is a material change to what
+the id means. The honest path for the platform is to publish the changed model
+under a **new served name** and say so in its own release notes; nothing in the
+product pretends an alias is stable across upstream swaps.
+
+One in-process exception is deliberate and narrow: **per-embedding-model
+calibration keys by the geometry actually embedding.** The ambiguity and
+reconciliation threshold tables are facts about a vector space, and a served
+name is branding over the model that produces it, so the lookups key by
+`embeddingGeometryId()` (the upstream identity behind a served embeddings
+name) while every message, record and refusal carries the served name only.
+Without this, a managed instance would fail the fail-loud unknown-model check
+on every question despite running a measured model. The consequence for the
+platform's catalog: the upstream model behind the served **embeddings** name
+must be one the threshold tables know, or chat answering refuses loudly by
+design, exactly as it does for any unmeasured self-hosted embeddings model.
+
+### The embeddings rule
+
+The dangerous change is the one you cannot see: swapping the upstream identity
+behind the served embeddings model would change vector geometry while every query
+keeps returning plausible results. The reconciler therefore **detects any change
+affecting the embeddings tier** (the assigned served name disappearing from the
+map, or the upstream identifier behind it changing) and **refuses the whole
+reconcile and the boot**, applying nothing, with a message naming the honest path:
+render the new model under a NEW served name alongside the old one, boot, and
+switch through the managed rebuild in the interface or with
+`cogeto reindex --provider <label> --model <new-served-name>`. A silent swap of
+vector geometry is forbidden by construction, not by convention.
+
+### What the customer sees
+
+The managed card reads as **Cogeto**, with the brand mark reused from
+`assets/brand` unmodified, and says in its own words that it is managed by the
+hosting plan. It is read-only: no delete, no key field, no endpoint edit or
+display, and its answer options are the configuration file's list. Everything else
+keeps every affordance it has today, including adding any OpenAI-compatible
+endpoint and reassigning tiers to it. The served names appear as the models, the
+answer options feed the existing user-switchable answer mechanism unchanged, and
+the Models page states **"not evaluated"** for the managed configuration, which is
+exactly what the trust machinery is for: the managed configuration has no published
+evaluation, and nothing borrows or fakes one.
 
 ## Local inference
 

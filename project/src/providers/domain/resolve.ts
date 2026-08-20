@@ -100,6 +100,9 @@ export function resolveFromRecords(input: ResolveInput): ResolvedModelProviders 
       baseUrl: adapterBaseUrl(type, row.baseUrl),
       apiKey,
       selfHosted: spec.selfHosted,
+      // The served-name map rides the endpoint so the adapter's one seam can
+      // translate; every name stored anywhere else stays the served name.
+      ...(row.modelAliases ? { modelAliases: row.modelAliases } : {}),
     };
     endpointCache.set(providerId, endpoint);
     return endpoint;

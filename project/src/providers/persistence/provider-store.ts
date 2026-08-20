@@ -33,6 +33,10 @@ export interface ProviderRecord {
   type: string;
   baseUrl: string | null;
   hasApiKey: boolean;
+  /** The single boot-reconciled row (migration 0064); locked in the interface. */
+  managed: boolean;
+  /** Served-name to upstream-identifier map; null for every ordinary provider. */
+  modelAliases: Record<string, string> | null;
   createdAt: Date;
 }
 
@@ -48,6 +52,8 @@ const PUBLIC_COLUMNS = {
   baseUrl: modelProvider.baseUrl,
   // A boolean computed in SQL: the ciphertext never crosses the wire at all.
   hasApiKey: sql<boolean>`${modelProvider.apiKeySecret} is not null`,
+  managed: modelProvider.managed,
+  modelAliases: modelProvider.modelAliases,
   createdAt: modelProvider.createdAt,
 };
 
@@ -91,11 +97,23 @@ export class ProviderStore {
     return rows;
   }
 
+  /** The one boot-reconciled row, or null. The partial unique index caps it at one. */
+  async findManagedProvider(): Promise<ProviderRecord | null> {
+    const rows = await this.db
+      .select(PUBLIC_COLUMNS)
+      .from(modelProvider)
+      .where(eq(modelProvider.managed, true))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async createProvider(input: {
     label: string;
     type: string;
     baseUrl: string | null;
     apiKeySecret: string | null;
+    managed?: boolean;
+    modelAliases?: Record<string, string> | null;
   }): Promise<ProviderRecord> {
     const rows = await this.db.insert(modelProvider).values(input).returning(PUBLIC_COLUMNS);
     return rows[0]!;
@@ -104,7 +122,12 @@ export class ProviderStore {
   /** `apiKeySecret: undefined` leaves the stored key untouched; null clears it. */
   async updateProvider(
     id: string,
-    patch: { label?: string; baseUrl?: string | null; apiKeySecret?: string | null },
+    patch: {
+      label?: string;
+      baseUrl?: string | null;
+      apiKeySecret?: string | null;
+      modelAliases?: Record<string, string> | null;
+    },
   ): Promise<ProviderRecord | null> {
     const rows = await this.db
       .update(modelProvider)

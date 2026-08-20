@@ -196,6 +196,15 @@ services:
       # a key that guards a database cannot live inside it. Optional until
       # something needs encrypting, and then the failure names it.
       COGETO_MASTER_KEY: ${COGETO_MASTER_KEY:-}
+      # The managed provider (hosted provisioning): the ONE sanctioned
+      # exception to "the environment carries no model configuration". A
+      # hosting platform renders a configuration file into ./managed-provider
+      # (mounted below) and the bootstrap key into .env; at boot both roots
+      # reconcile the single managed provider row from them. Unset on every
+      # ordinary instance, and then the product is byte-identical to before
+      # the feature existed. Contract: project/infra/managed-provider.example.json.
+      COGETO_MANAGED_PROVIDER_FILE: ${COGETO_MANAGED_PROVIDER_FILE:-}
+      COGETO_MANAGED_PROVIDER_API_KEY: ${COGETO_MANAGED_PROVIDER_API_KEY:-}
       # Model providers, models and their keys are configured IN THE INTERFACE
       # (Providers in the left rail) and stored in the database. The
       # environment carries no model configuration: only the deployment knobs
@@ -302,6 +311,11 @@ services:
       # half here) — an RCE in the internet-facing app cannot exfiltrate the
       # receipt-signing private key. The worker mounts the full instance-keys.
       - instance-pubkey:/instance-keys:ro
+      # The managed provider's rendered configuration (hosted provisioning).
+      # Empty on every ordinary instance; a hosting platform writes
+      # managed-provider.json here and points COGETO_MANAGED_PROVIDER_FILE at
+      # /managed-provider/managed-provider.json.
+      - ./managed-provider:/managed-provider:ro
       # Empty on a normal instance (no session file → no demo mode); the
       # demo-seed job (profile demo) writes the demo Principal's session here.
       - demo-config:/demo-config:ro
@@ -373,6 +387,8 @@ services:
     volumes:
       # The worker keeps the FULL keypair (it signs receipts) —.
       - instance-keys:/instance-keys:ro
+      # The managed provider's rendered configuration; see the app's mount.
+      - ./managed-provider:/managed-provider:ro
       # Demo scheduled reset reuses the session the seed wrote.
       - demo-config:/demo-config:ro
     healthcheck:

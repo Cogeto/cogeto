@@ -78,6 +78,10 @@ export class ReloadingModelGateway extends ModelGateway {
     return this.inner.embeddingModelId();
   }
 
+  override embeddingGeometryId(): string {
+    return this.inner.embeddingGeometryId();
+  }
+
   override reachable(): Promise<GatewayReachability> {
     return this.inner.reachable();
   }

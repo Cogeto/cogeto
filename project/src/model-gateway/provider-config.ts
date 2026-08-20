@@ -62,6 +62,14 @@ export interface ProviderEndpoint {
   /** True when this endpoint is somebody's own server rather than the vendor's
    * hosted API: decides per-tier timeouts and per-request thinking control. */
   selfHosted: boolean;
+  /**
+   * Served-name to upstream-identifier map (the managed provider, migration
+   * 0064). When present, every model name in the configuration is a SERVED
+   * name; the upstream identifier exists on the wire only, written by the one
+   * translation seam in the OpenAI-compatible adapter. Nothing else may read
+   * a map value, and `model-alias-seam.spec.ts` asserts that structurally.
+   */
+  modelAliases?: Readonly<Record<string, string>>;
 }
 
 export interface TierBinding {

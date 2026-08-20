@@ -98,6 +98,28 @@ export function Providers({ session }: { session: Session }) {
   );
 }
 
+/**
+ * The managed provider's mark: the Cogeto icon, reused from the canonical
+ * brand file unmodified, on the same constant light tile the vendor marks sit
+ * on. The managed row reads as Cogeto because that is what the hosting plan
+ * serves the customer: Cogeto-branded models behind a maintained endpoint.
+ */
+function ManagedMark({ label }: { label: string }) {
+  return (
+    <span
+      className="inline-grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-1.5 dark:border-slate-300/20"
+      title={label}
+    >
+      <img
+        src="/brand/cogeto-final-icon.svg"
+        alt=""
+        aria-hidden="true"
+        className="h-full w-full object-contain"
+      />
+    </span>
+  );
+}
+
 /** Health as a chip: an icon, a word, and a tone. Never colour alone. */
 function HealthChip({ provider }: { provider: ProviderDto }) {
   const { t } = useTranslation('providers');
@@ -151,19 +173,26 @@ function ProviderRow({ session, provider }: { session: Session; provider: Provid
   return (
     <li className="rounded-md border border-slate-200 p-3">
       <div className="flex flex-wrap items-center gap-3">
-        <ProviderMark type={provider.type} />
+        {provider.managed ? (
+          <ManagedMark label={provider.label} />
+        ) : (
+          <ProviderMark type={provider.type} />
+        )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-slate-800">
             {provider.label}
           </span>
           <span className="block truncate text-xs text-slate-500">
-            {t(`type.${provider.type}.name`)}
-            {provider.baseUrl ? ` · ${provider.baseUrl}` : ''}
+            {provider.managed
+              ? t('managed.byPlan')
+              : `${t(`type.${provider.type}.name`)}${provider.baseUrl ? ` · ${provider.baseUrl}` : ''}`}
           </span>
         </span>
-        <span className="text-xs text-slate-500">
-          {provider.hasApiKey ? t('key.present') : t('key.absent')}
-        </span>
+        {!provider.managed && (
+          <span className="text-xs text-slate-500">
+            {provider.hasApiKey ? t('key.present') : t('key.absent')}
+          </span>
+        )}
         <HealthChip provider={provider} />
         <button
           type="button"
@@ -186,56 +215,60 @@ function ProviderRow({ session, provider }: { session: Session; provider: Provid
         </p>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {!replacingKey && (
-          <button type="button" className={btnSecondary} onClick={() => setReplacingKey(true)}>
-            {provider.hasApiKey ? t('key.replace') : t('key.add')}
+      {provider.managed && <p className="mt-2 text-xs text-slate-400">{t('managed.locked')}</p>}
+
+      {!provider.managed && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {!replacingKey && (
+            <button type="button" className={btnSecondary} onClick={() => setReplacingKey(true)}>
+              {provider.hasApiKey ? t('key.replace') : t('key.add')}
+            </button>
+          )}
+          {replacingKey && (
+            <>
+              <label className="sr-only" htmlFor={`key-${provider.id}`}>
+                {t('form.apiKey.label')}
+              </label>
+              <input
+                id={`key-${provider.id}`}
+                type="password"
+                autoComplete="off"
+                value={newKey}
+                onChange={(event) => setNewKey(event.target.value)}
+                placeholder={t('form.apiKey.placeholder')}
+                className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+              <button
+                type="button"
+                className={btnPrimary}
+                disabled={!newKey || saveKey.isPending}
+                onClick={() => saveKey.mutate()}
+              >
+                {saveKey.isPending ? t('action.saving') : t('action.save')}
+              </button>
+              <button
+                type="button"
+                className={btnSecondary}
+                onClick={() => {
+                  setReplacingKey(false);
+                  setNewKey('');
+                }}
+              >
+                {t('action.cancel')}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className={`${btnDanger} ml-auto`}
+            disabled={provider.assignedTiers.length > 0 || remove.isPending}
+            title={provider.assignedTiers.length > 0 ? t('list.cannotDelete') : undefined}
+            onClick={() => remove.mutate()}
+          >
+            {t('action.remove')}
           </button>
-        )}
-        {replacingKey && (
-          <>
-            <label className="sr-only" htmlFor={`key-${provider.id}`}>
-              {t('form.apiKey.label')}
-            </label>
-            <input
-              id={`key-${provider.id}`}
-              type="password"
-              autoComplete="off"
-              value={newKey}
-              onChange={(event) => setNewKey(event.target.value)}
-              placeholder={t('form.apiKey.placeholder')}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-            />
-            <button
-              type="button"
-              className={btnPrimary}
-              disabled={!newKey || saveKey.isPending}
-              onClick={() => saveKey.mutate()}
-            >
-              {saveKey.isPending ? t('action.saving') : t('action.save')}
-            </button>
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={() => {
-                setReplacingKey(false);
-                setNewKey('');
-              }}
-            >
-              {t('action.cancel')}
-            </button>
-          </>
-        )}
-        <button
-          type="button"
-          className={`${btnDanger} ml-auto`}
-          disabled={provider.assignedTiers.length > 0 || remove.isPending}
-          title={provider.assignedTiers.length > 0 ? t('list.cannotDelete') : undefined}
-          onClick={() => remove.mutate()}
-        >
-          {t('action.remove')}
-        </button>
-      </div>
+        </div>
+      )}
       {failure && (
         <p className="mt-2 text-xs text-red-700 dark:text-red-300" role="alert">
           {failure}

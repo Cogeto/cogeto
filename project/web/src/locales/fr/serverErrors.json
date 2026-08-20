@@ -137,6 +137,8 @@
     "endpointScheme": "le point de terminaison doit être une URL http ou https",
     "labelRequired": "un fournisseur a besoin d'un nom",
     "labelTaken": "un fournisseur nommé \"{{label}}\" existe déjà",
+    "managedLocked": "le fournisseur \"{{label}}\" est géré par l'offre d'hébergement et ne peut pas être modifié ici",
+    "modelNotServed": "le fournisseur \"{{label}}\" ne sert aucun modèle nommé \"{{model}}\"",
     "noEmbeddingsApi": "ce type de fournisseur n'a pas d'API d'embeddings",
     "notFound": "aucun fournisseur de ce type",
     "probeSilent": "le modèle n'a pas répondu à la sonde",

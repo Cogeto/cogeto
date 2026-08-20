@@ -12,3 +12,10 @@ export { loadModelConfiguration } from './load-configuration';
 // mechanism for provider keys and connector credentials); consumers import
 // readMasterKey / MasterKeyError from the infrastructure barrel now.
 export { PROVIDER_TYPE_SPECS } from './domain/provider-types';
+// The boot-time managed provider reconciler (hosted provisioning, task A):
+// called by both composition roots between installing the database's model
+// configuration and the embedding-space guard. Absent configuration is a
+// no-op; a malformed or half-present one refuses the boot.
+export { ManagedReconcileError, reconcileManagedProvider } from './managed-reconcile';
+export type { ManagedReconcileDeps, ManagedReconcileInput } from './managed-reconcile';
+export { ManagedProviderConfigError } from './domain/managed-config';

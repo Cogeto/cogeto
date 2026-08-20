@@ -222,6 +222,9 @@ function buildProviderGateway(
           visionModel,
           temperature,
           reasoningHeadroom: providers.reasoningHeadroom,
+          // The endpoint's served-name map, when it carries one: the adapter
+          // holds the ONE seam where a served name becomes the wire identifier.
+          modelAliases: endpoint?.modelAliases,
           // Per-request thinking control (issue #424): self-hosted only — the
           // hosted API rejects unknown parameters.
           thinkingControl: selfHosted,
@@ -259,6 +262,7 @@ function buildProviderGateway(
           visionModel,
           temperature,
           reasoningHeadroom: providers.reasoningHeadroom,
+          modelAliases: endpoint?.modelAliases,
           // The local runtime is always ours to control (issue #424).
           thinkingControl: true,
         });

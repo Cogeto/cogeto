@@ -150,6 +150,11 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     if (this.poller) clearInterval(this.poller);
   }
 
+  /** The configuration id in force, for the boot-time managed reconciler. */
+  liveConfigurationId(): string {
+    return this.options.live.current.id;
+  }
+
   /** Re-resolve from the database into the live configuration. */
   async reload(): Promise<ResolvedModelProviders> {
     const resolved = await this.resolveCurrent();
@@ -162,11 +167,14 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   }
 
   private async resolveCurrent(): Promise<ResolvedModelProviders> {
-    const [providers, assignments, answerOptions, version] = await Promise.all([
+    // Version BEFORE data, for the reason `loadModelConfiguration` gives: a
+    // resolve straddling another process's commit must never stamp stale
+    // content with the new version number, or the poll stops healing it.
+    const version = await this.store.readVersion();
+    const [providers, assignments, answerOptions] = await Promise.all([
       this.store.listProvidersWithSecrets(),
       this.store.listAssignments(),
       this.store.listAnswerOptions(),
-      this.store.readVersion(),
     ]);
     return resolveFromRecords({
       // Same posture as the boot path: an unreadable key disqualifies that
@@ -255,6 +263,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   ): Promise<ProviderDto> {
     const existing = await this.store.findProvider(id);
     if (!existing) throw userError.notFound('provider.notFound', 'no such provider');
+    this.refuseManaged(existing);
     const type = existing.type as StoredProviderType;
     const patch: { label?: string; baseUrl?: string | null; apiKeySecret?: string | null } = {};
     if (request.label !== undefined) {
@@ -294,6 +303,8 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   }
 
   async deleteProvider(principal: Principal, id: string): Promise<void> {
+    const existing = await this.store.findProvider(id);
+    if (existing) this.refuseManaged(existing);
     const assignments = await this.store.listAssignments();
     const bound = assignments.filter((row) => row.providerId === id).map((row) => row.tier);
     if (bound.length > 0) {
@@ -317,17 +328,23 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
 
   /** Probe a saved provider's endpoint and remember the outcome for the list. */
   async probeProvider(id: string): Promise<ProviderProbeDto> {
+    const provider = await this.store.findProvider(id);
     const target = await this.targetFor(id);
     const result = await listProviderModels(target);
+    const detail = provider
+      ? this.confineAliased(provider, result.ok ? (result.detail ?? null) : (result.error ?? null))
+      : result.ok
+        ? (result.detail ?? null)
+        : (result.error ?? null);
     this.health.set(id, {
       state: result.ok ? 'ok' : result.reason === 'auth_failed' ? 'auth_failed' : 'unreachable',
-      detail: result.ok ? (result.detail ?? null) : (result.error ?? null),
+      detail,
       checkedAt: new Date(),
     });
     return {
       ok: result.ok,
       reason: result.reason ?? null,
-      detail: result.detail ?? result.error ?? null,
+      detail,
     };
   }
 
@@ -340,6 +357,16 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   async listModels(id: string): Promise<ProviderModelsDto> {
     const provider = await this.store.findProvider(id);
     if (!provider) throw userError.notFound('provider.notFound', 'no such provider');
+    if (provider.modelAliases) {
+      // A provider with a served-name map offers exactly the map's keys, and
+      // nothing else: the endpoint's own list would name upstream
+      // identifiers, which never reach a user, so it is not even asked.
+      return {
+        models: Object.keys(provider.modelAliases).sort((a, b) => a.localeCompare(b)),
+        error: null,
+        mayBePartial: false,
+      };
+    }
     const target = await this.targetFor(id);
     const result = await listProviderModels(target);
     return {
@@ -428,7 +455,8 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       const reason = probe.reason ?? 'unusable_response';
       // The provider's own sentence when it gave one (text we did not write, so
       // uncoded and passed through); ours, coded, when it said nothing at all.
-      if (probe.error) throw untranslatedError.badRequest(probe.error, { reason });
+      const error = this.confineAliased(provider, probe.error ?? null);
+      if (error) throw untranslatedError.badRequest(error, { reason });
       throw userError.badRequest(
         'provider.embeddingProbeSilent',
         'the model did not answer the embedding probe',
@@ -554,7 +582,19 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   /** Probe a candidate embeddings binding by USE — public for the operator
    * CLI, which validates its target the same way the interface does. */
   async probeEmbeddingsModel(providerId: string, model: string): Promise<ProviderProbeResult> {
-    return probeProviderModel(await this.targetFor(providerId), { tier: 'embeddings', model });
+    const provider = await this.store.findProvider(providerId);
+    if (provider) this.assertServedModel(provider, model);
+    const result = await probeProviderModel(await this.targetFor(providerId), {
+      tier: 'embeddings',
+      model,
+    });
+    if (provider && !result.ok) {
+      return {
+        ...result,
+        ...(result.error ? { error: this.confineAliased(provider, result.error)! } : {}),
+      };
+    }
+    return result;
   }
 
   /** The resolved single-binding configuration the rebuild embeds through —
@@ -583,6 +623,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
         'this provider type has no embeddings API',
       );
     }
+    this.assertServedModel(provider, request.model);
     const active = this.options.live.current.tiers.embedding;
     if (
       this.options.live.current.configured &&
@@ -686,6 +727,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
         { label: provider.label, type: provider.type },
       );
     }
+    this.assertServedModel(provider, request.model);
 
     const probe = await probeProviderModel(await this.targetFor(provider.id), {
       tier: probeTierFor(tier),
@@ -693,7 +735,8 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     });
     if (!probe.ok) {
       const reason = probe.reason ?? 'unusable_response';
-      if (probe.error) throw untranslatedError.badRequest(probe.error, { reason });
+      const error = this.confineAliased(provider, probe.error ?? null);
+      if (error) throw untranslatedError.badRequest(error, { reason });
       throw userError.badRequest(
         'provider.probeSilent',
         'the model did not answer the probe',
@@ -720,13 +763,19 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   ): Promise<ModelConfigurationDto> {
     const provider = await this.store.findProvider(request.providerId);
     if (!provider) throw userError.notFound('provider.notFound', 'no such provider');
+    // The managed row's answer options are the configuration file's list, and
+    // the reconciler would revert a hand edit on the next boot; refusing here
+    // is the honest version of that.
+    this.refuseManaged(provider);
+    this.assertServedModel(provider, request.model);
     const probe = await probeProviderModel(await this.targetFor(provider.id), {
       tier: 'generation',
       model: request.model,
     });
     if (!probe.ok) {
       const reason = probe.reason ?? 'unusable_response';
-      if (probe.error) throw untranslatedError.badRequest(probe.error, { reason });
+      const error = this.confineAliased(provider, probe.error ?? null);
+      if (error) throw untranslatedError.badRequest(error, { reason });
       throw userError.badRequest(
         'provider.probeSilent',
         'the model did not answer the probe',
@@ -751,6 +800,11 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   }
 
   async removeAnswerOption(principal: Principal, id: string): Promise<ModelConfigurationDto> {
+    const option = (await this.store.listAnswerOptions()).find((row) => row.id === id);
+    if (option) {
+      const provider = await this.store.findProvider(option.providerId);
+      if (provider) this.refuseManaged(provider);
+    }
     await this.store.removeAnswerOption(id);
     await writeAudit(this.db, {
       actor: `user:${principal.userId}`,
@@ -836,7 +890,58 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
         ? openSecret(this.options.masterKey, row.apiKeySecret)
         : NO_AUTH_PLACEHOLDER,
       selfHosted: spec.selfHosted,
+      // A probe of a served name must exercise the upstream model it maps to,
+      // through the adapter's one seam, exactly like a real call.
+      ...(row.modelAliases ? { modelAliases: row.modelAliases } : {}),
     };
+  }
+
+  /** The managed row is reconciled from provision-time configuration and is
+   * read-only in the interface: no edit, no key, no delete, no options. */
+  private refuseManaged(provider: ProviderRecord): void {
+    if (provider.managed) {
+      throw userError.conflict(
+        'provider.managedLocked',
+        'provider "{{label}}" is managed by the hosting plan and cannot be changed here',
+        { label: provider.label },
+      );
+    }
+  }
+
+  /** On a provider with a served-name map, the map's keys are the only models
+   * that exist; anything else is refused before a byte leaves the box. */
+  private assertServedModel(provider: ProviderRecord, model: string): void {
+    if (provider.modelAliases && !Object.hasOwn(provider.modelAliases, model)) {
+      throw userError.badRequest(
+        'provider.modelNotServed',
+        'provider "{{label}}" does not serve a model called "{{model}}"',
+        { label: provider.label, model },
+      );
+    }
+  }
+
+  /**
+   * Keep upstream identity out of pass-through text. A provider with a
+   * served-name map can receive an endpoint sentence that names what it
+   * actually runs; before any such text reaches a person, every upstream
+   * identifier is replaced by its served name and the endpoint host by the
+   * provider's label. Substitution only, never translation: the seam that
+   * turns a served name INTO an upstream identifier stays in the adapter.
+   */
+  private confineAliased(provider: ProviderRecord, text: string | null): string | null {
+    if (!text || !provider.modelAliases) return text;
+    let out = text;
+    for (const [served, upstream] of Object.entries(provider.modelAliases)) {
+      out = out.split(upstream).join(served);
+    }
+    if (provider.baseUrl) {
+      try {
+        out = out.split(new URL(provider.baseUrl).host).join(provider.label);
+      } catch {
+        // A row with an unparsable endpoint has nothing to confine.
+      }
+    }
+    return out;
   }
 
   private toProviderDto(
@@ -850,7 +955,11 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       id: row.id,
       label: row.label,
       type,
-      baseUrl: row.baseUrl,
+      // The managed endpoint is the hosting plan's implementation detail: the
+      // card has no endpoint edit, so the address serves no one and stays out
+      // of the response entirely.
+      baseUrl: row.managed ? null : row.baseUrl,
+      managed: row.managed,
       hasApiKey: row.hasApiKey,
       requiresApiKey: spec?.needsApiKey ?? false,
       supportsEmbeddings: spec?.supportsEmbeddings ?? false,

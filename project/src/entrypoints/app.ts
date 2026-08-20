@@ -9,6 +9,7 @@ import {
   installModelConfiguration,
   logModelConfiguration,
 } from './model-boot';
+import { reconcileManagedProviderAtBoot } from './managed-provider-boot';
 import { CapabilitiesService, formatCapabilitiesBanner } from '../operations/index';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
@@ -31,6 +32,11 @@ async function main(): Promise<void> {
   // (V2.4 item 7.1). Seeds the environment in on the first start after the
   // upgrade; after that the environment's model variables are ignored.
   const live = await installModelConfiguration(config, logger);
+
+  // The managed provider (hosted provisioning, task A): converge the single
+  // reconciled row from provision-time configuration. A no-op without it; a
+  // malformed or half-present configuration refuses the boot.
+  await reconcileManagedProviderAtBoot(config, live, logger);
 
   // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.

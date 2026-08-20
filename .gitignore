@@ -36,3 +36,10 @@ target/
 # ─────────────────────────────────────────────
 .claude/settings.local.json
 *.tsbuildinfo
+
+# ─────────────────────────────────────────────
+# The managed provider's rendered configuration (hosted provisioning): per
+# instance, never committed. The committed contract is
+# project/infra/managed-provider.example.json.
+# ─────────────────────────────────────────────
+managed-provider/

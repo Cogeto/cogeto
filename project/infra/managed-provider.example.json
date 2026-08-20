@@ -1,0 +1,18 @@
+{
+  "label": "Cogeto",
+  "type": "selfhosted",
+  "base_url": "https://models.example.invalid/v1",
+  "models": {
+    "served-name-fast": "upstream-model-identifier-1",
+    "served-name-deep": "upstream-model-identifier-2",
+    "served-name-embed": "upstream-model-identifier-3",
+    "served-name-vision": "upstream-model-identifier-4"
+  },
+  "assign": {
+    "pipeline": "served-name-fast",
+    "answer": "served-name-fast",
+    "embeddings": "served-name-embed",
+    "vision": "served-name-vision"
+  },
+  "answer_options": ["served-name-fast", "served-name-deep"]
+}

@@ -2,6 +2,7 @@ import {
   bigint,
   boolean,
   index,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -26,6 +27,18 @@ export const modelProvider = pgTable('model_provider', {
   type: text('type').notNull(),
   baseUrl: text('base_url'),
   apiKeySecret: text('api_key_secret'),
+  /**
+   * The single reconciled row (migration 0064): created and updated only by
+   * the boot-time managed reconciler, locked in the interface. A partial
+   * unique index in the migration makes "at most one" a database fact.
+   */
+  managed: boolean('managed').notNull().default(false),
+  /**
+   * Served-name to upstream-identifier map. When present, the served names
+   * are the ONLY models this provider offers; translation to the upstream
+   * identifier happens at the one seam in the OpenAI-compatible adapter.
+   */
+  modelAliases: jsonb('model_aliases').$type<Record<string, string>>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

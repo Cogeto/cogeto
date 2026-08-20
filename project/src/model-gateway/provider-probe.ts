@@ -64,6 +64,12 @@ export interface ProbeTarget {
   /** The decrypted key, or a placeholder for an endpoint with no auth. */
   apiKey: string;
   selfHosted: boolean;
+  /**
+   * Served-name map, when the endpoint carries one: a probe of a served name
+   * must exercise the upstream model it maps to, so the map rides into the
+   * probe's endpoint and the adapter's one seam translates as it always does.
+   */
+  modelAliases?: Readonly<Record<string, string>>;
 }
 
 /** The tier a model is being validated FOR — each needs a different call. */
@@ -180,6 +186,7 @@ export async function probeProviderModel(
       baseUrl: resolvedBaseUrl(target),
       apiKey: target.apiKey,
       selfHosted: target.selfHosted,
+      ...(target.modelAliases ? { modelAliases: target.modelAliases } : {}),
     },
   };
   const gateway = createModelGateway({ providers: probeConfiguration(binding, request.tier) });
@@ -283,6 +290,7 @@ export function embeddingRunConfiguration(
       baseUrl: resolvedBaseUrl(target),
       apiKey: target.apiKey,
       selfHosted: target.selfHosted,
+      ...(target.modelAliases ? { modelAliases: target.modelAliases } : {}),
     },
   };
   return { ...probeConfiguration(binding, 'embeddings'), id: 'embedding-rebuild' };

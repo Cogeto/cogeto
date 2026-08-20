@@ -267,7 +267,10 @@ export class RetrievalService {
       queryEntities,
     );
     const embeddingModel = this.gateway.embeddingModelId();
-    return decideAmbiguity(clusters, queryEntities, keyOf, ambiguityThresholdsFor(embeddingModel), {
+    // Thresholds are keyed by the GEOMETRY actually embedding; the decision
+    // record below keeps the model's own (served) name.
+    const thresholds = ambiguityThresholdsFor(this.gateway.embeddingGeometryId(), embeddingModel);
+    return decideAmbiguity(clusters, queryEntities, keyOf, thresholds, {
       configVersion: AMBIGUITY_CONFIG_VERSION,
       embeddingModel,
       // The user's own words (issue #497): the rewrite's entity extraction

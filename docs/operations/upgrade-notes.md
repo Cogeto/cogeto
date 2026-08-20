@@ -9,6 +9,30 @@ Nothing here is optional reading for the releases it names.
 
 ---
 
+## Outstanding note: the first release carrying the managed provider
+
+The next release adds the **managed provider** (migration 0064): on a hosted
+plan, exactly one provider row per instance is reconciled at boot from a
+platform-rendered configuration file (`COGETO_MANAGED_PROVIDER_FILE`) plus a
+bootstrap key (`COGETO_MANAGED_PROVIDER_API_KEY`), and is read-only in the
+interface. In full:
+[`../features/models.md`](../features/models.md#the-managed-provider-hosted-provisioning).
+
+**A self-managed instance is untouched.** With neither variable set, nothing
+reconciles, nothing changes, and the interface remains the only place models
+are configured; that byte-identity is a tested property. Do not set one of the
+pair without the other: the boot then refuses, naming what is missing, which is
+deliberate.
+
+For platforms: both compose channels mount `./managed-provider` read-only next
+to the compose file; render the JSON there and point the file variable at
+`/managed-provider/managed-provider.json`. Rotate the key by re-rendering
+`.env` and restarting. Never repoint the served embeddings model at a different
+upstream model in place: the boot refuses it, and the honest path (a new served
+name plus the managed rebuild) is in the feature document.
+
+---
+
 ## Outstanding notes: the first release carrying spaces
 
 The next release introduces spaces (migrations 0060 through 0063), fully

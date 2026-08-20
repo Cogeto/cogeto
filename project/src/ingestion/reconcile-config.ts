@@ -68,12 +68,18 @@ const CALIBRATED_THRESHOLDS: Record<string, ReconcileThresholds> = {
  * to remove (a wrong threshold is invisible — it just merges too much or
  * flags too little, forever).
  */
-export function reconcileThresholdsFor(embeddingModel: string): ReconcileThresholds {
+export function reconcileThresholdsFor(
+  embeddingModel: string,
+  // The geometry identity is the lookup key (`gateway.embeddingGeometryId()`);
+  // the display name is what the message may carry, so an upstream identifier
+  // behind a served name never leaves through a log line.
+  displayName: string = embeddingModel,
+): ReconcileThresholds {
   const base = embeddingModel.split(':')[0]!;
   const thresholds = CALIBRATED_THRESHOLDS[embeddingModel] ?? CALIBRATED_THRESHOLDS[base];
   if (!thresholds) {
     throw new Error(
-      `no calibrated reconciliation thresholds for embedding model "${embeddingModel}": ` +
+      `no calibrated reconciliation thresholds for embedding model "${displayName}": ` +
         'add a calibrated entry to CALIBRATED_THRESHOLDS (reconcile-config.ts) backed by ' +
         'a golden pair-set run under that model, and bump RECONCILE_CONFIG_VERSION',
     );

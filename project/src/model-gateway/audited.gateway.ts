@@ -183,6 +183,10 @@ export class AuditedModelGateway extends ModelGateway {
     return this.inner.embeddingModelId();
   }
 
+  override embeddingGeometryId(): string {
+    return this.inner.embeddingGeometryId();
+  }
+
   override async reachable(): Promise<GatewayReachability> {
     // A probe is not egress of anyone's content: it carries no input and
     // belongs to the health surface, which has its own reporting.

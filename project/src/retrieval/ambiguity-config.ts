@@ -107,13 +107,21 @@ const CALIBRATED_THRESHOLDS: Record<string, AmbiguityThresholds> = {
  * silently applying another model's cut points would mis-branch every
  * question, invisibly, forever — the failure reconcile-config v2 exists to
  * remove, repeated here on purpose.
+ *
+ * `embeddingModel` is the GEOMETRY identity (`gateway.embeddingGeometryId()`):
+ * for a served-name binding that is the model actually embedding, never the
+ * brand over it. It is a lookup key only; `displayName` is what any message
+ * may carry, so an upstream identifier can never leave through a log line.
  */
-export function ambiguityThresholdsFor(embeddingModel: string): AmbiguityThresholds {
+export function ambiguityThresholdsFor(
+  embeddingModel: string,
+  displayName: string = embeddingModel,
+): AmbiguityThresholds {
   const base = embeddingModel.split(':')[0]!;
   const thresholds = CALIBRATED_THRESHOLDS[embeddingModel] ?? CALIBRATED_THRESHOLDS[base];
   if (!thresholds) {
     throw new Error(
-      `no calibrated ambiguity thresholds for embedding model "${embeddingModel}": ` +
+      `no calibrated ambiguity thresholds for embedding model "${displayName}": ` +
         'add a calibrated entry to CALIBRATED_THRESHOLDS (ambiguity-config.ts) backed by ' +
         'a seeded retrieval run under that model, and bump AMBIGUITY_CONFIG_VERSION',
     );

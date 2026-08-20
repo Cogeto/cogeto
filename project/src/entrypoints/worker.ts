@@ -19,6 +19,7 @@ import {
   installModelConfiguration,
   logModelConfiguration,
 } from './model-boot';
+import { reconcileManagedProviderAtBoot } from './managed-provider-boot';
 import {
   ACTIVE_PROMPTS,
   DREAM_CRONTAB,
@@ -98,6 +99,10 @@ async function main(): Promise<void> {
   // (V2.4 item 7.1). The worker seeds too: whichever process starts first
   // wins the atomic claim, and the other finds the seeding already done.
   const live = await installModelConfiguration(config, logger);
+  // The managed provider (hosted provisioning, task A): converge the single
+  // reconciled row from provision-time configuration. A no-op without it; a
+  // malformed or half-present configuration refuses the boot.
+  await reconcileManagedProviderAtBoot(config, live, logger);
   logModelConfiguration(logger, config); // State the active configuration id.
   // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.

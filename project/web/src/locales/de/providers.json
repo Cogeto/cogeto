@@ -37,6 +37,10 @@
       "subtitle": "Eine lokale Ollama-Laufzeit, übernommen aus der früheren Konfiguration dieser Instanz"
     }
   },
+  "managed": {
+    "byPlan": "Verwaltet durch Ihren Hosting-Plan",
+    "locked": "Dieser Anbieter ist Teil Ihres Hosting-Plans. Sein Endpunkt und sein Schlüssel werden für Sie gepflegt und können hier weder geändert noch entfernt werden; alle anderen Anbieter auf dieser Seite bleiben Ihre."
+  },
   "health": {
     "ok": "Hat geantwortet",
     "unreachable": "Nicht erreichbar",

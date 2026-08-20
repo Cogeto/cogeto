@@ -292,9 +292,14 @@ export class ReconciliationService {
     this.judge = new ReconcileJudge(gateway);
   }
 
-  /** Calibrated for the ACTIVE embedding model; throws on an unknown one. */
+  /** Calibrated for the ACTIVE embedding model; throws on an unknown one.
+   * Keyed by the geometry actually embedding (a served name is branding over
+   * it); the model's own name stays the one any message carries. */
   private thresholds(): ReconcileThresholds {
-    return reconcileThresholdsFor(this.gateway.embeddingModelId());
+    return reconcileThresholdsFor(
+      this.gateway.embeddingGeometryId(),
+      this.gateway.embeddingModelId(),
+    );
   }
 
   /**

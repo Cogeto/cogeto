@@ -201,3 +201,72 @@ describe('model_config_env: structural confinement', () => {
     );
   });
 });
+
+/**
+ * THE ONE SANCTIONED EXCEPTION (hosted provisioning, task A): a conscious,
+ * narrow walk-back of the rule this file exists to prove. A hosting platform
+ * provisions instances unattended, so exactly ONE provider row per instance
+ * may be MANAGED, reconciled at boot from `COGETO_MANAGED_PROVIDER_FILE`
+ * (a platform-rendered file) plus `COGETO_MANAGED_PROVIDER_API_KEY`.
+ *
+ * The amendment permits exactly that path and continues to forbid everything
+ * else:
+ *
+ *  - the two managed variables are read in ONE file, the boot step both
+ *    composition roots call, and nowhere else, so no second consumer can
+ *    grow;
+ *  - `loadConfig` itself still ignores them (the reconciler is a separate,
+ *    explicit boot step that refuses on a half-present configuration rather
+ *    than resolving anything from it);
+ *  - every retired model variable stays retired, every rule above stays
+ *    byte-identical, and an instance without the managed configuration is
+ *    untouched.
+ */
+const MANAGED_VARS = ['COGETO_MANAGED_PROVIDER_FILE', 'COGETO_MANAGED_PROVIDER_API_KEY'];
+const MANAGED_BOOT_FILE = path.join(SRC, 'entrypoints', 'managed-provider-boot.ts');
+
+describe('model_config_env: the managed path is the only environment exception', () => {
+  it('the managed variables are read only by the managed boot step', () => {
+    // The reconciler's refusal messages NAME the variables (a refusal must
+    // say what is missing), so those two files may mention them; the module
+    // is separately forbidden from reading the environment at all, asserted
+    // below, so a mention there can never become a read.
+    const mayName = new Set([
+      MANAGED_BOOT_FILE,
+      path.join(SRC, 'providers', 'managed-reconcile.ts'),
+      path.join(SRC, 'providers', 'domain', 'managed-config.ts'),
+    ]);
+    const offenders: string[] = [];
+    for (const file of walkTs(SRC)) {
+      if (mayName.has(file)) continue;
+      const text = readFileSync(file, 'utf8');
+      for (const name of MANAGED_VARS) {
+        if (new RegExp(`\\b${name}\\b`).test(text)) {
+          offenders.push(`${path.relative(SRC, file)}: ${name}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `managed variables referenced outside the boot step:\n${offenders.join('\n')}`,
+    ).toEqual([]);
+    const bootStep = readFileSync(MANAGED_BOOT_FILE, 'utf8');
+    for (const name of MANAGED_VARS) expect(bootStep).toContain(name);
+    // The two providers-module files never touch the environment: only
+    // entrypoints read it, and the boot step hands the values in.
+    for (const file of ['managed-reconcile.ts', path.join('domain', 'managed-config.ts')]) {
+      expect(readFileSync(path.join(SRC, 'providers', file), 'utf8')).not.toContain('process.env');
+    }
+  });
+
+  it('loadConfig still ignores the managed variables entirely', () => {
+    const withManaged = loadConfig({
+      ...validEnv,
+      COGETO_MANAGED_PROVIDER_FILE: '/nonexistent/managed.json',
+      COGETO_MANAGED_PROVIDER_API_KEY: 'stale-managed-key',
+    });
+    const without = loadConfig(validEnv);
+    expect(withManaged.modelProviders).toEqual(without.modelProviders);
+    expect(JSON.stringify(withManaged.modelProviders)).not.toContain('stale-managed-key');
+  });
+});

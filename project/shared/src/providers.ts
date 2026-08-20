@@ -46,8 +46,16 @@ export interface ProviderDto {
   id: string;
   label: string;
   type: StoredProviderType;
-  /** The endpoint, for the types that have one; null for a hosted vendor API. */
+  /** The endpoint, for the types that have one; null for a hosted vendor API
+   * and for the managed provider, whose endpoint is the hosting plan's own
+   * detail and is never shown or edited. */
   baseUrl: string | null;
+  /**
+   * True for the single provider reconciled from provision-time configuration
+   * on a hosted plan. The card is read-only: no key field, no endpoint edit,
+   * no delete; everything else on the instance stays the admin's.
+   */
+  managed: boolean;
   /** Whether a key is stored. The key itself is never returned. */
   hasApiKey: boolean;
   /** True when this type needs a key at all (a self-hosted server often has none). */

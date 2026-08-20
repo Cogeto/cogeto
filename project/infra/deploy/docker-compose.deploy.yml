@@ -229,8 +229,14 @@ services:
       COGETO_MASTER_KEY: ${COGETO_MASTER_KEY:-}
       # Model providers, models and their keys are configured IN THE INTERFACE
       # (Providers in the left rail) and stored in the database, encrypted
-      # under the master key above. The environment carries no model
-      # configuration.
+      # under the master key above. The one sanctioned exception is the
+      # MANAGED provider on a hosted plan: a platform renders
+      # ./managed-provider/managed-provider.json (mounted below) and the
+      # bootstrap key into .env, and boot reconciles the single managed row
+      # from them. Unset on a self-managed instance, and then the environment
+      # carries no model configuration at all.
+      COGETO_MANAGED_PROVIDER_FILE: ${COGETO_MANAGED_PROVIDER_FILE:-}
+      COGETO_MANAGED_PROVIDER_API_KEY: ${COGETO_MANAGED_PROVIDER_API_KEY:-}
       # Bulk import in-flight cap (V2.2 item 5.3): default 1, max 8.
       COGETO_IMPORT_IN_FLIGHT: ${COGETO_IMPORT_IN_FLIGHT:-}
       # The per-user daily upload quota an import PAUSES on rather than
@@ -301,6 +307,9 @@ services:
       #: the app mounts the PUBLIC-KEY-ONLY volume — an RCE in the
       # internet-facing app cannot exfiltrate the receipt-signing private key.
       - instance-pubkey:/instance-keys:ro
+      # The managed provider's rendered configuration (hosted provisioning);
+      # empty on a self-managed instance.
+      - ./managed-provider:/managed-provider:ro
     healthcheck:
       test:
         - CMD
@@ -364,6 +373,8 @@ services:
     volumes:
       # The worker keeps the FULL keypair (it signs receipts) —.
       - instance-keys:/instance-keys:ro
+      # The managed provider's rendered configuration; see the app's mount.
+      - ./managed-provider:/managed-provider:ro
     healthcheck:
       test:
         - CMD

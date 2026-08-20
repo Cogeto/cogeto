@@ -119,6 +119,10 @@ export class BudgetedModelGateway extends ModelGateway {
     return this.inner.embeddingModelId();
   }
 
+  override embeddingGeometryId(): string {
+    return this.inner.embeddingGeometryId();
+  }
+
   override async reachable(): Promise<GatewayReachability> {
     return this.inner.reachable(); //: probing is the wrapped gateway's job.
   }
