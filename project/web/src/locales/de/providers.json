@@ -38,8 +38,8 @@
     }
   },
   "managed": {
-    "byPlan": "Verwaltet durch Ihren Hosting-Plan",
-    "locked": "Dieser Anbieter ist Teil Ihres Hosting-Plans. Sein Endpunkt und sein Schlüssel werden für Sie gepflegt und können hier weder geändert noch entfernt werden; alle anderen Anbieter auf dieser Seite bleiben Ihre."
+    "subtitle": "Teil Ihres Managed Service",
+    "locked": "Dieser Anbieter gehört zu Ihrem Managed Service. Sein Endpunkt und sein Schlüssel werden für Sie gepflegt und können hier weder geändert noch entfernt werden; alle anderen Anbieter auf dieser Seite bleiben Ihre."
   },
   "health": {
     "ok": "Hat geantwortet",

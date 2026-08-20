@@ -137,7 +137,7 @@
     "endpointScheme": "krajnja točka mora biti http ili https URL",
     "labelRequired": "pružatelj treba naziv",
     "labelTaken": "pružatelj pod nazivom \"{{label}}\" već postoji",
-    "managedLocked": "pružatelja \"{{label}}\" održava plan hostinga i ovdje ga nije moguće mijenjati",
+    "managedLocked": "pružatelj \"{{label}}\" dio je vaše upravljane usluge i ovdje ga nije moguće mijenjati",
     "modelNotServed": "pružatelj \"{{label}}\" ne poslužuje model naziva \"{{model}}\"",
     "noEmbeddingsApi": "ova vrsta pružatelja nema API za ugrađivanja",
     "notFound": "nema takvog pružatelja",

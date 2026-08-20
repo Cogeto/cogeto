@@ -311,9 +311,9 @@ describe('managed_provider_reconcile: provision to answered request', () => {
     ).rejects.toThrowError(/does not serve a model/);
     await expect(
       service.updateProvider(admin, managed!.id, { label: 'Mine' }),
-    ).rejects.toThrowError(/managed by the hosting plan/);
+    ).rejects.toThrowError(/part of your managed service/);
     await expect(service.deleteProvider(admin, managed!.id)).rejects.toThrowError(
-      /managed by the hosting plan/,
+      /part of your managed service/,
     );
     await expect(
       service.addAnswerOption(admin, {
@@ -321,7 +321,7 @@ describe('managed_provider_reconcile: provision to answered request', () => {
         model: 'served-deep',
         label: 'Deep',
       }),
-    ).rejects.toThrowError(/managed by the hosting plan/);
+    ).rejects.toThrowError(/part of your managed service/);
   });
 
   it('rotates the key by re-render: the new one seals, the old one is gone', async () => {

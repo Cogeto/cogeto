@@ -133,7 +133,7 @@
     "endpointScheme": "der Endpunkt muss eine http- oder https-URL sein",
     "labelRequired": "ein Anbieter braucht einen Namen",
     "labelTaken": "ein Anbieter namens \"{{label}}\" existiert bereits",
-    "managedLocked": "Anbieter \"{{label}}\" wird durch den Hosting-Plan verwaltet und kann hier nicht geändert werden",
+    "managedLocked": "Anbieter \"{{label}}\" ist Teil Ihres Managed Service und kann hier nicht geändert werden",
     "modelNotServed": "Anbieter \"{{label}}\" stellt kein Modell namens \"{{model}}\" bereit",
     "noEmbeddingsApi": "dieser Anbietertyp hat keine Embeddings-API",
     "notFound": "kein solcher Anbieter",

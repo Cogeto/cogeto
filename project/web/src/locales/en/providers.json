@@ -38,8 +38,8 @@
     }
   },
   "managed": {
-    "byPlan": "Managed by your hosting plan",
-    "locked": "This provider is part of your hosting plan. Its endpoint and key are maintained for you and cannot be changed or removed here; every other provider on this page stays yours."
+    "subtitle": "Part of your managed service",
+    "locked": "This provider comes with your managed service. Its endpoint and key are maintained for you and cannot be changed or removed here; every other provider on this page stays yours."
   },
   "health": {
     "ok": "Answered",

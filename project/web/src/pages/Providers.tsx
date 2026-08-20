@@ -101,8 +101,8 @@ export function Providers({ session }: { session: Session }) {
 /**
  * The managed provider's mark: the Cogeto icon, reused from the canonical
  * brand file unmodified, on the same constant light tile the vendor marks sit
- * on. The managed row reads as Cogeto because that is what the hosting plan
- * serves the customer: Cogeto-branded models behind a maintained endpoint.
+ * on. The managed row reads as Cogeto because that is what the managed service
+ * delivers: Cogeto-branded models behind a maintained endpoint.
  */
 function ManagedMark({ label }: { label: string }) {
   return (
@@ -184,7 +184,7 @@ function ProviderRow({ session, provider }: { session: Session; provider: Provid
           </span>
           <span className="block truncate text-xs text-slate-500">
             {provider.managed
-              ? t('managed.byPlan')
+              ? t('managed.subtitle')
               : `${t(`type.${provider.type}.name`)}${provider.baseUrl ? ` · ${provider.baseUrl}` : ''}`}
           </span>
         </span>

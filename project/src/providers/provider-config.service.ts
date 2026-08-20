@@ -902,7 +902,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     if (provider.managed) {
       throw userError.conflict(
         'provider.managedLocked',
-        'provider "{{label}}" is managed by the hosting plan and cannot be changed here',
+        'provider "{{label}}" is part of your managed service and cannot be changed here',
         { label: provider.label },
       );
     }
@@ -955,7 +955,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       id: row.id,
       label: row.label,
       type,
-      // The managed endpoint is the hosting plan's implementation detail: the
+      // The managed endpoint is the managed service's implementation detail: the
       // card has no endpoint edit, so the address serves no one and stays out
       // of the response entirely.
       baseUrl: row.managed ? null : row.baseUrl,

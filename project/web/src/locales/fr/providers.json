@@ -38,8 +38,8 @@
     }
   },
   "managed": {
-    "byPlan": "Géré par votre offre d'hébergement",
-    "locked": "Ce fournisseur fait partie de votre offre d'hébergement. Son point de terminaison et sa clé sont maintenus pour vous et ne peuvent être ni modifiés ni retirés ici ; tous les autres fournisseurs de cette page restent les vôtres."
+    "subtitle": "Fait partie de votre service géré",
+    "locked": "Ce fournisseur fait partie de votre service géré. Son point de terminaison et sa clé sont maintenus pour vous et ne peuvent être ni modifiés ni retirés ici ; tous les autres fournisseurs de cette page restent les vôtres."
   },
   "health": {
     "ok": "A répondu",

@@ -376,8 +376,8 @@ vector geometry is forbidden by construction, not by convention.
 ### What the customer sees
 
 The managed card reads as **Cogeto**, with the brand mark reused from
-`assets/brand` unmodified, and says in its own words that it is managed by the
-hosting plan. It is read-only: no delete, no key field, no endpoint edit or
+`assets/brand` unmodified, and says in its own words that it is part of the
+managed service. It is read-only: no delete, no key field, no endpoint edit or
 display, and its answer options are the configuration file's list. Everything else
 keeps every affordance it has today, including adding any OpenAI-compatible
 endpoint and reassigning tiers to it. The served names appear as the models, the

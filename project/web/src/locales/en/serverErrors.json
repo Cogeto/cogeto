@@ -133,7 +133,7 @@
     "endpointScheme": "the endpoint must be an http or https URL",
     "labelRequired": "a provider needs a label",
     "labelTaken": "a provider called \"{{label}}\" already exists",
-    "managedLocked": "provider \"{{label}}\" is managed by the hosting plan and cannot be changed here",
+    "managedLocked": "provider \"{{label}}\" is part of your managed service and cannot be changed here",
     "modelNotServed": "provider \"{{label}}\" does not serve a model called \"{{model}}\"",
     "noEmbeddingsApi": "this provider type has no embeddings API",
     "notFound": "no such provider",
