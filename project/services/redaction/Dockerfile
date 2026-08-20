@@ -6,7 +6,7 @@
 # so the build is reproducible — a plain model fetch otherwise pulls the
 # latest compatible model, a silent supply-chain drift. Update procedure:
 # docs/operations/image-pins.md.
-FROM python:3.12-slim@sha256:dd29372629eeba2dd003fd9e9d35a5b8236c44727875a0364254b5127af88e65
+FROM python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
