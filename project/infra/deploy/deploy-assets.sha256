@@ -1,5 +1,5 @@
-e1a11b3fc106a6a8525b334fa9e36b686484e456e25d18ba685c525014520d5c  project/infra/deploy/docker-compose.deploy.yml
+893e1fcff3e5d4d72df5d8850d8465f0468ee10de76e0dbc5bd2b951ff397219  project/infra/deploy/docker-compose.deploy.yml
 37b44ffd4f65c57e8b0eca07816d22f7cdbb8d1fdddf09817692664873c82862  project/infra/deploy/Caddyfile
-c29fad3cdf873b282468fcb894e9dfd2c6168fd4168577ad812b356a9d018faa  project/infra/docker/zitadel-init/init.mjs
+c425f01e7004f88b4b880efd1612fb2f39e2f57bae16917d370a40300bd0d37b  project/infra/docker/zitadel-init/init.mjs
 a1b74e3b99d52dd4464bcae2b65cb3442c7b17afd177dd26961c119906774087  project/infra/docker/postgres-init/db-init.sql
 e161855b71536903ddf06edf44de95830b672a58e74b8e6e48757aba9a2cf9e9  project/infra/docker/searxng/settings.yml

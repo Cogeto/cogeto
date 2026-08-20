@@ -691,6 +691,21 @@ services:
       # view works out of the box (must match the app's COGETO_ADMIN_ROLE).
       ZITADEL_ADMIN_USERNAME: ${ZITADEL_ADMIN_USERNAME:?}
       COGETO_ADMIN_ROLE: ${COGETO_ADMIN_ROLE:-admin}
+      # ── Notification SMTP (optional; empty means none) ────────────────────
+      # Zitadel sends invitations, address verification and password resets
+      # through this relay. Leave every value empty and the instance runs with
+      # no outbound mail, exactly as it always has: the init reads nothing and
+      # calls nothing. Set them and the init applies them through Zitadel's
+      # API on every provisioning run, so rotating the credential is a
+      # re-rendered .env and a re-run. A PARTIAL set is refused by name rather
+      # than half applied, because half a relay fails at send time where
+      # nobody sees it. ZITADEL_SMTP_TLS must be spelled "true" or "false".
+      ZITADEL_SMTP_HOST: ${ZITADEL_SMTP_HOST:-}
+      ZITADEL_SMTP_USER: ${ZITADEL_SMTP_USER:-}
+      ZITADEL_SMTP_PASSWORD: ${ZITADEL_SMTP_PASSWORD:-}
+      ZITADEL_SMTP_TLS: ${ZITADEL_SMTP_TLS:-}
+      ZITADEL_SMTP_FROM: ${ZITADEL_SMTP_FROM:-}
+      ZITADEL_SMTP_FROM_NAME: ${ZITADEL_SMTP_FROM_NAME:-}
     volumes:
       # init.mjs is part of the fetched deploy assets (same file as
       # project/infra/docker/zitadel-init/init.mjs, at the same version).

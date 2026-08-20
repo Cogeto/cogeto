@@ -33,6 +33,38 @@ name plus the managed rebuild) is in the feature document.
 
 ---
 
+## Outstanding note: identity notification mail from the environment
+
+The next release lets a deployed instance configure Zitadel's outbound SMTP
+from `.env`, so invitations, address verification and password resets are
+actually delivered. `zitadel-init` applies it through the Zitadel API while it
+provisions; there is no step in the Zitadel console. The six variables and the
+procedure are in the operator runbook, section 2d.
+
+**An instance without them is byte-identical to before**, and that is a tested
+property: with every `ZITADEL_SMTP_*` value empty the job reads nothing, calls
+nothing, and records nothing, so an instance that has always run without
+outbound mail keeps running exactly as it did. The runbook's warning that
+invitations never arrive stays true for those instances.
+
+Two things to know before adding mail to an instance that is **already
+running**:
+
+- The bootstrap PAT was revoked when the install succeeded (SEC-16), so the
+  job cannot apply the change. It **says so loudly and lets the stack come
+  up** on the previous mail settings rather than taking the instance down over
+  mail. Applying it needs the same credential dance as a domain change, in
+  the runbook under "Changing outbound mail after install".
+- The relay password alone is deliberately **not** part of the recorded
+  provisioning state, so that a rotated secret can never stop an instance from
+  booting. Rotating it on a provisioned instance follows the same recovery.
+
+A partial set (some values present, others missing) fails the provisioning job
+by name. That is deliberate: a half-configured relay fails later at send time,
+where the failure is invisible and lands on someone waiting for an invitation.
+
+---
+
 ## Outstanding notes: the first release carrying spaces
 
 The next release introduces spaces (migrations 0060 through 0063), fully

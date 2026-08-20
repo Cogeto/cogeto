@@ -45,15 +45,113 @@ const KEEP_PAT_FOR_DEMO =
     .map((p) => p.trim())
     .includes('demo');
 
-/** The inputs whose change would require re-provisioning (and thus a PAT). */
-const PROVISIONED_INPUTS = {
+// ── Notification SMTP (optional) ────────────────────────────────────────────
+// Zitadel sends the mail a person waits for: an invitation, an address
+// verification, a password reset. Given no relay it sends none of them, and
+// the failure is invisible — which is fine for a self-hoster who hands
+// credentials over in person, and not fine on a platform that provisions
+// instances unattended. So the relay arrives in the environment and is applied
+// here, through the API, with the bootstrap PAT this job already holds.
+//
+// Every value empty means NO SMTP, which is exactly how an instance runs
+// today: nothing is read, nothing is called, nothing is recorded. A PARTIAL
+// set is a configuration error and is refused by name, because the alternative
+// is a half-configuration that fails at send time, where nobody sees it.
+//
+// The names are written as a `{ env: 'NAME' }` list so the env-consistency
+// check can see them; a dynamic `env[name]` read would be invisible to it.
+const SMTP_VARS = [
+  { setting: 'host', env: 'ZITADEL_SMTP_HOST' },
+  { setting: 'user', env: 'ZITADEL_SMTP_USER' },
+  { setting: 'password', env: 'ZITADEL_SMTP_PASSWORD' },
+  { setting: 'tls', env: 'ZITADEL_SMTP_TLS' },
+  { setting: 'from', env: 'ZITADEL_SMTP_FROM' },
+  { setting: 'fromName', env: 'ZITADEL_SMTP_FROM_NAME' },
+];
+
+/** What Zitadel itself refuses to store without (observed on v4.17.1: an
+ * empty host, sender address or sender name is a 400 from its validator),
+ * plus TLS, which has no safe default: silently sending a credential in the
+ * clear because a variable was forgotten is not a default, it is a defect. */
+const SMTP_REQUIRED = ['host', 'from', 'fromName', 'tls'];
+
+/** The description marking the one SMTP configuration this job owns. */
+const SMTP_DESCRIPTION = 'cogeto';
+
+const smtpVar = (setting) => SMTP_VARS.find((v) => v.setting === setting).env;
+
+/**
+ * The notification-SMTP settings the environment describes, or null when it
+ * describes none. Throws on a partial or unusable set, naming exactly which
+ * variables are at fault and never quoting the credential.
+ */
+export function readSmtpSettings(env) {
+  const raw = Object.fromEntries(SMTP_VARS.map((v) => [v.setting, (env[v.env] ?? '').trim()]));
+  if (Object.values(raw).every((value) => value === '')) return null;
+
+  const missing = SMTP_REQUIRED.filter((setting) => raw[setting] === '').map(smtpVar);
+  // Authentication is all or nothing: a relay that needs no credentials is a
+  // legitimate configuration, half a credential never is.
+  if (raw.user !== '' && raw.password === '') missing.push(smtpVar('password'));
+  if (raw.password !== '' && raw.user === '') missing.push(smtpVar('user'));
+  if (missing.length > 0) {
+    throw new Error(
+      `notification SMTP is only partly configured: ${missing.join(', ')} ` +
+        `${missing.length === 1 ? 'is' : 'are'} missing. ` +
+        `${missing.length === 1 ? 'Set it' : 'Set them'}, or leave every ` +
+        `ZITADEL_SMTP_* value empty to run with no outbound mail. Applying half a ` +
+        `configuration would fail later at send time, where the failure is invisible and ` +
+        `lands on someone waiting for an invitation.`,
+    );
+  }
+  if (raw.tls !== 'true' && raw.tls !== 'false') {
+    throw new Error(
+      `${smtpVar('tls')} must be exactly "true" or "false"; it is ${JSON.stringify(raw.tls)}. ` +
+        `Whether the credential travels encrypted is not something to default silently.`,
+    );
+  }
+  return {
+    host: raw.host,
+    user: raw.user,
+    password: raw.password,
+    tls: raw.tls === 'true',
+    from: raw.from,
+    fromName: raw.fromName,
+  };
+}
+
+/**
+ * The SMTP identity recorded beside the other provisioned inputs: the
+ * addressable facts, never the credential. A rotated secret must not be able
+ * to stop an instance from booting, and a hash of a secret in a state file is
+ * still a secret.
+ */
+const SMTP_INPUT_KEYS = ['smtpHost', 'smtpUser', 'smtpTls', 'smtpFrom', 'smtpFromName'];
+
+const smtpInputs = (smtp) =>
+  smtp === null
+    ? {}
+    : {
+        smtpHost: smtp.host,
+        smtpUser: smtp.user,
+        smtpTls: smtp.tls,
+        smtpFrom: smtp.from,
+        smtpFromName: smtp.fromName,
+      };
+
+/** The inputs whose change would require re-provisioning (and thus a PAT).
+ * With no SMTP configured this is key-for-key what it was before notification
+ * mail existed, so the state file an unconfigured instance writes is
+ * unchanged. */
+export const provisionedInputs = (smtp) => ({
   externalDomain: EXTERNAL_DOMAIN,
   issuer: ISSUER,
   redirectUri: REDIRECT_URI,
   postLogoutUri: POST_LOGOUT_URI,
   adminUsername: ADMIN_USERNAME,
   adminRole: ADMIN_ROLE,
-};
+  ...smtpInputs(smtp),
+});
 
 const base = new URL(INTERNAL_URL);
 
@@ -143,6 +241,14 @@ const describeOutcome = (outcome) =>
     : `HTTP ${outcome.status}`;
 
 /**
+ * Zitadel answers 400 "No changes" when an idempotent write asks for what is
+ * already true. For a bootstrap that re-runs on every `docker compose up` that
+ * is success, not failure.
+ */
+const isNoChange = (response) =>
+  typeof response.body?.message === 'string' && response.body.message.includes('No changes');
+
+/**
  * One management/admin API call, retried while the gateway says "not yet".
  *
  * `recheck` keeps a retry idempotent for the call sites that CREATE something:
@@ -215,7 +321,7 @@ async function waitFor(description, probe, attempts = 60, delayMs = 2000) {
  * operator changed the domain), fail loudly with the recovery path instead of
  * silently serving a stale OIDC config.
  */
-function shortCircuitFromState() {
+export function shortCircuitFromState(smtp) {
   if (!existsSync(STATE_FILE)) return false;
   let state;
   try {
@@ -224,21 +330,247 @@ function shortCircuitFromState() {
     return false; // unreadable state — fall through to normal provisioning
   }
   if (!state.revoked) return false; // PAT still live — re-run provisioning
-  const drift = Object.entries(PROVISIONED_INPUTS).filter(
-    ([key, want]) => state.inputs?.[key] !== want,
-  );
-  if (drift.length === 0) {
-    console.log(
-      'zitadel already provisioned and the bootstrap PAT is revoked (SEC-16) — nothing to do',
+  const want = provisionedInputs(smtp);
+  const changed = Object.keys(want).filter((key) => state.inputs?.[key] !== want[key]);
+  // SMTP taken back OUT of the environment is the one change the comparison
+  // above cannot see: its keys are simply absent from `want`.
+  const removed =
+    smtp === null ? SMTP_INPUT_KEYS.filter((key) => state.inputs?.[key] !== undefined) : [];
+  const isSmtp = (key) => SMTP_INPUT_KEYS.includes(key);
+  const smtpDrift = [...changed.filter(isSmtp), ...removed];
+  const drift = changed.filter((key) => !isSmtp(key));
+  if (drift.length > 0) {
+    throw new Error(
+      `provisioning inputs changed (${drift.join(', ')}) but the bootstrap PAT ` +
+        `was revoked after the previous provisioning. Recovery: in the Zitadel console create a ` +
+        `new personal access token for the '${BOOTSTRAP_USERNAME}' machine user, write it to ` +
+        `${PAT_FILE}, delete ${STATE_FILE}, and re-run \`docker compose up\` ` +
+        `(see the operator runbook, "Changing the domain after install").`,
     );
-    return true;
   }
-  throw new Error(
-    `provisioning inputs changed (${drift.map(([k]) => k).join(', ')}) but the bootstrap PAT ` +
-      `was revoked after the previous provisioning. Recovery: in the Zitadel console create a ` +
-      `new personal access token for the '${BOOTSTRAP_USERNAME}' machine user, write it to ` +
-      `${PAT_FILE}, delete ${STATE_FILE}, and re-run \`docker compose up\` ` +
-      `(see the operator runbook, "Changing the domain after install").`,
+  // Notification mail is not the OIDC configuration: a stale relay leaves the
+  // instance serving perfectly, it only means invitations keep going where
+  // they went before. Taking the stack down over it would be the larger
+  // outage, so this says loudly what was NOT applied and how to apply it,
+  // and lets the instance come up.
+  if (removed.length > 0) {
+    // Deleting the variables stops this job MANAGING the relay; it does not
+    // switch off one Zitadel already has, and quietly implying otherwise is
+    // how someone concludes that mail is off when it is not.
+    console.warn(
+      `the notification SMTP settings are gone from the environment ` +
+        `(${removed.join(', ')}), but Zitadel keeps the relay it was provisioned with and ` +
+        `KEEPS SENDING through it: this job configures outbound mail, it never switches it ` +
+        `off. Deactivate it in the Zitadel console (Settings, SMTP provider) if that is what ` +
+        `was meant.`,
+    );
+  } else if (smtpDrift.length > 0) {
+    console.warn(
+      `notification SMTP changed in the environment (${smtpDrift.join(', ')}) but this ` +
+        `instance was already provisioned and its bootstrap PAT was revoked (SEC-16), so ` +
+        `NOTHING was applied: Zitadel keeps sending with the settings it was provisioned ` +
+        `with. The instance is otherwise unaffected. To apply the change, mint a new personal ` +
+        `access token for the '${BOOTSTRAP_USERNAME}' machine user, write it to ${PAT_FILE}, ` +
+        `delete ${STATE_FILE}, and re-run \`docker compose up\` (see the operator runbook, ` +
+        `"Changing outbound mail after install").`,
+    );
+  }
+  console.log(
+    'zitadel already provisioned and the bootstrap PAT is revoked (SEC-16) — nothing to do',
+  );
+  return true;
+}
+
+/**
+ * Notification mail: make the ACTIVE Zitadel SMTP configuration the one the
+ * environment describes, creating it once and updating it thereafter.
+ *
+ * How v4.17.1 models this, observed against a live instance rather than
+ * assumed, because getting it wrong is what produces a second configuration
+ * that silently wins or silently loses:
+ *
+ *   - POST /admin/v1/smtp/_search lists EVERY configuration with its state;
+ *   - GET  /admin/v1/smtp answers only the ACTIVE one, and 404s while none is
+ *     active, so a configuration a previous run created but never activated is
+ *     invisible there. Listing is therefore the only honest way to find what
+ *     is already here, and is what keeps a re-run from adding a second
+ *     configuration beside the first;
+ *   - POST /admin/v1/smtp creates it INACTIVE and returns its id, carrying the
+ *     password so a freshly created configuration is complete in one call;
+ *   - POST /admin/v1/smtp/{id}/_activate activates it, and answers 400
+ *     Errors.SMTPConfig.AlreadyActive when it already is;
+ *   - PUT  /admin/v1/smtp/{id} replaces the settings and carries no password;
+ *   - PUT  /admin/v1/smtp/{id}/password is the credential's own call, and it
+ *     is refused with 404 COMMAND-rDHzqjGuKQ unless that configuration is the
+ *     ACTIVE one. Hence the order below: settle the configuration, activate
+ *     it, and only then rotate the credential.
+ *
+ * The listing is a projection and lags its writes, so nothing here reads a
+ * write back through it; the final check polls, because the alternative is a
+ * provisioning that fails on a timing difference rather than on a fact.
+ *
+ * The configuration this job owns is the one whose description is
+ * SMTP_DESCRIPTION; anything an operator added by hand is left alone, and
+ * activating ours is what makes ours the one that sends.
+ */
+export async function ensureSmtp(pat, smtp, { call } = {}) {
+  if (smtp === null) return;
+  const desired = {
+    senderAddress: smtp.from,
+    senderName: smtp.fromName,
+    tls: smtp.tls,
+    host: smtp.host,
+    user: smtp.user,
+  };
+  const options = (label, extra = {}) => ({ label, ...(call ? { call } : {}), ...extra });
+
+  const findOurs = async () => {
+    const list = await api(
+      'POST',
+      '/admin/v1/smtp/_search',
+      {},
+      pat,
+      options('SMTP configuration list'),
+    );
+    if (list.status !== 200) {
+      throw new Error(`smtp list failed (${list.status}): ${JSON.stringify(list.body)}`);
+    }
+    return (
+      (list.body.result ?? []).find((config) => config.description === SMTP_DESCRIPTION) ?? null
+    );
+  };
+
+  /**
+   * The listing is a projection and lags the write that fed it, so a create
+   * whose answer was lost may not be listed yet. Only the convergence check
+   * needs this: reading "nothing is there" too early is what would create a
+   * SECOND configuration.
+   */
+  const findOursSettled = async () => {
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      const found = await findOurs();
+      if (found) return found;
+      await sleep(1000);
+    }
+    return null;
+  };
+
+  const ours = await findOurs();
+  let id;
+  let active;
+  if (ours === null) {
+    const created = await api(
+      'POST',
+      '/admin/v1/smtp',
+      { ...desired, description: SMTP_DESCRIPTION, password: smtp.password },
+      pat,
+      // A reset connection can arrive after the create already landed, so
+      // every retry looks again first: one configuration is created, or none.
+      options('SMTP configuration create', {
+        recheck: async () => {
+          const existing = await findOursSettled();
+          return existing ? { status: 200, body: { id: existing.id } } : null;
+        },
+      }),
+    );
+    if (created.status !== 200) {
+      throw new Error(`smtp create failed (${created.status}): ${JSON.stringify(created.body)}`);
+    }
+    id = created.body.id;
+    if (!id) throw new Error('smtp create was accepted but answered no configuration id');
+    // A create always lands inactive, and the id it answered is the answer:
+    // reading it back through the listing would race the projection.
+    active = false;
+    console.log(`created the notification SMTP configuration (host ${smtp.host})`);
+  } else {
+    id = ours.id;
+    active = ours.state === 'SMTP_CONFIG_ACTIVE';
+    // Zitadel's proto-JSON omits empty strings and false booleans entirely, so
+    // an absent field means "" or false; normalize before comparing.
+    const current = (key) => ours[key] ?? (typeof desired[key] === 'boolean' ? false : '');
+    const drift = Object.keys(desired).filter((key) => current(key) !== desired[key]);
+    if (drift.length === 0) {
+      console.log('notification SMTP configuration already matches the environment');
+    } else {
+      const updated = await api(
+        'PUT',
+        `/admin/v1/smtp/${id}`,
+        { ...desired, description: SMTP_DESCRIPTION },
+        pat,
+        // A whole-settings replace: repeating it converges by construction.
+        options('SMTP configuration update'),
+      );
+      if (updated.status !== 200 && !isNoChange(updated)) {
+        throw new Error(`smtp update failed (${updated.status}): ${JSON.stringify(updated.body)}`);
+      }
+      console.log(`notification SMTP configuration updated (${drift.join(', ')})`);
+    }
+  }
+
+  if (!active) {
+    const activated = await api(
+      'POST',
+      `/admin/v1/smtp/${id}/_activate`,
+      {},
+      pat,
+      options('SMTP configuration activate'),
+    );
+    const alreadyActive =
+      typeof activated.body?.message === 'string' &&
+      activated.body.message.includes('AlreadyActive');
+    if (activated.status !== 200 && !alreadyActive && !isNoChange(activated)) {
+      throw new Error(
+        `smtp activate failed (${activated.status}): ${JSON.stringify(activated.body)}`,
+      );
+    }
+  }
+
+  // Self-verify, like every other applied setting here: the ACTIVE
+  // configuration must be ours, at the host the environment named. This read
+  // comes from the projection, so it is polled: a provisioning that failed
+  // because a read model was a second behind would be a lie about the state.
+  let serving = null;
+  for (let attempt = 0; attempt < 15 && serving === null; attempt += 1) {
+    if (attempt > 0) await sleep(1000);
+    const verify = await api(
+      'GET',
+      '/admin/v1/smtp',
+      null,
+      pat,
+      options('SMTP configuration re-read'),
+    );
+    const answered = verify.status === 200 ? verify.body.smtpConfig : null;
+    if (answered?.id === id) serving = answered;
+  }
+  if (serving === null || (serving.host ?? '') !== smtp.host) {
+    throw new Error(
+      `notification SMTP did not stick: the active configuration is not ${id} at host ` +
+        `${smtp.host}`,
+    );
+  }
+
+  // The credential goes in LAST, because Zitadel refuses to change the
+  // password of a configuration that is not the active one. It is written on
+  // every provisioning run, which is what makes rotating it a re-rendered
+  // environment and a re-run. Nothing reads it back, and neither it nor the
+  // answer to this call is ever logged: the status alone says whether it was
+  // accepted.
+  if (smtp.password !== '') {
+    const password = await api(
+      'PUT',
+      `/admin/v1/smtp/${id}/password`,
+      { password: smtp.password },
+      pat,
+      options('SMTP credential update'),
+    );
+    if (password.status !== 200 && !isNoChange(password)) {
+      throw new Error(`smtp credential update failed (${password.status})`);
+    }
+  }
+  console.log(
+    `notification SMTP active: host ${smtp.host}, sender ${smtp.from}, ` +
+      `TLS ${smtp.tls ? 'on' : 'off'}, authenticated ${smtp.user === '' ? 'no' : 'yes'} — ` +
+      `verified by re-read`,
   );
 }
 
@@ -299,7 +631,11 @@ async function revokeBootstrapPat(pat) {
 }
 
 async function main() {
-  if (shortCircuitFromState()) return;
+  // Read before anything else happens: a partly configured relay is a
+  // configuration error, and the cheapest place to say so is before the first
+  // API call, not at send time weeks later.
+  const smtp = readSmtpSettings(process.env);
+  if (shortCircuitFromState(smtp)) return;
   await waitFor('zitadel /debug/healthz', async () => {
     const { status } = await request('GET', '/debug/healthz');
     return status === 200;
@@ -427,8 +763,7 @@ async function main() {
   );
   // A re-run finds assertion already on → Zitadel answers 400 "No changes";
   // that is success for an idempotent bootstrap, not a failure.
-  const assertNoChange =
-    typeof assertRes.body?.message === 'string' && assertRes.body.message.includes('No changes');
+  const assertNoChange = isNoChange(assertRes);
   if (assertRes.status !== 200 && !assertNoChange) {
     throw new Error(
       `enable role assertion failed (${assertRes.status}): ${JSON.stringify(assertRes.body)}`,
@@ -533,9 +868,7 @@ async function main() {
       // A whole-policy replace: idempotent, and the re-read below is the arbiter.
       { label: 'login policy update' },
     );
-    const updNoChange =
-      typeof update.body?.message === 'string' && update.body.message.includes('No changes');
-    if (update.status !== 200 && !updNoChange) {
+    if (update.status !== 200 && !isNoChange(update)) {
       throw new Error(
         `login policy update failed (${update.status}): ${JSON.stringify(update.body)}`,
       );
@@ -578,9 +911,7 @@ async function main() {
       // Setting a fixed value: repeating it converges by construction.
       { label: 'restrictions update' },
     );
-    const restrNoChange =
-      typeof setRestr.body?.message === 'string' && setRestr.body.message.includes('No changes');
-    if (setRestr.status !== 200 && !restrNoChange) {
+    if (setRestr.status !== 200 && !isNoChange(setRestr)) {
       throw new Error(
         `restrictions update failed (${setRestr.status}): ${JSON.stringify(setRestr.body)}`,
       );
@@ -598,6 +929,10 @@ async function main() {
     console.log('public org registration disallowed — verified by re-read');
   }
 
+  // 2f. Notification mail. Absent configuration applies nothing and calls
+  // nothing, which is how an instance with no relay has always run.
+  await ensureSmtp(pat, smtp);
+
   // 3. Publish what the SPA needs.
   writeFileSync(WEB_CONFIG_FILE, JSON.stringify({ issuer: ISSUER, clientId }, null, 2));
   console.log(`wrote ${WEB_CONFIG_FILE}`);
@@ -606,7 +941,11 @@ async function main() {
   if (KEEP_PAT_FOR_DEMO) {
     writeFileSync(
       STATE_FILE,
-      JSON.stringify({ revoked: false, keptForDemo: true, inputs: PROVISIONED_INPUTS }, null, 2),
+      JSON.stringify(
+        { revoked: false, keptForDemo: true, inputs: provisionedInputs(smtp) },
+        null,
+        2,
+      ),
     );
     console.warn(
       'demo mode: bootstrap PAT KEPT for the demo seed — acceptable only on a disposable ' +
@@ -621,13 +960,13 @@ async function main() {
     writeFileSync(PAT_FILE, '');
     writeFileSync(
       STATE_FILE,
-      JSON.stringify({ revoked: true, inputs: PROVISIONED_INPUTS }, null, 2),
+      JSON.stringify({ revoked: true, inputs: provisionedInputs(smtp) }, null, 2),
     );
     console.log('bootstrap PAT revoked and pat.txt blanked — verified by re-auth refusal');
   } else {
     writeFileSync(
       STATE_FILE,
-      JSON.stringify({ revoked: false, inputs: PROVISIONED_INPUTS }, null, 2),
+      JSON.stringify({ revoked: false, inputs: provisionedInputs(smtp) }, null, 2),
     );
     console.warn(
       'bootstrap PAT could NOT be revoked; it remains valid until its expiry. ' +

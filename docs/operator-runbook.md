@@ -250,6 +250,100 @@ action from you any more; both are here so you can verify them.
 
 ---
 
+### 2d. Outbound notification mail (optional, off by default)
+
+Zitadel sends the messages a person waits for: an **invitation**, an
+**address verification**, a **password reset**. With no relay configured it
+sends none of them, and nothing anywhere reports the failure: the invitation
+simply never arrives. An instance runs perfectly well that way, and that is
+the default, but then initial passwords are handed over out of band
+(section 4, step 1).
+
+To configure it, put the relay in `.env` and re-run the stack. There is no
+step in the Zitadel console: the provisioning job applies it through the API
+while it provisions.
+
+Append the six values to `/srv/cogeto/.env` (which stays mode 600), then
+bring the stack up again:
+
+```sh
+sudo tee -a /srv/cogeto/.env >/dev/null <<'ENV'
+ZITADEL_SMTP_HOST=smtp.example.com:587
+ZITADEL_SMTP_USER=postbox@example.com
+ZITADEL_SMTP_PASSWORD=<the relay password>
+ZITADEL_SMTP_TLS=true
+ZITADEL_SMTP_FROM=no-reply@example.com
+ZITADEL_SMTP_FROM_NAME=Cogeto
+ENV
+cd /srv/cogeto && sudo docker compose up -d
+```
+
+`.env.example` documents each one. Leaving `USER` and `PASSWORD` out
+configures an unauthenticated relay, which is a legitimate setup on a
+network-restricted relay.
+
+Rules the job enforces, so read them before filling the values in:
+
+- **All or nothing.** `HOST`, `FROM`, `FROM_NAME` and `TLS` are required
+ together. `USER` and `PASSWORD` are optional (a relay that needs no
+ credentials is a real configuration) but must be given **together**.
+ A partial set is **refused by name**: the job fails, says exactly which
+ variables are missing, and configures nothing. That is deliberate, because
+ half a relay fails later at send time, where the failure is invisible.
+- **`TLS` must be spelled `true` or `false`.** There is no default: whether
+ the credential travels encrypted is not a silent decision.
+- **Applying it twice converges.** The job keeps exactly one configuration,
+ updates it in place when a value changes, and never adds a second.
+- The `.env` file holds the relay password, so it stays mode 600 and is
+ vaulted with the rest of the instance secrets. Nothing logs it.
+
+Verify it by sending a real one: create a test user in the Zitadel console
+with **"Send an email invitation"**, and confirm the message arrives. The
+provisioning job's log line is the other half of the evidence:
+
+```sh
+sudo docker compose logs zitadel-init | tail -3
+# notification SMTP active: host smtp.example.com:587, sender no-reply@example.com, ...
+```
+
+#### Changing outbound mail after install (needs a fresh bootstrap PAT)
+
+Configuring or changing SMTP **on an instance that is already provisioned**
+needs the same credential dance as changing the domain, for the same reason:
+the bootstrap PAT was revoked the moment the install succeeded (SEC-16), so
+the job can no longer call Zitadel.
+
+The difference is that mail is **not** the OIDC configuration, so this does
+**not** take the instance down. The job says loudly that the settings were
+not applied, names what changed, and lets the stack come up on the previous
+mail settings:
+
+```
+notification SMTP changed in the environment (smtpHost, smtpFrom) but this
+instance was already provisioned and its bootstrap PAT was revoked (SEC-16),
+so NOTHING was applied ...
+```
+
+To actually apply it, follow the same three steps as
+["Changing the domain after install"](#changing-the-domain-after-install-needs-a-fresh-bootstrap-pat):
+mint a token for the **Cogeto Bootstrap** machine user, write it to
+`/machinekey/pat.txt`, delete `/machinekey/bootstrap-state.json`, and
+`docker compose up -d`. The job re-provisions, applies the mail settings, and
+revokes the new token again.
+
+Note that the **relay password alone is not part of the recorded state**: a
+rotated secret must never be able to stop an instance from booting, so
+changing only `ZITADEL_SMTP_PASSWORD` produces no warning and is **not**
+applied on its own. Rotating the credential on a provisioned instance follows
+the recovery above like any other change.
+
+**Deleting the variables does not switch mail off.** The provisioning job
+configures outbound mail; it never removes a relay Zitadel already has, so an
+instance whose `ZITADEL_SMTP_*` values are removed keeps sending through the
+last relay it was given. The job says so on the next `compose up`. To actually
+stop it, deactivate the SMTP provider in the Zitadel console
+(**Settings → SMTP provider**).
+
 ## 3. Verifying a new instance (acceptance checklist)
 
 Run through **all** of this before handing the instance to the customer. Do it
@@ -295,10 +389,13 @@ onto a yellow instance.
 
 1. **Create their user** in Zitadel: follow
  [`docs/operations/adding-users.md`](operations/adding-users.md) (Console at
- `https://<domain>/ui/console` → Users → **+ New**). **Use "Set initial
- password"** and hand it over out-of-band: never "Send an email
- invitation": the instance has no outbound SMTP, so invitations silently
- never arrive. Register the user with **the email address they will
+ `https://<domain>/ui/console` → Users → **+ New**). **Whether "Send an
+ email invitation" works depends on whether this instance has outbound
+ SMTP** (section 2d): with it, invitations, address verification and
+ password resets are delivered normally; **without it Zitadel has no relay,
+ so those messages are never sent and nothing says so**. On an instance
+ with no SMTP, use **"Set initial password"** and hand it over
+ out-of-band. Register the user with **the email address they will
  forward mail from**: that address routes their email capture. No app-side step: Cogeto provisions on first login. Roles are not
  needed in v1; the `admin` role is only for the operator's System view.
 2. **First login together**: the customer signs in at `https://<domain>`,
