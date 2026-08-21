@@ -11,10 +11,14 @@ never builds**: this stack has no `build:` keys.
 | `docker-compose.deploy.yml` | The customer stack: `cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`, `cogeto/cogeto-redaction` at `${COGETO_VERSION}`, digest-pinned infra, secrets **required** (`${VAR:?}`), `COGETO_PRODUCTION=1`, Qdrant API-key auth always on. Three optional profiles: `research`, `mail` (with its `mail-tls-sync` companion) and `redaction`. No demo / dev-seed / consoles profiles: those images are never published. |
 | `Caddyfile` | Production edge: real-domain vhost + `s3.<domain>` presign origin + an ACME-only vhost for `mail.<domain>` (inert unless email capture is on), Let's Encrypt ACME, same routing and CSP as the dev Caddyfile. Mounted over the baked-in dev one. |
 
-The operator script fetches these files (plus
-`project/infra/docker/zitadel-init/init.mjs`) from the release tag that matches
-the image version, generates `.env` with per-instance secrets, and brings the
-stack up. Never `docker compose up` this file by hand without a populated
+The operator script downloads these files (plus
+`project/infra/docker/zitadel-init/init.mjs`, `postgres-init/db-init.sql` and
+`searxng/settings.yml`) as the **deployment-assets artifact** attached to the
+release that matches the image version, verifies the tarball against the
+sha256 published beside it and then every file against the checksum manifest
+inside it, generates `.env` with per-instance secrets, and brings the stack
+up. The artifact's shape is a contract for anything automating installs:
+[`../../../docs/release-process.md`](../../../docs/release-process.md). Never `docker compose up` this file by hand without a populated
 `.env`: every secret is required and missing values fail loudly by design.
 
 Dev/local work keeps using the repo-root `docker-compose.yml`:

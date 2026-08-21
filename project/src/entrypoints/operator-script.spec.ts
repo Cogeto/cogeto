@@ -1326,33 +1326,59 @@ describe('deploy channel — hardening assertions', () => {
     expect(install).toContain('COSIGN CHECKSUM MISMATCH');
   });
 
-  it('SEC-13: deployment assets are pinned by commit SHA and verified against a manifest', () => {
+  it('SEC-13: deployment assets arrive as one verified release artifact, never raw repository paths', () => {
     const script = readFileSync(SCRIPT, 'utf8');
-    // No tag ref in the fetch path any more — a tag is mutable, a commit is not.
     const fetchBlock = script.slice(
-      script.indexOf('fetch_deploy_assets() {'),
+      script.indexOf('stage_deploy_artifact() {'),
       script.indexOf('# The expected sha256 for one repo path'),
     );
-    expect(fetchBlock).toContain('resolve_tag_commit');
-    expect(fetchBlock).not.toMatch(/fetch_one "v\$\{version\}"/);
-    // A missing manifest, a missing entry, or a mismatch each abort the run.
-    expect(script).toContain('refusing to install unverified deployment files');
+    // The URL names the tag and nothing else: no `latest`, no branch, no
+    // commit lookup, nothing that can be repointed between two runs.
+    expect(fetchBlock).toContain('download_release_asset');
+    expect(script).toContain(
+      'GH_RELEASE_DOWNLOAD="https://github.com/${GITHUB_REPO}/releases/download"',
+    );
+    expect(script).toContain('${GH_RELEASE_DOWNLOAD}/v${dra_version}/${dra_name}');
+    // The retired raw-path fetch left nothing behind.
+    expect(script).not.toContain('raw.githubusercontent.com');
+    expect(script).not.toContain('resolve_tag_commit');
+    expect(script).not.toContain('fetch_one');
+    // The outer checksum is verified BEFORE the tarball is opened, and the
+    // artifact's own VERSION marker before anything is installed.
+    const downloadArtifact = fetchBlock.indexOf('download_release_asset "$version" "$artifact"');
+    const outerCheck = fetchBlock.indexOf('OUTER CHECKSUM MISMATCH');
+    const unpack = fetchBlock.indexOf('tar -xzf');
+    const versionCheck = fetchBlock.indexOf('VERSION MISMATCH');
+    expect(downloadArtifact).toBeGreaterThan(-1);
+    expect(outerCheck).toBeGreaterThan(downloadArtifact);
+    expect(unpack).toBeGreaterThan(outerCheck);
+    expect(versionCheck).toBeGreaterThan(unpack);
+    // Four different problems, four different messages — an operator or the
+    // hosting platform must be able to tell retry from stop.
+    expect(script).toContain('DEPLOY ASSETS: ARTIFACT MISSING FROM THE RELEASE');
+    expect(script).toContain('DEPLOY ASSETS: RELEASE UNREACHABLE');
+    expect(script).toContain('DEPLOY ASSETS: OUTER CHECKSUM MISMATCH');
     expect(script).toContain('DEPLOYMENT FILE CHECKSUM MISMATCH');
+    expect(script).toMatch(/RELEASE UNREACHABLE[^"]*RETRYING IS SAFE/);
+    expect(script).toMatch(/ARTIFACT MISSING FROM THE RELEASE[^"]*STOP/);
+    expect(script).toMatch(/OUTER CHECKSUM MISMATCH[^"]*STOP/);
+    // A missing manifest and a missing entry each abort the run.
+    expect(script).toContain('refusing to install unverified deployment files');
     expect(script).toContain('refusing to install an unverified deployment file');
   });
 
-  it('SEC-13: the checksum manifest covers exactly the files the installer fetches, and is current', async () => {
+  it('SEC-13: the checksum manifest covers exactly the files the installer installs, and is current', async () => {
     const manifest = readFileSync(path.join(REPO, MANIFEST_PATH), 'utf8');
     // Current: regenerating from the working tree produces the same bytes.
     expect(manifest).toBe(await buildManifest(REPO));
-    // Complete: every path the script fetches has an entry.
+    // Complete: every path the script installs out of the artifact has an entry.
     const script = readFileSync(SCRIPT, 'utf8');
-    const fetched = [...script.matchAll(/fetch_one "\$commit" "([^"]+)"/g)].map((m) => m[1]!);
-    expect(fetched.length).toBeGreaterThan(0);
-    for (const asset of fetched) {
+    const installed = [...script.matchAll(/install_asset "([^"]+)"/g)].map((m) => m[1]!);
+    expect(installed.length).toBeGreaterThan(0);
+    for (const asset of installed) {
       expect(manifest, `${asset} has no manifest entry`).toContain(`  ${asset}\n`);
     }
-    expect(new Set(fetched)).toEqual(new Set(DEPLOY_ASSETS));
+    expect(new Set(installed)).toEqual(new Set(DEPLOY_ASSETS));
   });
 
   it('Qdrant API-key auth is always on in the deploy stack', () => {

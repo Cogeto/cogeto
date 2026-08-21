@@ -14,9 +14,15 @@
 #      long-lived keys) and generate an SBOM for the main image and for the
 #      redaction sidecar, each attested to its digest and attached to the
 #      GitHub Release.
-#   5. Create the GitHub Release with notes auto-generated from the merged
+#   5. Build the deployment-assets artifact for the tag: ONE tarball carrying
+#      every file the operator installer needs, the per-file checksum manifest
+#      INSIDE it, and a VERSION marker; publish its sha256 as a second asset.
+#      Verified before publication and read back after it, so a release whose
+#      artifact is missing or malformed FAILS instead of shipping.
+#   6. Create the GitHub Release with notes auto-generated from the merged
 #      Conventional-Commit pull requests (grouped by .github/release.yml), plus
-#      a footer showing the exact `cosign verify` commands for these images.
+#      a footer showing the exact `cosign verify` commands for these images and
+#      the deployment artifact's outer checksum.
 #
 # The owner cuts releases by tagging; CI never creates tags. Required secrets:
 # DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (see docs/operations/cicd-setup.md).
@@ -89,6 +95,46 @@ jobs:
           VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # ── Deployment assets: ONE checksummed artifact per release ──────────
+      #
+      # `cogeto-deploy-assets-X.Y.Z.tar.gz` carries every file the operator
+      # installer needs to stand an instance up, WITH the per-file checksum
+      # manifest inside it, plus a VERSION file naming the release it belongs
+      # to. Its sha256 is published as a second asset so a consumer can obtain
+      # the outer checksum without downloading the thing it verifies.
+      #
+      # Both the installer and the hosting platform's version-upgrade
+      # automation consume this artifact and nothing else, so it is not
+      # optional and not best-effort: these two steps, plus the read-back
+      # after the release is created, FAIL THE RELEASE rather than publish a
+      # version whose deployment assets are missing, incomplete or malformed.
+      # They run BEFORE any image is pushed, deliberately: a malformed
+      # artifact should stop the release while nothing has been published yet.
+      # The set it must contain is DEPLOY_ASSETS, the same list the installer
+      # installs; adding a deployment asset without adding it to that list
+      # fails the build (deploy-artifact.spec.ts, operator-script.spec.ts).
+      - name: Build the deployment-assets artifact
+        id: assets
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/deploy-artifact.mjs build --version "$VERSION" --out-dir dist-assets
+          NAME="cogeto-deploy-assets-${VERSION}.tar.gz"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(cut -d' ' -f1 < "dist-assets/${NAME}.sha256")" >> "$GITHUB_OUTPUT"
+
+      # Re-read what was written and verify it exactly as the installer will:
+      # outer checksum, VERSION marker, then every file against the manifest
+      # inside the tarball. A build step that cannot fail proves nothing.
+      - name: Verify the artifact the way the installer does
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/deploy-artifact.mjs verify --version "$VERSION" \
+            --file "dist-assets/cogeto-deploy-assets-${VERSION}.tar.gz"
 
       # ── Build & push the amd64 images once each ──────────────────────────
       - name: Set up Buildx
@@ -238,6 +284,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.v.outputs.tag }}
           VERSION: ${{ steps.v.outputs.version }}
+          ASSET_NAME: ${{ steps.assets.outputs.name }}
+          ASSET_SHA256: ${{ steps.assets.outputs.sha256 }}
         run: |
           # Notes grouped by type per .github/release.yml (Features / Fixes /
           # Docs / Chores), computed from the merged Conventional-Commit PRs.
@@ -258,6 +306,15 @@ jobs:
               echo "  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'"
             done
             echo '```'
+            echo
+            echo "**Deployment assets**: \`${ASSET_NAME}\` (with \`${ASSET_NAME}.sha256\`)"
+            echo "is the supported way to obtain the files that define a customer stack."
+            echo "Its shape is a contract: one tarball, the per-file checksum manifest"
+            echo "inside it, and a \`VERSION\` file naming this release."
+            echo
+            echo '```sh'
+            echo "sha256  ${ASSET_SHA256}"
+            echo '```'
           } > release-notes.md
 
       - name: Create the GitHub Release
@@ -267,11 +324,38 @@ jobs:
           VERSION: ${{ steps.v.outputs.version }}
           SBOM: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
           SBOM_REDACTION: cogeto-redaction-${{ steps.v.outputs.version }}.sbom.spdx.json
+          ASSET_NAME: ${{ steps.assets.outputs.name }}
         run: |
           gh release create "$TAG" \
             --title "$VERSION" \
             --notes-file release-notes.md \
-            "$SBOM" "$SBOM_REDACTION"
+            "$SBOM" "$SBOM_REDACTION" \
+            "dist-assets/${ASSET_NAME}" "dist-assets/${ASSET_NAME}.sha256"
+
+      # Attachment is GUARANTEED here, not hoped for: the release is read back,
+      # both assets must be on it, and the tarball is downloaded again and
+      # re-verified. Attached-but-corrupt is precisely the failure that would
+      # otherwise surface months later, in a customer's install.
+      - name: Confirm the release carries the deployment artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.version }}
+          ASSET_NAME: ${{ steps.assets.outputs.name }}
+        run: |
+          set -euo pipefail
+          attached="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+          for want in "$ASSET_NAME" "${ASSET_NAME}.sha256"; do
+            if ! printf '%s\n' "$attached" | grep -qx "$want"; then
+              echo "::error title=Release incomplete::${want} is not attached to ${TAG}. The operator installer and the hosting platform both fetch it, so this release cannot be used to install or upgrade an instance."
+              exit 1
+            fi
+          done
+          published="$(mktemp -d)"
+          gh release download "$TAG" --pattern "${ASSET_NAME}*" --dir "$published"
+          node scripts/ci/deploy-artifact.mjs verify --version "$VERSION" \
+            --file "${published}/${ASSET_NAME}"
+          echo "${ASSET_NAME} is attached to ${TAG} and verifies as published."
 
   # ── Trust scores (O7) — NEVER blocks the release ──────────
   # A separate job so (a) job-level continue-on-error keeps the release run

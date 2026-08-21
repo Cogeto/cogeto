@@ -30,10 +30,14 @@ tag and `package.json` `version` are the two sources of truth and must agree
  - generates an **SBOM** (SPDX JSON) for the main image and a second one
  for the redaction sidecar, each attached as a cosign attestation and a
  release asset;
+ - builds the **deployment-assets artifact** for the tag and verifies it the
+ way the installer will (below), publishing its sha256 as a second asset;
  - creates the **GitHub Release** with notes auto-generated from the merged
  Conventional-Commit PRs (grouped by type via
  [`.github/release.yml`](../.github/release.yml)) and a footer showing the
- exact `cosign verify` commands.
+ exact `cosign verify` commands and the artifact's outer checksum;
+ - reads the release back and **fails if the artifact is not attached**, or
+ if what is attached does not verify.
 
  Watch it: `gh run watch $(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')`
 
@@ -48,7 +52,70 @@ tag and `package.json` `version` are the two sources of truth and must agree
 | SBOMs (`cogeto-X.Y.Z.sbom.spdx.json`, `cogeto-redaction-X.Y.Z.sbom.spdx.json`) | cosign attestations + GitHub Release assets |
 | Release notes (grouped by feat/fix/docs/chore) | GitHub Release |
 | **Trust scores** (`eval/trust-scores/vX.Y.Z.json` + rebuilt `index.json`) | committed to `main` via an auto-merged PR |
-| Deploy assets consumed at the tag (`project/infra/deploy/`, the zitadel-init script) | the tagged source tree |
+| **Deployment assets** (`cogeto-deploy-assets-X.Y.Z.tar.gz` + `.sha256`) | GitHub Release assets, verified before and after publication |
+
+### Deployment assets: the integration contract
+
+Every release attaches **one tarball** carrying the files that define a
+customer stack, and the operator installer fetches that and nothing else. The
+raw-repository fetch it replaced is gone.
+
+```
+cogeto-deploy-assets-X.Y.Z.tar.gz
+├── VERSION                                        the release it belongs to
+├── project/infra/deploy/deploy-assets.sha256      the per-file manifest
+├── project/infra/deploy/docker-compose.deploy.yml
+├── project/infra/deploy/Caddyfile
+├── project/infra/docker/zitadel-init/init.mjs
+├── project/infra/docker/postgres-init/db-init.sql
+└── project/infra/docker/searxng/settings.yml
+
+cogeto-deploy-assets-X.Y.Z.tar.gz.sha256          the outer checksum
+```
+
+Two levels, one shape for every consumer: **one outer checksum for the
+release, per-file hashes within**. The outer checksum is published as its own
+asset and printed in the release notes, because a checksum shipped only inside
+the thing it verifies proves nothing. The manifest travels inside, so whoever
+holds the tarball can check every file in it without another download.
+
+**This artifact is the supported integration point for the hosting platform,
+and its shape is a contract.** The platform's version-upgrade automation
+fetches it by tag, verifies the outer checksum, unpacks it and verifies each
+file against the manifest inside, exactly as the installer does. So:
+
+- the file name, the `.sha256` companion, the `VERSION` entry and the
+ repository-relative paths inside are **stable**; changing any of them is a
+ breaking change for the platform and needs its own coordination;
+- adding a deployment asset means adding it to `DEPLOY_ASSETS` in
+ [`scripts/ci/deploy-assets-manifest.mjs`](../scripts/ci/deploy-assets-manifest.mjs),
+ which is the single list the manifest, the artifact, the installer and the
+ tests all read, then regenerating the manifest
+ (`node scripts/ci/deploy-assets-manifest.mjs --write`) in the same change. A
+ file the installer installs but that list does not name fails
+ `operator-script.spec.ts`; a file that list names but the artifact does not
+ carry fails `deploy-artifact.spec.ts`. Either way it fails the build rather
+ than reaching a customer;
+- the artifact is **attached to every tag without exception**, and that is
+ guaranteed by the workflow rather than by anyone remembering: it is built and
+ verified before the release is created, and the release is read back and the
+ artifact re-downloaded and re-verified after. Either check failing fails the
+ release.
+
+The tarball is byte-reproducible from the tagged tree (fixed ordering, fixed
+mtimes, normalised gzip header), so the published checksum can be
+independently recomputed:
+
+```sh
+git checkout vX.Y.Z
+node scripts/ci/deploy-artifact.mjs build --version X.Y.Z --out-dir /tmp/assets
+node scripts/ci/deploy-artifact.mjs verify --version X.Y.Z --file /tmp/assets/cogeto-deploy-assets-X.Y.Z.tar.gz
+```
+
+Releases published **before** this artifact existed do not carry it. The
+installer says so plainly and stops rather than falling back to any other
+source; installing one of those versions means using the operator script from
+its own tag.
 
 ### Trust scores
 

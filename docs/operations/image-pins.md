@@ -47,6 +47,10 @@ docker run --rm --entrypoint sh <image>@<digest> -c 'silo --version'
  A compose change on one side must be mirrored in the other compose file
  (digest parity is tested), and a deploy-compose change needs
  `node scripts/ci/deploy-assets-manifest.mjs --write` in the same commit.
+ That regenerated manifest is all that is needed: the release workflow builds
+ the deployment-assets artifact from the same tree at tag time and carries
+ the manifest inside it
+ ([`../release-process.md`](../release-process.md)).
 
 3. Rebuild and run the suite + a `docker compose up` smoke:
 

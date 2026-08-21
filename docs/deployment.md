@@ -78,6 +78,31 @@ sudo ./cogeto install --domain <your.domain> --acme-email <you>
 After first login, configure a model provider in the interface (Providers in the
 gear menu, /instance/providers); the printed checklist says so.
 
+### How the deployment files arrive
+
+The files that define the stack (the compose file, the production Caddyfile,
+the Zitadel bootstrap script, the Postgres role provisioning, the SearXNG
+settings) are **not** fetched from the repository. `install` and `upgrade`
+download one artifact from the release of the exact version being installed,
+`cogeto-deploy-assets-X.Y.Z.tar.gz`, and verify it twice: against the sha256
+the release publishes as a separate asset (and in its notes), and then file by
+file against the checksum manifest carried inside the tarball. Nothing is
+installed until every file has passed, and the artifact's own `VERSION` entry
+must match the version being installed.
+
+Five failures, five different messages, because the right response differs:
+
+| The script says | What it means | What to do |
+| --- | --- | --- |
+| `DEPLOY ASSETS: RELEASE UNREACHABLE` | the download did not complete | a network, DNS, proxy or GitHub problem. Nothing changed. Retry is safe |
+| `DEPLOY ASSETS: ARTIFACT MISSING FROM THE RELEASE` | that release publishes no artifact | either a release older than this mechanism (use the operator script from its own tag) or an incomplete publication. Retrying cannot help |
+| `DEPLOY ASSETS: OUTER CHECKSUM MISMATCH` | the bytes are not the ones published | stop. Corrupted in transit, or not this release's artifact. Compare against the checksum on the release page |
+| `DEPLOY ASSETS: VERSION MISMATCH` | the artifact belongs to another version | stop and report it. Nothing was installed |
+| `DEPLOYMENT FILE CHECKSUM MISMATCH` | a file inside disagrees with the manifest inside | stop and report it. Nothing was installed |
+
+How the artifact is produced, and the contract the shape carries for anything
+automating installs: [`release-process.md`](release-process.md).
+
 TLS is automatic (Let's Encrypt via Caddy) as soon as the printed DNS records
 resolve. Self-hosters not on OVHcloud: the runbook's OVH panel steps map
 one-to-one to any provider's DNS/PTR/firewall equivalents.

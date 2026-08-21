@@ -100,6 +100,17 @@ Developer-facing notes on the script live in
  login (`admin@<domain>` + `ZITADEL_ADMIN_PASSWORD` from `.env`) in your
  vault, and record the instance in the trial tracker (section 8).
 
+**Where the stack files come from.** The compose file, the Caddyfile, the
+Zitadel bootstrap script, the Postgres role provisioning and the SearXNG
+settings are downloaded as **one artifact attached to that version's release**
+(`cogeto-deploy-assets-X.Y.Z.tar.gz`), verified against the checksum the
+release publishes beside it and then file by file against the manifest inside
+it. Nothing is installed unless every check passes, so a refusal leaves the
+instance exactly as it was. The five refusals and what each one means are in
+[`deployment.md`](deployment.md) and in section 7 below. The same
+applies to `upgrade`, which fetches the target version's artifact before it
+pulls any image.
+
 ### What the install provisions: the least-privilege data plane
 
 This is the provisioning shape for every fresh install; nothing here needs
@@ -921,6 +932,9 @@ sudo docker compose logs --tail 200 app # or: worker, mail, caddy, zitadel
 | A container is `unhealthy`/restarting | Varies: read its logs | `sudo docker compose logs --tail 200 <service>`. Disk-full is the classic silent killer: status prints `df`; volumes live under `/var/lib/docker`. |
 | Deletion-sweep alert / receipt chain not green | Integrity finding: the product's core promise | Do not improvise. Read the alert in System, capture logs, and escalate to the owner before touching data. |
 | Locked out of admin | Password is `ZITADEL_ADMIN_PASSWORD` in `/srv/cogeto/.env` (vault copy) | Username `admin@<domain>` at the instance login. |
+| `DEPLOY ASSETS: RELEASE UNREACHABLE` during install or upgrade | The deployment artifact could not be downloaded | Network, DNS, proxy or GitHub availability. Nothing was changed and **retrying is safe**: check outbound access to github.com from the VM (`curl -I https://github.com`) and re-run the same command. |
+| `DEPLOY ASSETS: ARTIFACT MISSING FROM THE RELEASE` | That version's release carries no deployment artifact | Retrying cannot help. Either the version predates the artifact (install it with the operator script published at its own tag, or pick a newer version), or the release did not finish publishing: check the release page and escalate to the owner. |
+| `DEPLOY ASSETS: OUTER CHECKSUM MISMATCH`, `VERSION MISMATCH`, or `DEPLOYMENT FILE CHECKSUM MISMATCH` | The downloaded artifact is not what the release published, or disagrees with itself | **Stop.** Nothing was installed and the instance is unchanged. Do not work around it: this is exactly what the check exists to catch. Compare the checksum the message prints against the one on the release page, then escalate to the owner. |
 
 ---
 

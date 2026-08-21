@@ -30,12 +30,15 @@
 #     The mail capability's own enable path is exercised nowhere here; it needs
 #     a published mail image and an internet-facing listener.
 #   • The supply chain. `install` normally resolves a release through the GitHub
-#     and Docker Hub APIs, fetches five deployment assets pinned to the tag's
-#     commit, verifies each against a checksum manifest, and refuses to start an
-#     image whose cosign signature does not verify. None of that can run against
-#     an unpublished commit, so those five functions are replaced by the harness
+#     and Docker Hub APIs, downloads that version's deployment-assets artifact,
+#     verifies it against the outer checksum published beside it and then every
+#     file in it against the manifest inside it, and refuses to start an image
+#     whose cosign signature does not verify. None of that can run against an
+#     unpublished commit, so those five functions are replaced by the harness
 #     (see `stub_the_outside_world`) and the assets are copied from the working
-#     tree. The fetch-and-verify chain is covered by review, not by this test.
+#     tree. The artifact's own build-and-verify chain is covered by
+#     project/src/entrypoints/deploy-artifact.spec.ts; what is not covered
+#     anywhere but review is the download itself.
 #   • A cloud provider's console: backups, network firewall, reverse DNS.
 #   • An upgrade between two published releases. What IS covered is the defect
 #     class that made upgrade dangerous: the secret backfill, asserted directly
@@ -136,9 +139,9 @@ stub_the_outside_world() {
     check_os() { warn "[smoke] no /etc/os-release: the supported-OS check is NOT exercised in this run"; }
   fi
   detect_public_ip()          { printf '203.0.113.10'; }
-  # The five deployment assets, copied from the working tree instead of fetched
-  # at the release commit and checksum-verified. This is the change under test:
-  # a fetch would install the LAST RELEASE's compose file, not this one.
+  # The five deployment assets, copied from the working tree instead of taken
+  # from the release artifact and checksum-verified. This is the change under
+  # test: a fetch would install the LAST RELEASE's compose file, not this one.
   fetch_deploy_assets() {
     say "[smoke] staging the deployment assets from the working tree (no fetch, no checksum verification)"
     run mkdir -p "$COGETO_ROOT/zitadel-init" "$COGETO_ROOT/postgres-init" "$COGETO_ROOT/searxng"

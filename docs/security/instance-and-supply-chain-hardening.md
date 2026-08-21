@@ -46,18 +46,29 @@ Two things close that (security audit 2.0, SEC-13):
  place at the same moment proves nothing: whoever could swap the binary could
  swap the file beside it. Bumping cosign is a reviewed change to two adjacent
  lines.
-- **Deployment files are pinned by commit, not by tag.** The compose file, the
- production Caddyfile, the Zitadel bootstrap script, the Postgres role
- provisioning and the SearXNG settings are fetched from the repository. Git tags
- are mutable unless protected, so "at v1.2.3" was not a fixed set of bytes. The
- installer now resolves the tag to the immutable **commit SHA** it points at,
- prints it, and fetches everything at that commit, together with a checksum
- manifest (`project/infra/deploy/deploy-assets.sha256`) fetched at the same
- commit, against which every file is verified before it is moved into place. A
- missing manifest, a missing entry, or a mismatch each abort the install. The
+- **Deployment files arrive as one checksummed release artifact.** The compose
+ file, the production Caddyfile, the Zitadel bootstrap script, the Postgres
+ role provisioning and the SearXNG settings used to be fetched file by file
+ from the repository (originally at a tag ref, which is mutable, then at the
+ immutable commit the tag pointed at). They now arrive as a single tarball
+ attached to that version's GitHub Release,
+ `cogeto-deploy-assets-X.Y.Z.tar.gz`, verified at two levels: the **outer
+ sha256** published as its own release asset and in the release notes, so the
+ value can be obtained without downloading the thing it verifies, and the
+ **per-file manifest** (`project/infra/deploy/deploy-assets.sha256`) carried
+ INSIDE the tarball, against which every file is verified before any of them
+ is installed. The artifact also carries a `VERSION` entry that must equal the
+ version being installed, so the version relationship is stated by the
+ download URL and by the artifact itself, and neither is a moving reference.
+ A missing artifact, an unreachable release, an outer mismatch, a per-file
+ mismatch and a version mismatch each abort the run with their own message,
+ because the right response differs: retry, check the network, or stop. The
  manifest is generated from the working tree
  (`node scripts/ci/deploy-assets-manifest.mjs --write`) and a test fails the
- build if it drifts from the files it covers.
+ build if it drifts from the files it covers, or if the artifact does not
+ carry every file the installer installs. The release workflow verifies the
+ artifact before publishing it and re-downloads it afterwards, so a release
+ whose deployment assets are missing or malformed fails instead of shipping.
 
 ## Per-instance secrets
 
@@ -252,7 +263,8 @@ personal data.
  `project/src/entrypoints/secret-preflight.ts`
 - Deployment hardening checks: `project/src/entrypoints/deployment-hardening.spec.ts`
 - Installer trust chain: `scripts/operator/cogeto` (`install_cosign`,
- `fetch_deploy_assets`), `scripts/ci/deploy-assets-manifest.mjs`
+ `stage_deploy_artifact`, `install_asset`), `scripts/ci/deploy-assets-manifest.mjs`,
+ `scripts/ci/deploy-artifact.mjs`, `project/src/entrypoints/deploy-artifact.spec.ts`
 - Durable abuse limits: `project/src/infrastructure/{daily-counters,rate-limit-store}.ts`,
  `project/src/migrations/0038_durable_abuse_limits.sql`
 - Container resource ceilings: both compose files (`mem_limit` / `cpus` / `pids_limit`)

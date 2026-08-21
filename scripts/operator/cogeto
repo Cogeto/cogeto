@@ -69,7 +69,6 @@ COSIGN_VERSION="2.4.1"
 # the repository, which is a reviewed change. Bump both lines together.
 COSIGN_SHA256="8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b"
 GITHUB_REPO="Cogeto/cogeto"
-RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}"
 GH_RELEASES_API="https://api.github.com/repos/${GITHUB_REPO}/releases"
 HUB_API="https://hub.docker.com/v2/repositories"
 
@@ -745,100 +744,221 @@ verify_images() {
 }
 
 # ── Deployment assets ─────────────────────────────────────────────────────────
-
-# SEC-13: resolve a release tag to the IMMUTABLE COMMIT SHA it points at.
 #
-# Git tags are mutable unless the repository protects them, so fetching the
-# compose file that defines the entire stack "at v1.2.3" could quietly return
-# different bytes tomorrow under the same version. A commit SHA cannot be
-# repointed by anyone. Tag protection is an owner console action and a good
-# idea; this does not depend on it.
-resolve_tag_commit() {
-  rtc_version="$1"
-  curl -fsS --max-time 20 "https://api.github.com/repos/${GITHUB_REPO}/commits/v${rtc_version}" 2>/dev/null \
-    | sed -n 's/.*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-f]\{40\}\)".*/\1/p' \
-    | head -n 1
+# The files that define the entire customer stack — the compose file, the
+# production Caddyfile, the Zitadel bootstrap script, the Postgres role
+# provisioning, the SearXNG settings — arrive as ONE checksummed release
+# artifact, `cogeto-deploy-assets-X.Y.Z.tar.gz`, attached to that version's
+# GitHub Release. They used to be fetched file by file from the repository at
+# the tag's commit; one artifact per release replaces that, for two reasons:
+#
+#   • ONE thing to verify. The release publishes the tarball's sha256 as its
+#     own asset, so it can be read (and compared against the release page)
+#     without downloading the thing it verifies. The per-file manifest
+#     (`deploy-assets.sha256`) travels INSIDE the tarball, so every consumer —
+#     this installer and the hosting platform's upgrade automation — verifies
+#     the same way: one outer checksum for the release, per-file hashes within.
+#   • ONE version relationship. The download URL names the tag and nothing
+#     else, and the tarball carries a VERSION file that must agree with the
+#     version being installed. Neither end is a moving reference, and a
+#     disagreement is a hard failure below, never a silent install of the
+#     wrong release's stack definition.
+#
+# The four ways this can fail are four different problems and say so:
+# ARTIFACT MISSING (that release does not carry one — stop), RELEASE
+# UNREACHABLE (network — retrying is safe), OUTER CHECKSUM MISMATCH (the bytes
+# are not the ones published — stop), and DEPLOYMENT FILE CHECKSUM MISMATCH
+# (the tarball disagrees with its own manifest — stop).
+
+# Release assets are served under the tag that names them.
+GH_RELEASE_DOWNLOAD="https://github.com/${GITHUB_REPO}/releases/download"
+
+# The per-file manifest, at its repository path INSIDE the artifact.
+DEPLOY_MANIFEST_PATH="project/infra/deploy/deploy-assets.sha256"
+DEPLOY_MANIFEST_FILE=""   # set per run by stage_deploy_artifact
+DEPLOY_STAGE_DIR=""       # the temporary download directory, removed after use
+DEPLOY_UNPACKED=""        # the verified staging tree, set per run
+
+deploy_artifact_name() { printf 'cogeto-deploy-assets-%s.tar.gz' "$1"; }
+
+# Download one asset of the vX.Y.Z release. The exit code separates the two
+# failures an operator acts on differently:
+#   0  downloaded
+#   2  the asset is not on that release (HTTP 404) — retrying cannot help
+#   3  the release could not be reached at all — retrying is the right move
+download_release_asset() {
+  dra_version="$1"; dra_name="$2"; dra_dest="$3"
+  dra_url="${GH_RELEASE_DOWNLOAD}/v${dra_version}/${dra_name}"
+  # curl's own exit status comes first: a connection that dropped mid-body
+  # still reports 200, and a truncated download is a network problem to retry,
+  # not a checksum failure to stop on. curl keeps its stderr so the operator
+  # reads its diagnosis alongside ours.
+  if dra_code="$(curl -sSL --max-time 180 -w '%{http_code}' -o "$dra_dest" "$dra_url")"; then
+    dra_rc=0
+  else
+    dra_rc=$?
+  fi
+  if [ "$dra_rc" -ne 0 ]; then rm -f "$dra_dest"; return 3; fi
+  case "$dra_code" in
+    200) return 0 ;;
+    404) rm -f "$dra_dest"; return 2 ;;
+    *)   rm -f "$dra_dest"; return 3 ;;
+  esac
 }
 
-# The manifest listing the sha256 of every deployment asset, versioned in the
-# repository next to them and fetched AT THE SAME COMMIT as the assets it
-# covers — so the anchor for the whole set is one immutable commit id.
-DEPLOY_MANIFEST_PATH="project/infra/deploy/deploy-assets.sha256"
-DEPLOY_MANIFEST_FILE=""   # set per run by fetch_deploy_assets
-
-fetch_deploy_assets() {
+# Download, verify and unpack one version's deployment artifact into a staging
+# tree. Nothing is installed here: callers pick what they need with
+# install_asset and call release_deploy_artifact when they are done.
+stage_deploy_artifact() {
   version="$1"
-  # Pin to the commit the tag currently points at, and say which one, so the
-  # operator can see exactly what was installed.
-  commit="$(resolve_tag_commit "$version")"
-  if [ -z "$commit" ]; then
-    if [ "$CHECK" -eq 1 ]; then
-      warn "could not resolve v${version} to a commit (offline check run?) — a real run refuses"
-      commit="v${version}"
-    else
-      die "could not resolve v${version} to a commit SHA via the GitHub API — refusing to fetch the deployment files from a mutable tag ref. Check the network and re-run."
-    fi
-  else
-    say "v${version} resolves to commit ${commit} — fetching deployment files pinned to that commit"
+  artifact="$(deploy_artifact_name "$version")"
+
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would fetch ${GH_RELEASE_DOWNLOAD}/v${version}/${artifact} and ${artifact}.sha256, verify the tarball against that published checksum, and verify every file inside it against ${DEPLOY_MANIFEST_PATH} before installing it"
   fi
 
-  # The checksum manifest first: everything below is verified against it.
   DEPLOY_MANIFEST_FILE=""
+  DEPLOY_UNPACKED=""
   if [ "$CHECK" -eq 0 ]; then
-    DEPLOY_MANIFEST_FILE="$(mktemp)"
-    curl -fsSL --max-time 60 "${RAW_BASE}/${commit}/${DEPLOY_MANIFEST_PATH}" -o "$DEPLOY_MANIFEST_FILE" \
-      || die "could not fetch the deployment checksum manifest (${DEPLOY_MANIFEST_PATH}) at commit ${commit} — refusing to install unverified deployment files"
-    say "deployment checksum manifest fetched ($(wc -l < "$DEPLOY_MANIFEST_FILE" | tr -d ' ') entries)"
-  else
-    say "[dry-run] would fetch ${DEPLOY_MANIFEST_PATH} and verify every deployment file against it"
+    DEPLOY_STAGE_DIR="$(mktemp -d)"
+    stage="$DEPLOY_STAGE_DIR"
+    DEPLOY_UNPACKED="${stage}/unpacked"
+    mkdir -p "$DEPLOY_UNPACKED"
+
+    # 1. The outer checksum FIRST, as its own release asset. A checksum shipped
+    #    only inside the thing it verifies proves nothing.
+    if download_release_asset "$version" "${artifact}.sha256" "${stage}/checksum"; then :; else
+      case $? in
+        2) die "DEPLOY ASSETS: ARTIFACT MISSING FROM THE RELEASE — the v${version} release publishes no ${artifact}.sha256. Every release that carries the deployment artifact publishes its checksum beside it, so this is either a release published before the artifact existed (install it with the operator script from its own tag, or choose a newer version) or a release whose publication did not finish. STOP: nothing was changed, and retrying cannot make a missing asset appear. See https://github.com/${GITHUB_REPO}/releases/tag/v${version}" ;;
+        *) die "DEPLOY ASSETS: RELEASE UNREACHABLE — could not reach ${GH_RELEASE_DOWNLOAD}/v${version}/${artifact}.sha256. This is a network, DNS, proxy or GitHub-availability problem, not a verification failure: nothing was changed and RETRYING IS SAFE. Check this host's outbound access to github.com, then re-run the same command." ;;
+      esac
+    fi
+    expected_outer="$(awk 'NR == 1 { print $1 }' "${stage}/checksum")"
+    named_artifact="$(awk 'NR == 1 { print $2 }' "${stage}/checksum")"
+    if ! printf '%s' "$expected_outer" | grep -qE '^[0-9a-f]{64}$'; then
+      die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${artifact}.sha256 on the v${version} release does not carry a sha256 checksum. STOP: that release cannot be verified and must not be installed. Report it; do not work around it."
+    fi
+    if [ "$named_artifact" != "$artifact" ]; then
+      die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${artifact}.sha256 names '${named_artifact}', not ${artifact}. The published checksum belongs to a different file, so it cannot verify this one. STOP; do not work around it."
+    fi
+
+    # 2. The artifact itself, verified against that checksum before it is opened.
+    if download_release_asset "$version" "$artifact" "${stage}/${artifact}"; then :; else
+      case $? in
+        2) die "DEPLOY ASSETS: ARTIFACT MISSING FROM THE RELEASE — the v${version} release publishes a checksum but no ${artifact}. STOP: the release is incomplete, nothing was changed, and retrying cannot make a missing asset appear. Report it at https://github.com/${GITHUB_REPO}/releases/tag/v${version}" ;;
+        *) die "DEPLOY ASSETS: RELEASE UNREACHABLE — could not download ${GH_RELEASE_DOWNLOAD}/v${version}/${artifact}. This is a network, DNS, proxy or GitHub-availability problem, not a verification failure: nothing was changed and RETRYING IS SAFE. Check this host's outbound access to github.com, then re-run the same command." ;;
+      esac
+    fi
+    actual_outer="$(sha256_of "${stage}/${artifact}")"
+    if [ "$actual_outer" != "$expected_outer" ]; then
+      die "DEPLOY ASSETS: OUTER CHECKSUM MISMATCH for ${artifact} — the v${version} release publishes ${expected_outer}, the downloaded file hashes to ${actual_outer}. STOP. Nothing was changed and nothing was unpacked. Either the download was corrupted in transit or these are not the bytes this release published; do NOT work around it, which is exactly what the check exists to catch. Compare ${expected_outer} against the checksum shown on https://github.com/${GITHUB_REPO}/releases/tag/v${version} before doing anything else."
+    fi
+    say "deployment artifact ${artifact} verified against the release checksum (${actual_outer})"
+
+    # 3. Unpack. Entry names are checked before extraction: an artifact naming
+    #    an absolute or escaping path is malformed, not something to sanitise.
+    entries="$(tar -tzf "${stage}/${artifact}" 2>/dev/null)" || entries=""
+    if [ -z "$entries" ]; then
+      die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${artifact} could not be read as a gzipped tar even though its checksum matched. STOP: this release's artifact is broken and must not be installed. Report it; do not work around it."
+    fi
+    if printf '%s\n' "$entries" | grep -qE '^/|(^|/)\.\.(/|$)'; then
+      die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${artifact} contains an absolute or escaping path. STOP: nothing was extracted. Report it; do not work around it."
+    fi
+    tar -xzf "${stage}/${artifact}" -C "$DEPLOY_UNPACKED" \
+      || die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${artifact} could not be unpacked. STOP: this release's artifact is broken and must not be installed."
+
+    # 4. The artifact must be the one this version asked for. The URL says the
+    #    tag and the tarball says the version; both, or the install stops.
+    stamped="$(tr -d '[:space:]' < "${DEPLOY_UNPACKED}/VERSION" 2>/dev/null || true)"
+    if [ "$stamped" != "$version" ]; then
+      die "DEPLOY ASSETS: VERSION MISMATCH — the artifact published for v${version} is stamped '${stamped:-(no VERSION file)}'. STOP: nothing was installed. The release's deployment files do not belong to the version being installed, and installing them would give this instance another release's stack definition. Report it; do not work around it."
+    fi
+
+    # 5. The per-file manifest that travelled inside it. Everything below is
+    #    verified against this before it is installed.
+    DEPLOY_MANIFEST_FILE="${DEPLOY_UNPACKED}/${DEPLOY_MANIFEST_PATH}"
+    if [ ! -f "$DEPLOY_MANIFEST_FILE" ]; then
+      DEPLOY_MANIFEST_FILE=""
+      die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${artifact} carries no ${DEPLOY_MANIFEST_PATH}, so nothing inside it can be checked: refusing to install unverified deployment files. STOP; do not work around it."
+    fi
+    # 6. Verify EVERY file the manifest covers before installing any of them.
+    #    Per-file verification also happens at install time, but doing the whole
+    #    set first is what makes a rejected artifact leave nothing behind: an
+    #    upgrade that aborted halfway through would otherwise leave the instance
+    #    with a compose file from one release and a Caddyfile from another.
+    while read -r want file; do
+      [ -n "${file:-}" ] || continue
+      src="${DEPLOY_UNPACKED}/${file}"
+      if [ ! -f "$src" ] || [ -L "$src" ]; then
+        die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${DEPLOY_MANIFEST_PATH} inside ${artifact} covers ${file}, which the artifact does not contain as a regular file. STOP: nothing was installed. Report it; do not work around it."
+      fi
+      got="$(sha256_of "$src")"
+      if [ "$got" != "$want" ]; then
+        die "DEPLOYMENT FILE CHECKSUM MISMATCH for ${file} — expected ${want}, got ${got}. Refusing to install, and NOTHING has been changed on this instance. The file inside the deployment artifact is not the one this release's manifest describes: the artifact's contents and its own checksum list disagree, which nothing legitimate does. STOP; do not work around it."
+      fi
+    done < "$DEPLOY_MANIFEST_FILE"
+    say "v${version} deployment assets unpacked and verified ($(wc -l < "$DEPLOY_MANIFEST_FILE" | tr -d ' ') files, each against the manifest inside the artifact)"
   fi
+}
 
-  run mkdir -p "$COGETO_ROOT/zitadel-init"
-  fetch_one "$commit" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
-  fetch_one "$commit" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
-  fetch_one "$commit" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
-  # Least-privilege Postgres roles (SEC-1): the db-init one-shot mounts this.
-  run mkdir -p "$COGETO_ROOT/postgres-init"
-  fetch_one "$commit" "project/infra/docker/postgres-init/db-init.sql" "$COGETO_ROOT/postgres-init/db-init.sql"
-  # The research profile's SearXNG settings — fetched with the
-  # other assets so `cogeto features enable research` works offline later.
-  run mkdir -p "$COGETO_ROOT/searxng"
-  fetch_one "$commit" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
-
-  [ -n "$DEPLOY_MANIFEST_FILE" ] && rm -f "$DEPLOY_MANIFEST_FILE"
+# The staging tree exists only for the duration of one fetch.
+release_deploy_artifact() {
+  [ -n "$DEPLOY_STAGE_DIR" ] && rm -rf "$DEPLOY_STAGE_DIR"
+  DEPLOY_STAGE_DIR=""
   DEPLOY_MANIFEST_FILE=""
+  DEPLOY_UNPACKED=""
   return 0
 }
 
-# The expected sha256 for one repo path, read from the fetched manifest.
+# The whole deployment set for one version: what install and upgrade both run.
+fetch_deploy_assets() {
+  stage_deploy_artifact "$1"
+  run mkdir -p "$COGETO_ROOT/zitadel-init"
+  install_asset "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
+  install_asset "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
+  install_asset "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
+  # Least-privilege Postgres roles (SEC-1): the db-init one-shot mounts this.
+  run mkdir -p "$COGETO_ROOT/postgres-init"
+  install_asset "project/infra/docker/postgres-init/db-init.sql" "$COGETO_ROOT/postgres-init/db-init.sql"
+  # The research profile's SearXNG settings — installed with the
+  # other assets so `cogeto features enable research` works offline later.
+  run mkdir -p "$COGETO_ROOT/searxng"
+  install_asset "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
+  release_deploy_artifact
+}
+
+# The expected sha256 for one repo path, read from the manifest inside the
+# artifact.
 manifest_sha() {
   [ -n "$DEPLOY_MANIFEST_FILE" ] || return 0
   awk -v p="$1" '$2 == p { print $1 }' "$DEPLOY_MANIFEST_FILE" | head -n 1
 }
 
-fetch_one() {
-  ref="$1"; path="$2"; dest="$3"
-  url="${RAW_BASE}/${ref}/${path}"
+# Verify one unpacked deployment file against the artifact's own manifest and
+# put it in place. Verification happens BEFORE the file is installed, and a
+# missing manifest entry is a failure, not a skip: silently accepting an
+# uncovered file would make the manifest decorative.
+install_asset() {
+  path="$1"; dest="$2"
   if [ "$CHECK" -eq 1 ]; then
-    say "[dry-run] would fetch ${url} → ${dest} and verify its sha256 against the manifest"
+    say "[dry-run] would install ${path} → ${dest} after verifying its sha256 against ${DEPLOY_MANIFEST_PATH}"
     return 0
   fi
-  curl -fsSL --max-time 60 "$url" -o "${dest}.tmp" || die "failed to fetch ${url} — is that commit reachable?"
-  # SEC-13: verify BEFORE the file is moved into place. A missing manifest
-  # entry is a failure, not a skip: silently accepting an uncovered file would
-  # make the manifest decorative.
+  src="${DEPLOY_UNPACKED}/${path}"
+  if [ ! -f "$src" ] || [ -L "$src" ]; then
+    die "DEPLOY ASSETS: MALFORMED ARTIFACT — ${path} is not in $(deploy_artifact_name "$version") as a regular file, so this release cannot install a complete stack. STOP; do not work around it."
+  fi
   expected="$(manifest_sha "$path")"
   if [ -z "$expected" ]; then
-    rm -f "${dest}.tmp"
     die "no checksum for ${path} in ${DEPLOY_MANIFEST_PATH} — refusing to install an unverified deployment file. This release's manifest is incomplete; do not work around it."
   fi
-  actual="$(sha256_of "${dest}.tmp")"
+  actual="$(sha256_of "$src")"
   if [ "$actual" != "$expected" ]; then
-    rm -f "${dest}.tmp"
-    die "DEPLOYMENT FILE CHECKSUM MISMATCH for ${path} — expected ${expected}, got ${actual}. Refusing to install. The fetched file is not the one this release published."
+    die "DEPLOYMENT FILE CHECKSUM MISMATCH for ${path} — expected ${expected}, got ${actual}. Refusing to install. The file inside the deployment artifact is not the one this release's manifest describes: the artifact's contents and its own checksum list disagree, which nothing legitimate does. STOP; do not work around it."
   fi
-  mv "${dest}.tmp" "$dest"
-  say "fetched + verified ${path} → ${dest}"
+  cp "$src" "$dest"
+  chmod 0644 "$dest"
+  say "installed + verified ${path} → ${dest}"
 }
 
 # ── Docker installation (idempotent) ─────────────────────────────────────────
@@ -1736,14 +1856,17 @@ features_enable() {
       if [ -z "$(env_get SEARXNG_SECRET)" ]; then
         env_set SEARXNG_SECRET "$(gen_token)"
       fi
-      # The deploy channel mounts ./searxng/settings.yml — fetch it (pinned to
-      # the installed version) when the compose file references it and it is
-      # not on disk yet. The dev checkout mounts the in-repo file instead.
+      # The deploy channel mounts ./searxng/settings.yml — take it from the
+      # installed version's deployment artifact when the compose file
+      # references it and it is not on disk yet (an instance installed before
+      # the file existed). The dev checkout mounts the in-repo file instead.
       if grep -q '\./searxng/settings.yml' "$COGETO_ROOT/docker-compose.yml" 2>/dev/null \
         && [ ! -f "$COGETO_ROOT/searxng/settings.yml" ]; then
         fetch_version="$(env_get COGETO_VERSION)"
         run mkdir -p "$COGETO_ROOT/searxng"
-        fetch_one "v${fetch_version}" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
+        stage_deploy_artifact "$fetch_version"
+        install_asset "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
+        release_deploy_artifact
       fi
       env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" research)"
       apply_feature_change

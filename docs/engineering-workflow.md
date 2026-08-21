@@ -119,9 +119,14 @@ The **git tag** and **`package.json` `version`** are the two sources of truth an
  `package.json` triggers [`release.yml`](../.github/workflows/release.yml),
  which builds and pushes the amd64 image to Docker Hub
  (`cogeto/cogeto:X.Y.Z` + `:latest`), signs it with keyless cosign, attaches an
- SBOM, and creates the GitHub Release with notes grouped by Conventional-Commit
- type. A tag that does not match `package.json` fails the build before anything
- is published.
+ SBOM, attaches the **deployment-assets artifact** the operator installer and
+ the hosting platform fetch (`cogeto-deploy-assets-X.Y.Z.tar.gz` plus its
+ `.sha256`), and creates the GitHub Release with notes grouped by
+ Conventional-Commit type. A tag that does not match `package.json` fails the
+ build before anything is published, and so does a release whose deployment
+ artifact is missing or does not verify:
+ [`release-process.md`](release-process.md) states the shape and why it is a
+ contract.
 - **The owner cuts releases.** The typical flow: land a `chore: release vX.Y.Z`
  PR that bumps `package.json`, then the owner tags `vX.Y.Z` on `main`. CI never
  creates tags.
