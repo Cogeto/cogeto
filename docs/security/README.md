@@ -32,7 +32,7 @@ Start with the overview, then the mechanism-specific docs:
  to an inspectable source; how that is enforced and how an orphan is caught within
  one sweep cycle.
 - **[Data sovereignty and PII redaction](data-sovereignty-and-redaction.md)**: the
- single model seam, the EU-hosted default, and the optional fail-closed redaction
+ single model seam, who the instance calls, and the optional fail-closed redaction
  layer (with its honest limits).
 - **[Agents propose, humans approve](agent-approval-gate.md)**: the server-side
  approval state machine; consequential actions execute only from `approved` state,

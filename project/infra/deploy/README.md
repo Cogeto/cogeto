@@ -2,7 +2,7 @@
 
 The deployment files the operator script
 ([`scripts/operator/cogeto`](../../../scripts/operator/cogeto)) installs at
-`/srv/cogeto` on a fresh OVHcloud Ubuntu instance.
+`/srv/cogeto` on a fresh Ubuntu server.
 A customer instance **pulls the prebuilt, cosign-signed release images and
 never builds**: this stack has no `build:` keys.
 

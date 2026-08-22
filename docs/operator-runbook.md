@@ -1,6 +1,6 @@
 # Cogeto operator runbook
 
-The lifecycle of one customer instance on OVHcloud, from empty VM to steady
+The lifecycle of one customer instance, from empty VM to steady
 state. **Audience: the operator.** Operations are script-driven and
 manual-by-design: the script does what it can, this runbook covers
 everything around it. One instance = one customer = one VM (single-tenant).
@@ -17,8 +17,9 @@ Developer-facing notes on the script live in
 
 ## 0. Before anything: what you need
 
-- [ ] Access to the **OVHcloud control panel** (Public Cloud project + the DNS
- zone for the customer's domain, typically `cogeto.eu`).
+- [ ] Access to your **cloud provider's control panel** (the project the VM
+ lives in) and to the **DNS zone** for the customer's domain, typically
+ `cogeto.eu`.
 - [ ] The instance's **app domain** agreed with the customer, e.g.
  `acme.cogeto.eu`.
 - [ ] No model key is needed to install. After first login an administrator adds
@@ -32,34 +33,32 @@ Developer-facing notes on the script live in
 
 ---
 
-## 1. Provisioning the OVHcloud VM
+## 1. Provisioning the VM
 
-1. **Create the instance**: OVHcloud panel → **Public Cloud** → your project →
- **Instances** → **Create an instance**.
- - **Model**: General Purpose **b3-8** (2 vCores, 8 GB RAM, 50 GB NVMe) is
- the minimum the script accepts (≥ 8 GB RAM, ≥ 2 CPUs, ≥ 30 GB free);
- **b3-16** is the comfortable default for a busy customer.
- - **Region**: an **EU region** (e.g. GRA or SBG): EU hosting is the
- product promise; do not deploy outside the EU.
+1. **Create the instance** in your cloud provider's panel.
+ - **Size**: 2 vCores, 8 GB RAM, 50 GB SSD is the minimum the script
+ accepts (≥ 8 GB RAM, ≥ 2 CPUs, ≥ 30 GB free); 4 vCores and 16 GB RAM is
+ the comfortable default for a busy customer.
+ - **Region**: an **EU region**. EU hosting is the product promise; do not
+ deploy outside the EU.
  - **Image**: **Ubuntu 24.04 LTS** (22.04 is also supported by the script).
  - **SSH key**: add yours; you will log in as `ubuntu` and use `sudo`.
- - **Network**: a public IPv4 is required (default). No vRack needed.
+ - **Network**: a public IPv4 is required. No private network needed.
 2. **Note the public IPv4** shown on the instance page: the DNS records and
  the PTR all use it.
 3. **Firewall**: the instance must accept inbound TCP **22** (SSH), **80**
  (ACME + redirect) and **443** (HTTPS). Port **25** is needed **only if the
  instance uses email capture**, which is now an opt-in capability (security
  audit 2.0, SEC-14): a fresh install runs no SMTP listener at all.
- - If you use the **OVH Network Firewall** on the IP (Public Cloud →
- **Network** → Public IPs → the IP → firewall): allow 22, 80 and 443, plus
- 25 only after you enable email capture.
+ - If a **network firewall** sits in front of the IP at your provider:
+ allow 22, 80 and 443, plus 25 only after you enable email capture.
  - If `ufw` is active on the host, `cogeto install` opens 80/443 itself, and
  `cogeto features enable mail` opens 25 when you turn email capture on.
  - Nothing else should be open. The stack publishes only 80/443 (plus 25 with
  email capture enabled); Postgres/Qdrant/MinIO/Zitadel are internal-only by
  construction.
 4. **DNS zone prerequisite**: confirm you can edit the DNS zone that owns the
- app domain (Web Cloud → **Domain names** → the domain → **DNS zone**). The
+ app domain, wherever that zone is hosted. The
  actual records are added **after** install (the script prints them).
 
 ---
@@ -94,7 +93,7 @@ Developer-facing notes on the script live in
  derives the inbound address (`capture@in.<domain>`), pulls the signed
  images, brings the stack up, and waits for health. It ends with
  the **WHAT YOU MUST DO NOW** checklist, everything below is that
- checklist, expanded with the OVH panel locations.
+ checklist, expanded with where to do each step.
 
 4. **Vault, immediately**: store `/srv/cogeto/.env` and the Zitadel admin
  login (`admin@<domain>` + `ZITADEL_ADMIN_PASSWORD` from `.env`) in your
@@ -161,11 +160,10 @@ install (SEC-16). The script prints this in its checklist; the manual steps:
 3. The provisioning job re-runs with the new domain, then revokes and blanks
  the new token exactly as at install time.
 
-### 2a. The DNS records (OVH panel)
+### 2a. The DNS records
 
 The script prints the **exact records with real values**: copy them from its
-output. In the OVH panel: **Web Cloud → Domain names → the domain →
-DNS zone → Add an entry**:
+output, and add them in the DNS zone for the domain, wherever it is hosted:
 
 | # | Type | Record (subdomain field) | Target | When |
 | --- | --- | --- | --- | --- |
@@ -185,8 +183,8 @@ and closes the port again.
 Notes the script also prints (with email capture enabled):
 
 - **PTR (reverse DNS)**: set the reverse of the instance IPv4 to
- `mail.<domain>`: Public Cloud → **Network** → **Public IPs** → the IPv4 →
- **⋯ → Edit the reverse**. Without a matching forward/reverse pair some
+ `mail.<domain>`, in your cloud provider's panel (reverse DNS is set on the
+ public IP, not in the DNS zone). Without a matching forward/reverse pair some
  sending servers soft-reject the instance.
 - **SPF**: receiving needs none (Cogeto never sends). Only check that a
  strict SPF on the apex does not claim the `in.<domain>` subdomain.
@@ -207,7 +205,7 @@ When the A record resolves, Caddy obtains the Let's Encrypt certificate
 automatically within minutes, **no restart, no action**. Confirm with
 `sudo ./cogeto status` on the instance: the TLS section flips from "not from a
 public CA yet" to the Let's Encrypt certificate with its expiry, and the
-verdict can go GREEN. OVH zone changes usually propagate in minutes; the zone
+verdict can go GREEN. Zone changes usually propagate in minutes; the zone
 TTL is the upper bound.
 
 ### 2c. Inbound-mail hardening (STARTTLS + sender SPF)
@@ -696,15 +694,16 @@ in their connector's space.
 
 ## 5. Backups and restore
 
-Backups use **OVHcloud's own capability**, configured in the panel: no Cogeto
+Backups use **your cloud provider's own snapshot capability**, configured in
+its panel: no Cogeto
 backup scripts, by design. `./cogeto backup-info` prints this checklist on the
 instance.
 
 ### 5a. Enable (once per instance)
 
-- [ ] Public Cloud → **Instances** → the instance → **⋯ → Create a backup /
- Automated backup**: enable **daily** snapshots, retention **≥ 7 days**,
- scheduled **outside 03:00 to 04:00 UTC** (the nightly Cogeto jobs' window).
+- [ ] In your provider's panel, enable **automated instance backups**: **daily**
+ snapshots, retention **≥ 7 days**, scheduled **outside 03:00 to 04:00 UTC**
+ (the nightly Cogeto jobs' window).
 - [ ] Record in the tracker: backup enabled (date), schedule hour.
 - [ ] The instance `.env` is **also** in your vault (section 2.4): the
  snapshot protects the box; the vault protects you if the box is gone.
@@ -730,10 +729,9 @@ Rehearse this **once per customer** shortly after onboarding, and record the
 rehearsal date in the tracker. A backup you have never restored is a hope, not
 a backup.
 
-1. **Restore the snapshot to a new instance**: Public Cloud → **Instances** →
- **Create an instance** → in the image step choose **Backups** and pick the
- snapshot (same region, same or larger flavor). Boot it; note its **new
- public IPv4**.
+1. **Restore the snapshot to a new instance**: create an instance from the
+ snapshot rather than from a stock image (same region, same or larger size).
+ Boot it; note its **new public IPv4**.
 2. SSH in. The full state is on disk (`/srv/cogeto`, Docker volumes). Bring
  the stack up and check:
 
@@ -772,7 +770,7 @@ a backup.
  (login, forwarded email lands, a **new** deletion produces a receipt and
  the chain still verifies: this proves the signing keypair survived,
  Passport export, status GREEN).
-6. Decommission the failed instance (Public Cloud → Instances → delete) once
+6. Decommission the failed instance in the provider's panel once
  the customer confirms normal service.
 
 For the **rehearsal**, do steps 1 to 3 and 5's spot checks against the rehearsal
@@ -919,8 +917,8 @@ sudo docker compose logs --tail 200 app # or: worker, mail, caddy, zitadel
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Browser can't reach the domain / certificate warning; status says "not from a public CA yet" | DNS not propagated (or pointing at the wrong IP) | Check section 2b `dig` commands. Fix the A record in the OVH zone; Caddy retries ACME automatically once it resolves: no restart. |
-| TLS still not issued though DNS resolves | Port 80 or 443 blocked (OVH Network Firewall), or a stale old A record | Allow 80+443 on the IP's firewall; `sudo docker compose logs caddy` shows the ACME errors verbatim. |
+| Browser can't reach the domain / certificate warning; status says "not from a public CA yet" | DNS not propagated (or pointing at the wrong IP) | Check section 2b `dig` commands. Fix the A record in the DNS zone; Caddy retries ACME automatically once it resolves: no restart. |
+| TLS still not issued though DNS resolves | Port 80 or 443 blocked (a network firewall in front of the host), or a stale old A record | Allow 80+443 on the IP's firewall; `sudo docker compose logs caddy` shows the ACME errors verbatim. |
 | Forwarded mail never arrives | In order of frequency: sent from an address that is neither the user's **registered address** nor on their **allowlist**; MX record wrong/missing; TCP 25 blocked; wrong recipient address | Check **Settings → Email capture → Recently refused** first (a refusal row = SMTP and Haraka are fine: the reason is shown; forward from the registered address, or claim the external sender in one click). Note the **admin account never captures**. Then `dig +short MX in.<domain>`; then confirm port 25 open (firewall) and `sudo docker compose logs mail`. Recipient must be exactly `capture@in.<domain>`. |
 | Mail accepted at SMTP but no memories appear | Pipeline/dead-letter problem | `sudo ./cogeto status` queue line; dashboard System → dead-letter for the failed job and its error; `sudo docker compose logs worker`. |
 | Chat/extraction fail with a model error | No provider configured yet (the designed first-run state), or an invalid provider key | Add or fix the provider key under **Providers** in the interface (no restart needed). |
@@ -949,7 +947,7 @@ is fine). Fields: this exact set, so nothing lives only in your head:
 | Customer + contact | Adriatic Foods: Ana Kovač, ana@… |
 | App domain | `acme.cogeto.eu` |
 | Inbound address | `capture@in.acme.cogeto.eu` |
-| OVH instance name / region / flavor | `cogeto-acme` / GRA / b3-8 |
+| Instance name / region / size | `cogeto-acme` / … / 2 vCPU, 8 GB |
 | Public IPv4 | … |
 | Installed (date, by whom) / current version | 2026-07-20, IG / 1.7.2 |
 | Trial start / trial end / decision | 2026-07-21 / 2026-08-18 /: |

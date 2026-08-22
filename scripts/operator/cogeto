@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # cogeto — the Cogeto operator script (roadmap D3).
 #
-# The single tool an operator runs BY HAND on a fresh OVHcloud Ubuntu instance
+# The single tool an operator runs BY HAND on a fresh Ubuntu server
 # to install, configure, upgrade, and check a customer instance. Operations are
 # script-driven and manual-by-design: no Terraform, no cloud-provider API
 # automation, no self-serve provisioning, no automatic updates.
@@ -241,7 +241,7 @@ Subcommands:
                'compose run', so it works while app and worker refuse to
                start; re-embedding the corpus costs model API calls and asks
                for a typed confirmation.
-  backup-info  Exactly what to enable in the OVHcloud panel (roadmap D4 —
+  backup-info  Exactly what to enable in your provider's panel (roadmap D4 —
                the script itself performs no backups).
 
 Global flags:
@@ -1014,7 +1014,7 @@ open_firewall() {
       say "inbound mail is OFF (SEC-14) — 25/tcp stays closed; 'cogeto features enable mail' opens it"
     fi
   else
-    say "ufw inactive or absent — no host firewall change needed (OVHcloud network firewall, if enabled, must allow 80 and 443, plus 25 only if you enable inbound mail)"
+    say "ufw inactive or absent — no host firewall change needed (a network firewall in front of the host, if you have one, must allow 80 and 443, plus 25 only if you enable inbound mail)"
   fi
 }
 
@@ -1153,25 +1153,25 @@ add_install_checklist() {
   mx_sub="$(derive_inbound_subdomain "$domain")"
   mx_host="$(derive_mx_host "$domain")"
 
-  todo_now "OVHcloud DNS (Web Cloud → Domain names → zone → Add an entry) → app A record:      ${domain}.  IN A  ${ip}"
-  todo_now "OVHcloud DNS → presign-origin A record: s3.${domain}.  IN A  ${ip}"
+  todo_now "DNS zone (at whoever hosts the domain) → app A record:      ${domain}.  IN A  ${ip}"
+  todo_now "DNS zone → presign-origin A record: s3.${domain}.  IN A  ${ip}"
   # SEC-14: the mail host, MX, PTR and SPF steps exist ONLY to point real mail
   # at an SMTP listener. With inbound mail off, no listener runs and every one
   # of them would be a checklist item for something that is not there.
   if mail_capability_enabled; then
-    todo_now "OVHcloud DNS → mail host A record:      ${mx_host}.  IN A  ${ip}"
-    todo_now "OVHcloud DNS → inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
-    todo_now "OVHcloud panel (Public Cloud → Network → Public IPs → ${ip} → Edit the reverse) → set the PTR to ${mx_host} — do this AFTER the ${mx_host} A record resolves; senders soft-reject hosts without matching forward/reverse DNS"
+    todo_now "DNS zone → mail host A record:      ${mx_host}.  IN A  ${ip}"
+    todo_now "DNS zone → inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
+    todo_now "Cloud provider panel → set the reverse DNS (PTR) for ${ip} to ${mx_host} — do this AFTER the ${mx_host} A record resolves; senders soft-reject hosts without matching forward/reverse DNS"
     todo_now "SPF note: receiving needs no SPF, but if the apex domain publishes a strict SPF, confirm it does not cover ${mx_sub} (Cogeto never sends — no outbound SPF/DKIM/DMARC needed)"
   else
     todo_now "Email capture is OFF on this instance (audit 2.0 SEC-14: no inbound SMTP listener runs, and 25/tcp is closed). If the customer wants it, run 'sudo cogeto features enable mail' — it opens the port and prints the MX/PTR steps then."
   fi
   todo_now "NOTE on the records above: propagation takes minutes up to the zone TTL (check: dig +short A ${domain}); Caddy keeps retrying and obtains the TLS certificate AUTOMATICALLY once the A record resolves — no restart, no action. Until then the browser shows a certificate warning; that is expected."
-  todo_now "OVHcloud panel → enable Automated Backup for this instance (roadmap D4; run 'cogeto backup-info' for the exact settings)"
+  todo_now "Cloud provider panel → enable automated instance backups (roadmap D4; run 'cogeto backup-info' for what must be covered)"
   if mail_capability_enabled; then
-    todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80, 443, and 25"
+    todo_now "If a network firewall sits in front of this IP: allow inbound TCP 80, 443, and 25"
   else
-    todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80 and 443 (25 is not needed — email capture is off)"
+    todo_now "If a network firewall sits in front of this IP: allow inbound TCP 80 and 443 (25 is not needed — email capture is off)"
   fi
 
   todo_dns "Open https://${domain} — a valid Let's Encrypt certificate is served and the login page loads (Caddy retries ACME automatically once DNS resolves; no restart needed)"
@@ -1186,7 +1186,7 @@ add_install_checklist() {
 
   todo_vault "Store ${ENV_FILE} (all per-instance secrets) in the operator vault — losing MINIO_KMS_SECRET_KEY makes stored files unreadable, and losing COGETO_MASTER_KEY makes every stored provider API key unreadable"
   todo_vault "Record the Zitadel admin login (admin@${domain} + ZITADEL_ADMIN_PASSWORD from ${ENV_FILE})"
-  todo_vault "Note: the receipt-signing keypair is generated on first boot INSIDE the 'instance-keys' Docker volume (never a file on disk) — it is covered by the OVHcloud instance backup, not by ${ENV_FILE}"
+  todo_vault "Note: the receipt-signing keypair is generated on first boot INSIDE the 'instance-keys' Docker volume (never a file on disk) — it is covered by the provider's instance backup, not by ${ENV_FILE}"
 }
 
 # ── install ───────────────────────────────────────────────────────────────────
@@ -1418,7 +1418,7 @@ cmd_upgrade() {
   confirm_typed "BACKED-UP" "confirm a fresh backup exists before changing the instance — database migrations are forward-only, and the only full rollback is the rehearsed backup restore."
 
   if [ "$cmp" = "-1" ]; then
-    warn "v${target} is OLDER than the running v${current} — this is a ROLLBACK. Database migrations are forward-only: rolling back the image does NOT roll back the schema. Roll back data by restoring the OVHcloud backup (see the runbook)."
+    warn "v${target} is OLDER than the running v${current} — this is a ROLLBACK. Database migrations are forward-only: rolling back the image does NOT roll back the schema. Roll back data by restoring the provider's instance backup (see the runbook)."
     confirm_typed "ROLLBACK to ${target}" "rolling the image back while keeping the newer schema can break the instance."
   elif [ "$cmp" = "0" ]; then
     # Reached only as a RESUME: the recorded version already says the target,
@@ -1486,7 +1486,7 @@ cmd_upgrade() {
   # came FROM is kept, because it is the rollback named on the next line.
   prune_old_images "$target" "$current"
 
-  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; the v${current} images are still on this host, so it needs no network; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
+  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; the v${current} images are still on this host, so it needs no network; schema stays at v${target} — full data rollback is the rehearsed provider-backup restore)"
   todo_dns "Log in at https://$(env_get COGETO_EXTERNAL_DOMAIN) and confirm the release works (version shows v${target} in the nav footer)"
   todo_now "Run 'sudo cogeto status' and confirm everything is green"
   print_checklist
@@ -1900,10 +1900,10 @@ features_enable() {
       else
         say "inbound TLS is AUTOMATIC: once the mail host A record below resolves, the edge obtains the Let's Encrypt certificate for $(derive_mx_host "$fe_domain"), it is copied into the mail service's own volume, and STARTTLS is advertised. Nothing to source, copy or renew — 'cogeto status' reports whether it is actually active and when it expires."
       fi
-      todo_now "OVHcloud DNS → mail host A record:      $(derive_mx_host "$fe_domain").  IN A  ${fe_ip}"
-      todo_now "OVHcloud DNS → inbound MX record:       $(derive_inbound_subdomain "$fe_domain").  IN MX 10  $(derive_mx_host "$fe_domain")."
-      todo_now "OVHcloud panel → set the PTR for ${fe_ip} to $(derive_mx_host "$fe_domain") once that A record resolves — senders soft-reject hosts without matching forward/reverse DNS"
-      todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 25"
+      todo_now "DNS zone → mail host A record:      $(derive_mx_host "$fe_domain").  IN A  ${fe_ip}"
+      todo_now "DNS zone → inbound MX record:       $(derive_inbound_subdomain "$fe_domain").  IN MX 10  $(derive_mx_host "$fe_domain")."
+      todo_now "Cloud provider panel → set the PTR for ${fe_ip} to $(derive_mx_host "$fe_domain") once that A record resolves — senders soft-reject hosts without matching forward/reverse DNS"
+      todo_now "If a network firewall sits in front of this IP: allow inbound TCP 25"
       todo_now "Email capture test: forward an email from a registered user's own address to ${fe_inbound} and confirm it appears in their memory"
       ;;
     redaction)
@@ -2206,16 +2206,16 @@ cmd_configure() {
 
 cmd_backup_info() {
   cat <<'INFO'
-── OVHcloud backups (roadmap D4 — configured in the OVH panel, not by this script)
+── Instance backups (roadmap D4 — configured at your cloud provider, not by this script)
 
-Cogeto v1 deliberately ships NO backup scripts: backups use OVHcloud's own
-capability, enabled per instance by the operator, and restore is a rehearsed
-manual procedure (documented in the operator runbook).
+Cogeto v1 deliberately ships NO backup scripts: backups use the provider's own
+snapshot capability, enabled per instance by the operator, and restore is a
+rehearsed manual procedure (documented in the operator runbook).
 
-Enable, in the OVHcloud control panel for THIS instance:
+Enable, in your cloud provider's control panel for THIS instance:
 
- [ ] Public Cloud → your instance → enable "Automated Backup"
-     (daily snapshot, retention ≥ 7 days). This snapshots the whole disk:
+ [ ] Automated Backup of the instance (daily snapshot, retention >= 7 days),
+     under whatever name the provider gives it. This snapshots the whole disk:
      all Docker volumes (pg-data, minio-data, qdrant-data, instance-keys,
      zitadel-machinekey, caddy-data) and /srv/cogeto (.env, compose files).
  [ ] If the instance uses attached volumes for Docker data, additionally

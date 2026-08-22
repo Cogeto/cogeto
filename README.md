@@ -132,7 +132,7 @@ terminates TLS. Facts, not raw documents, are what gets stored and searched. One
 instance is one tenant: isolation is a deployment boundary, not a row filter.
 
 All model and embedding calls go through a single **gateway seam**, with adapters for
-EU-hosted Mistral, any OpenAI-compatible endpoint, Anthropic, and a local Ollama
+Mistral, any OpenAI-compatible endpoint, Anthropic, and a local Ollama
 runtime, so inference can stay entirely on your own hardware. Which models an instance
 runs is configured **in its own interface** and stored in its own database, never in a
 configuration file the deployment ships. Every configuration is
