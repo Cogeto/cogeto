@@ -759,8 +759,6 @@ substitute a mechanical hyphen. Enforced by the `lint` check.
 - Any new dependency, framework, or the stack choice itself.
 - Any deviation from a MUST rule in the specification.
 - Git: **never run git commands unless explicitly asked.** The owner manages git.
-- **NEVER add AI attribution to any git artifact. This is strictly forbidden.** No
-  `Co-Authored-By` trailer, no "Generated with", no AI-authorship or "assisted by"
-  line in commit messages, PR titles, PR bodies, issue text, or anywhere else. All
-  commits and pull requests are authored solely by the owner, with no exceptions.
+- **Commits and pull requests are authored by the maintainer.** Git artifacts
+  carry the maintainer's identity, never a bot's.
 - Anything user-visible leaving the machine (publishing, external calls with real data).

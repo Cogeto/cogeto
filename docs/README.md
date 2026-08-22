@@ -2,6 +2,10 @@
 
 Start with whichever row matches what you are doing.
 
+This documentation covers the **software**. The binding legal documents for the
+hosted service (terms, privacy notice, subprocessors) are published at
+<https://cogeto.eu/legal>.
+
 **Authority.** [`cogeto-specification.md`](cogeto-specification.md) is the normative
 rulebook and wins on any question of what the system must do.
 

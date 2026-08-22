@@ -51,3 +51,9 @@ managed-provider/
 # directory and running `git add -A` cannot publish one by accident.
 # ─────────────────────────────────────────────
 docs/audits/
+
+# ─────────────────────────────────────────────
+# Local instruction file: rules that govern how work is done here but do not
+# belong in a public file. Never committed.
+# ─────────────────────────────────────────────
+CLAUDE.local.md

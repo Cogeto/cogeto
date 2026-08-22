@@ -159,6 +159,11 @@ logo are trademarks** and are *not* covered by the code license; see
 [`TRADEMARK.md`](TRADEMARK.md) and [`assets/brand/README.md`](assets/brand/README.md).
 Maintainership and IP: [`MAINTAINERS.md`](MAINTAINERS.md).
 
+The binding legal documents for the hosted service, including the terms, the
+privacy notice and the subprocessor list, live at <https://cogeto.eu/legal>.
+The files in this repository govern the **code**; they do not govern use of the
+hosted service.
+
 ## Contributing
 
 Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the delivery

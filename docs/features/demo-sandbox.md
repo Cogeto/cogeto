@@ -1,8 +1,8 @@
 # The Ana sandbox
 
 A pre-populated fictional world that demonstrates the **actual system**: same
-endpoints, same pipeline, same guarantees, on fictional data. It is the single artifact
-that appears in every pitch and partner conversation, so its rules are fixed.
+endpoints, same pipeline, same guarantees, on fictional data. It is the reference
+demonstration of the system, so its rules are fixed.
 
 ```sh
 COGETO_DEMO_MODE=1 docker compose --profile demo up --build
