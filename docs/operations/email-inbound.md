@@ -9,7 +9,7 @@ This note is the authority on three things: **how capture routes**, the
 **DNS, TLS and firewall requirements**, and the **local test-send**. Where
 another document mentions any of them it points here rather than restating.
 The lifecycle around it (when to turn it on, what to tell a customer) is the
-[operator runbook](../operator-runbook.md) sections 2c and 4.
+the internal operator runbook, sections 2c and 4.
 
 ---
 

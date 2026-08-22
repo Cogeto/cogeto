@@ -43,3 +43,11 @@ target/
 # project/infra/managed-provider.example.json.
 # ─────────────────────────────────────────────
 managed-provider/
+
+# ─────────────────────────────────────────────
+# Internal audit reports. An audit report is a live list of unfixed
+# weaknesses, so it is written in the working tree and never committed
+# (see docs/security/README.md). Ignored by path so recreating the
+# directory and running `git add -A` cannot publish one by accident.
+# ─────────────────────────────────────────────
+docs/audits/

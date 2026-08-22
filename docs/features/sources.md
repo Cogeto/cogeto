@@ -177,7 +177,7 @@ not bit-stable and a failed pipeline leaves a copy with nothing. A group whose
 tidying would break a stored answer is reported and **held back**, since
 deleting a cited memory redacts the answer citing it and when both copies are
 cited no survivor choice avoids that. See
-[`operator-runbook.md`](../operator-runbook.md) section 6b.
+the internal operator runbook, section 6b.
 
 Reading runs through the **reader seam**: PDF, DOCX, XLSX and CSV, selected by the
 magic bytes with the declared type and the extension as hints. A parse failure is

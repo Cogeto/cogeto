@@ -25,7 +25,7 @@
 #      the deployment artifact's outer checksum.
 #
 # The owner cuts releases by tagging; CI never creates tags. Required secrets:
-# DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (see docs/operations/cicd-setup.md).
+# DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (see the internal CI/CD setup notes).
 name: Release
 
 on:

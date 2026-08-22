@@ -12,7 +12,7 @@
 # AUTH: writing an org project needs a token with project scope — the default
 # GITHUB_TOKEN cannot. Provide a fine-grained PAT as the repo secret
 # PROJECTS_TOKEN (Organization permissions → Projects: Read and write; see
-# docs/operations/cicd-setup.md). Without the secret every step no-ops with a warning,
+# the internal CI/CD setup notes). Without the secret every step no-ops with a warning,
 # so the workflow is safe to merge before the secret exists and on fork PRs.
 name: Project automation
 
@@ -49,7 +49,7 @@ jobs:
             if (!process.env.PROJECTS_TOKEN) {
               core.warning(
                 'PROJECTS_TOKEN not set — board automation is disabled. ' +
-                'Add the secret to enable it (docs/operations/cicd-setup.md).',
+                'Add the secret to enable it (see the internal CI/CD setup notes).',
               );
               return;
             }

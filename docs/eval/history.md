@@ -2251,7 +2251,7 @@ This is the same root cause already recorded for the caching decision in
 [`docs/eval-golden-set.md`](../eval-golden-set.md) §6: retrieval returns equally
 scored facts in a different order every run, so the answer prompt differs run to
 run even when the model does not. The stable ordering tiebreak that fixes it is
-the follow-up in [`website-follow-up.md`](website-follow-up.md); until it lands,
+tracked as issue #704; until it lands,
 a red live chat gate on `main` needs a second run before it is believed, and the
 four-case coverage mean is too small a denominator to gate honestly.
 

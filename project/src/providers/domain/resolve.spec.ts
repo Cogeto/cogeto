@@ -61,7 +61,7 @@ describe('resolve: stored records become the running configuration', () => {
         }),
       ],
       assignments: [
-        assign('pipeline', 'mine', 'ff711'),
+        assign('pipeline', 'mine', 'test-model-a'),
         assign('answer', 'hosted', 'gpt-4o'),
         assign('embeddings', 'mine', 'bge-m3'),
       ],

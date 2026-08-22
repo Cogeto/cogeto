@@ -1,7 +1,7 @@
 # Upgrade notes
 
 Release-specific things an operator has to know before or after an upgrade. The
-general procedure is [`../operator-runbook.md`](../operator-runbook.md) section
+general procedure is the internal operator runbook, section
 6; this file carries only what one particular release changes about it, and a
 release with nothing to say has no entry.
 
@@ -156,4 +156,4 @@ only at verified completion. From the shell the same operation is
 worker crash-loop, which is exactly when the repair is needed.
 
 - In full: [`../features/models.md`](../features/models.md), and the operator
-  path in [`../operator-runbook.md`](../operator-runbook.md) sections 4b and 5c.
+  path in the internal operator runbook, sections 4b and 5c.

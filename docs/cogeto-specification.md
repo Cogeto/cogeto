@@ -1,6 +1,6 @@
 # Cogeto Specification
 
-**Status.** This is one rulebook for the whole system. Some rules are already live; others are 2.0 targets tracked in [`cogeto-v2-plan.md`](cogeto-v2-plan.md). A MUST the code does not yet meet is a scheduled gap, not a licence to add new violations.
+**Status.** This is one rulebook for the whole system. Some rules are already live; others are targets not yet reached. A MUST the code does not yet meet is a scheduled gap, not a licence to add new violations.
 
 The normative rules of the system. MUST marks a rule whose violation is a defect. SHOULD marks a rule that may be traded off with a recorded decision. Numeric parameters are the values in force; changing one requires a decision record and a re run of the evaluation gates.
 

@@ -164,5 +164,5 @@ Issues and pull requests are tracked on the **Cogeto** GitHub Project (v2)
 board with columns **Todo → In Progress → In Review → Done**. Automation moves
 cards: added to the board on open, **In Progress** when a linked PR opens,
 **In Review** when a PR is marked ready-for-review, and **Done** on merge or
-close. See [`docs/operations/cicd-setup.md`](operations/cicd-setup.md) for the board setup
+close. See the internal CI/CD setup notes for the board setup
 and the one-time automation toggles.

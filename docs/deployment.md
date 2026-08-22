@@ -1,10 +1,10 @@
 # Deploying Cogeto
 
-**The authoritative document for running a customer instance is the
-[operator runbook](operator-runbook.md)**, provisioning, install, DNS,
-verification, onboarding, backups with a rehearsed restore, upgrades, and
-troubleshooting, all checklist-driven. This page states the deployment *model*
-and the commands you'll want at hand.
+This page states the deployment *model* and the commands you'll want at hand.
+The operator script itself is documented in
+[`operations/operator-script.md`](operations/operator-script.md), and the
+per-task procedures (adding users, inbound email, upgrades) are in
+[`operations/`](operations/).
 
 ## First, the thing people get wrong
 

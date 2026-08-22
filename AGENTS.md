@@ -7,10 +7,9 @@ checklist before finishing. Day-to-day workflow and the doc map are in
 **Authority.** [`docs/cogeto-specification.md`](docs/cogeto-specification.md) is the
 normative rulebook: MUST marks a rule whose violation is a defect. It wins over every
 other document, and the section numbers cited below are its.
-[`docs/cogeto-v2-plan.md`](docs/cogeto-v2-plan.md) is binding for what gets built in the
-current cycle, and
 [`docs/cogeto-technical-architecture.md`](docs/cogeto-technical-architecture.md)
-describes the shape it is built in.
+describes the shape it is built in. What gets built in the current cycle is
+tracked internally, not in this repository.
 
 ## Data model (spec §1, §3, §6)
 
