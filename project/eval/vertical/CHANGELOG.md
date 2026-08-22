@@ -5,6 +5,24 @@ One line per label change, the same convention the core corpus follows
 justified in the pull request that makes it, per
 [`../../../docs/eval/gate-model.md`](../../../docs/eval/gate-model.md).
 
+## 2026-08-22, attribution travels with the excerpt
+
+No label changed and no metric moved: this is licensing metadata only.
+
+- The 11 case directories reproducing the RP2040 or RP2350 datasheet gained an
+  `ATTRIBUTION.md` naming the creator, the title, CC BY-ND 4.0 with its URI,
+  the original URL and the page range, and stating that the excerpt is not
+  under the project's AGPL licence. Attribution was recorded only in the
+  README and `documents.json` before, which does not travel with a copied case
+  directory, and CC BY-ND conditions redistribution on it doing so.
+- `entrypoints/corpus-attribution.spec.ts` derives the set needing a notice
+  from the `licence` field in `documents.json` and fails the build on a missing
+  notice, a notice missing the creator, title or licence URI, or a notice in a
+  directory reproducing nothing restricted.
+- Nothing the harness reads changed. `source.txt`, `pair.json` and
+  `expected.json` are untouched, so the cache, the gates and the published
+  numbers are unaffected.
+
 ## 2026-08-08, V2.3 item 6.4: the corpus created
 
 - 13 real public documents sourced, recorded in `documents.json` with URL,
