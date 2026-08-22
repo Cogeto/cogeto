@@ -28,7 +28,7 @@ const binding = (model: string): TierBinding => ({
 });
 
 function configuration(over: Partial<ResolvedModelProviders> = {}): ResolvedModelProviders {
-  const tier = binding('ff711');
+  const tier = binding('test-model-a');
   return {
     configured: true,
     id: 'cfg-a',
@@ -90,7 +90,7 @@ describe('provider_config_version_watch', () => {
       id: 'cfg-b',
       tiers: {
         pipeline: binding('gpt-5.6-terra'),
-        answer: binding('ff711'),
+        answer: binding('test-model-a'),
         embedding: binding('bge-m3'),
       },
       version: 2,

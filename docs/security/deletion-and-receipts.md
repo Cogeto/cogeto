@@ -88,7 +88,7 @@ verifiable receipts, each linked into the chain of the space its source
 lived in (an erasure spans the subject's spaces; each receipt joins its own
 space's chain).
 
-The operator procedure is [runbook §4d](../operator-runbook.md#4d-erasing-a-departed-users-data).
+The operator procedure is section 4d of the internal operator runbook.
 
 ## The receipt and its chain
 

@@ -4,7 +4,7 @@
 fresh Ubuntu server. These are the developer-facing
 notes; the operator-facing lifecycle documentation (per-customer onboarding,
 manual trial tracking, provider backup configuration, rehearsed restore, upgrade
-procedure) is the **[operator runbook](../operator-runbook.md)**.
+procedure) is the internal operator runbook.
 
 ## What it does
 

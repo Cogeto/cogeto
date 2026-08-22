@@ -288,8 +288,8 @@ describe('reasoning_probe', () => {
       configured: true,
       reasoningHeadroom: 4,
       tiers: {
-        pipeline: { provider: 'openai', model: 'ff711' },
-        answer: { provider: 'openai', model: 'ff711' },
+        pipeline: { provider: 'openai', model: 'test-model-a' },
+        answer: { provider: 'openai', model: 'test-model-a' },
         embedding: { provider: 'mistral', model: 'mistral-embed' },
         ...tiers,
       },
@@ -316,10 +316,10 @@ describe('reasoning_probe', () => {
       }),
       providers(),
     );
-    expect(seen).toEqual(['pipeline']); // both tiers share ff711 → one probe
+    expect(seen).toEqual(['pipeline']); // both tiers share test-model-a → one probe
     expect(result.reasoning).toBe(true);
     expect(result.probed).toBe(true);
-    expect(result.detail).toContain('openai/ff711');
+    expect(result.detail).toContain('openai/test-model-a');
     expect(result.detail).toContain('x4');
   });
 
@@ -350,7 +350,7 @@ describe('reasoning_probe', () => {
 
   it('the exhaustion error IS a reasoning observation', async () => {
     const result = await probeReasoning(
-      fake(() => Promise.reject(new ReasoningExhaustedBudgetError('ff711', 'openai', 16))),
+      fake(() => Promise.reject(new ReasoningExhaustedBudgetError('test-model-a', 'openai', 16))),
       providers(),
     );
     expect(result.reasoning).toBe(true);

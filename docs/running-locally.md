@@ -9,7 +9,7 @@ around that one command.
 > DevPassword1!` bootstrap login, which is identical on every clone. Running
 > it anywhere reachable from the internet publishes an instance with public
 > credentials. To run a real instance, use the operator script:
-> [deployment](deployment.md) and the [operator runbook](operator-runbook.md).
+> [deployment](deployment.md) and [operations](operations/).
 
 ## Prerequisites
 

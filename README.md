@@ -65,8 +65,7 @@ you point at it.
 A server instance is installed and operated with the **operator script**, which
 generates every secret locally, pulls signed images, and ends each run by
 printing exactly what you must still do yourself. See
-[deployment](docs/deployment.md) and the
-[operator runbook](docs/operator-runbook.md).
+[deployment](docs/deployment.md) and [operations](docs/operations/).
 
 ### Quickstart: on your own machine
 

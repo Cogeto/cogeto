@@ -378,11 +378,11 @@ describe('reasoning_capability', () => {
     reasoningHeadroom: 4,
     ollama: null,
     tiers: {
-      pipeline: { provider: 'openai', model: 'ff711' },
-      answer: { provider: 'openai', model: 'ff711' },
+      pipeline: { provider: 'openai', model: 'test-model-a' },
+      answer: { provider: 'openai', model: 'test-model-a' },
       embedding: { provider: 'mistral', model: 'mistral-embed' },
     },
-    vision: { provider: 'openai', model: 'ff711' },
+    vision: { provider: 'openai', model: 'test-model-a' },
   } as unknown as ResolvedModelProviders;
 
   function probedService(reasoned: boolean): {
@@ -416,7 +416,7 @@ describe('reasoning_capability', () => {
   it('a probed reasoning field reports on; plain answers report a healthy off', async () => {
     const on = await probedService(true).svc.snapshot(NOW);
     expect(byId(on, 'reasoning')).toMatchObject({ state: 'on', probed: true });
-    expect(byId(on, 'reasoning').detail).toContain('openai/ff711');
+    expect(byId(on, 'reasoning').detail).toContain('openai/test-model-a');
 
     const off = await probedService(false).svc.snapshot(NOW);
     expect(byId(off, 'reasoning')).toMatchObject({ state: 'off', probed: true });

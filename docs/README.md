@@ -4,7 +4,6 @@ Start with whichever row matches what you are doing.
 
 **Authority.** [`cogeto-specification.md`](cogeto-specification.md) is the normative
 rulebook and wins on any question of what the system must do.
-[`cogeto-v2-plan.md`](cogeto-v2-plan.md) is binding for what gets built now.
 
 ## The core documents
 
@@ -14,7 +13,6 @@ rulebook and wins on any question of what the system must do.
 | [`cogeto-specification.md`](cogeto-specification.md) | **The normative rules.** MUST is a rule whose violation is a defect; SHOULD is a tradeoff that needs a recorded reason. Carries the numeric parameters in force. |
 | [`cogeto-technical-architecture.md`](cogeto-technical-architecture.md) | How it is built: deployment, module structure, the ingestion pipeline, retrieval, access gates, the model gateway, trust machinery. |
 | [`cogeto-verified-memory.md`](cogeto-verified-memory.md) | What is stored, what is guaranteed about it, and how each guarantee is enforced. Written to be checked rather than believed. |
-| [`cogeto-v2-plan.md`](cogeto-v2-plan.md) | The plan of record for the 2.0 cycle, version by version, with priority and difficulty. |
 | [`cogeto-v2-architecture.pdf`](cogeto-v2-architecture.pdf) | The 2.0 architecture diagram. |
 
 ## Run it
@@ -23,8 +21,7 @@ rulebook and wins on any question of what the system must do.
 | --- | --- |
 | [`running-locally.md`](running-locally.md) | Run the stack on your machine: one command, where things are, common issues. |
 | [`deployment.md`](deployment.md) | The production model: pull-only signed images, the operator script, cosign verification. |
-| [`operator-runbook.md`](operator-runbook.md) | The full lifecycle of a customer instance: provision, install, verify, onboard, back up, restore, upgrade, troubleshoot. |
-| [`operations/`](operations/) | Adding users, image pins, inbound email setup, the operator script, CI/CD. |
+| [`operations/`](operations/) | Adding users, image pins, inbound email setup, the operator script, upgrade notes. |
 | [`release-process.md`](release-process.md) | How releases are cut and what each publishes. |
 
 ## How each feature behaves
@@ -56,7 +53,6 @@ and why it was built that way.
 | [`eval/history.md`](eval/history.md) | The measured quality record. |
 | [`eval/gate-model.md`](eval/gate-model.md) | Why every gate sits where it sits: the floor, the specification target, the gap, and the work that closes it. |
 | [`eval/v1-1-0-precision-drop.md`](eval/v1-1-0-precision-drop.md) | The one time a metric fell more than two points and no record was written. Written late. |
-| [`eval/website-follow-up.md`](eval/website-follow-up.md) | Follow-ups from the trust-honesty work: the retrieval tiebreak that would let the chat suite join the cached gate, and exactly what the website must add to render the new metrics. |
 | [`research/`](research/) | Anonymized engineering patterns from studied production systems. **Required reading** before implementing memory, ingestion, retrieval, agents, or pipeline code. |
 | [`design/`](design/) | The SPA's design system: palette, status vocabulary, component kit, accessibility. |
 

@@ -33,10 +33,10 @@ const binding = (model: string, endpointId: string, apiKey = 'k'): TierBinding =
 });
 
 function configuration(over: Partial<ResolvedModelProviders> = {}): ResolvedModelProviders {
-  const tier = binding('ff711', 'mine');
+  const tier = binding('test-model-a', 'mine');
   return {
     configured: true,
-    id: 'pipe-openai-ff711--ans-openai-ff711--emb-openai-bge-m3',
+    id: 'pipe-openai-test-model-a--ans-openai-test-model-a--emb-openai-bge-m3',
     preset: null,
     tiers: { pipeline: tier, answer: tier, embedding: binding('bge-m3', 'mine') },
     vision: null,
@@ -80,8 +80,8 @@ describe('live_configuration: one object, mutated in place', () => {
     const live = new LiveModelConfiguration(configuration());
     const rotated = configuration({
       tiers: {
-        pipeline: binding('ff711', 'mine', 'rotated'),
-        answer: binding('ff711', 'mine', 'rotated'),
+        pipeline: binding('test-model-a', 'mine', 'rotated'),
+        answer: binding('test-model-a', 'mine', 'rotated'),
         embedding: binding('bge-m3', 'mine', 'rotated'),
       },
     });
@@ -100,8 +100,8 @@ describe('reloading_gateway: the stack follows the configuration', () => {
     live.replace(
       configuration({
         tiers: {
-          pipeline: binding('ff711', 'mine'),
-          answer: binding('ff711', 'mine'),
+          pipeline: binding('test-model-a', 'mine'),
+          answer: binding('test-model-a', 'mine'),
           embedding: binding('bge-m3-v2', 'mine'),
         },
       }),

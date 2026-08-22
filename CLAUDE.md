@@ -13,7 +13,6 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 | Doc | Read it when |
 |---|---|
 | [`docs/cogeto-specification.md`](docs/cogeto-specification.md) | **The normative rules.** MUST is a rule whose violation is a defect. Wins over every other doc. Cited as spec §N. |
-| [`docs/cogeto-v2-plan.md`](docs/cogeto-v2-plan.md) | **Before any 2.0 work. BINDING.** The complete 2.0 plan, version by version, with priority and difficulty. |
 | [`docs/cogeto-technical-architecture.md`](docs/cogeto-technical-architecture.md) | How it is built: deployment, module structure, the pipeline, access gates, the model gateway, trust machinery. |
 | [`docs/module-boundary-contract.md`](docs/module-boundary-contract.md) | **Before adding a table, a job type, a DI token, or a module, and before making one global. BINDING.** Which module owns what, the global-module policy, what enforces each rule, and every recorded exception with the part that closes it. |
 | [`docs/cogeto-verified-memory.md`](docs/cogeto-verified-memory.md) | What is stored, what is guaranteed, and how each guarantee is enforced. |
@@ -27,7 +26,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 | [`project/eval/vertical/README.md`](project/eval/vertical/README.md) + [`docs/eval/vertical-corpus-diagnostic.md`](docs/eval/vertical-corpus-diagnostic.md) | **The document corpus and what real documents did to the pipeline.** Read before changing ingestion, anchoring, the reader seam or the quantity parser. |
 | [`docs/research/*.md`](docs/research/) | **Required before implementing the matching area.** See the table in `docs/research/README.md`. |
 | [`docs/cogeto-scope.md`](docs/cogeto-scope.md) | What Cogeto is, who it is for, what is in and out of scope, licensing. |
-| [`docs/operator-runbook.md`](docs/operator-runbook.md) + [`docs/operations/`](docs/operations/) | Running a customer instance. |
+| [`docs/operations/`](docs/operations/) | Running an instance: users, inbound email, the operator script, upgrade notes. The full customer-instance runbook is internal. |
 | `project/README.md` + per-directory READMEs | Orientation: what lives there, allowed dependencies, the specification rules that govern it. |
 
 ## Repo shape
@@ -557,7 +556,7 @@ the stored `owner_id` alone: nothing on the path resolves the subject against
 Zitadel, which is the point, since the state it exists for is the one where
 that lookup fails. Read
 [`docs/security/deletion-and-receipts.md`](docs/security/deletion-and-receipts.md)
-and [operator runbook §4d](docs/operator-runbook.md) before changing anything
+and section 4d of the internal operator runbook before changing anything
 near it. In the same wave the **activity trail became administrative only**
 (issue #633): content was always owner-gated, but the actions were not, so any
 member could enumerate who did what to whose material by identifier.

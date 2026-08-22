@@ -102,4 +102,4 @@ remove and what it would keep before you commit, and asks you to type the
 person's email address to confirm.
 
 The procedure, including what it deliberately keeps, is in the
-[operator runbook §4d](../operator-runbook.md#4d-erasing-a-departed-users-data).
+section 4d of the internal operator runbook.

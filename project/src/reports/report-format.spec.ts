@@ -162,7 +162,7 @@ describe('trust score lookup', () => {
   it('report_trust_lookup_honest_miss: an unmeasured configuration states not_published', async () => {
     const result = await readTrustScoresFor(
       trustDir,
-      'pipe-openai-ff711--ans-openai-ff711--emb-openai-bge-m3',
+      'pipe-openai-test-model-a--ans-openai-test-model-a--emb-openai-bge-m3',
     );
     expect(result.status).toBe('not_published');
     expect(result.aggregate).toBeNull();
