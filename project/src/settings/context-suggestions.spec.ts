@@ -107,14 +107,14 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
 
   it('proposes a confirmed, single-valued company with its newest source', async () => {
     rows = [
-      memoryOf(MEM_A, 'I work at MVT Solutions as of this spring.', 5),
-      memoryOf(MEM_B, 'Met Marko; I work at MVT Solutions on the CRM rollout.', 2),
+      memoryOf(MEM_A, 'I work at Vela Consulting as of this spring.', 5),
+      memoryOf(MEM_B, 'Met Marko; I work at Vela Consulting on the CRM rollout.', 2),
     ];
     const suggestions = await service.suggestions(owner);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]).toMatchObject({
       field: 'company',
-      value: 'MVT Solutions',
+      value: 'Vela Consulting',
       sourceMemoryId: MEM_B, // newest supporting memory is the shown source
       sourceLabel: 'note',
     });
@@ -123,13 +123,13 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
   it('suggestion_conservative: conflicting or unconfirmed evidence proposes nothing', async () => {
     // Two distinct companies → no candidate, no model call for the field.
     rows = [
-      memoryOf(MEM_A, 'I work at MVT Solutions.'),
+      memoryOf(MEM_A, 'I work at Vela Consulting.'),
       memoryOf(MEM_B, 'I work at Adriatic Foods.'),
     ];
     expect(await service.suggestions(owner)).toEqual([]);
 
     // One candidate, but the confirmation pass rejects it → nothing.
-    rows = [memoryOf(MEM_A, 'I work at MVT Solutions.')];
+    rows = [memoryOf(MEM_A, 'I work at Vela Consulting.')];
     gateway.verdict = { company: { confirmed: false }, role_title: null };
     expect(await service.suggestions(owner)).toEqual([]);
 
@@ -140,10 +140,10 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
   });
 
   it('suggestion_provenance: accepting records which memory suggested the value', async () => {
-    await contextService.applySuggestion(owner, 'company', 'MVT Solutions', MEM_B);
+    await contextService.applySuggestion(owner, 'company', 'Vela Consulting', MEM_B);
 
     const row = await contextService.get(owner.userId);
-    expect(row.company).toBe('MVT Solutions');
+    expect(row.company).toBe('Vela Consulting');
     expect(row.companySourceMemoryId).toBe(MEM_B);
 
     const mine = await readAuditEntries(tdb.db, {
@@ -159,7 +159,7 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
   });
 
   it('suggestion_respects_user: set or dismissed values are never overridden or re-proposed', async () => {
-    rows = [memoryOf(MEM_A, 'I work at MVT Solutions.')];
+    rows = [memoryOf(MEM_A, 'I work at Vela Consulting.')];
 
     // An explicit user value: the field is set, so it is never re-derived.
     await contextService.update(owner, { company: 'Handwritten Ltd' });
@@ -170,7 +170,7 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
 
     // Cleared again + dismissed: the same value never returns.
     await contextService.update(owner, { company: null });
-    await contextService.dismissSuggestion(owner, 'company', 'MVT Solutions');
+    await contextService.dismissSuggestion(owner, 'company', 'Vela Consulting');
     expect(await service.suggestions(owner)).toEqual([]);
 
     // A user edit also clears an earlier suggestion provenance.

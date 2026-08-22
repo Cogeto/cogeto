@@ -110,7 +110,7 @@ recorded permanently in the repository, and you're never asked again.
 [`CLA.md`](CLA.md): that one does go through email, deliberately.)
 
 The plain reason a CLA exists at all: Cogeto's core is **AGPLv3**, and the
-company behind it (MVT Solutions Group d.o.o.) also offers **commercial
+company behind it (MCTO Advisory d.o.o.) also offers **commercial
 licenses** to organizations that cannot accept AGPL terms, that
 dual-licensing is what funds the open core. Legally, we can only offer your
 contribution under both licenses if you grant us that permission; that is all

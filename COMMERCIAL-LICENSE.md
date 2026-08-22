@@ -4,7 +4,7 @@ Cogeto is dual‑licensed.
 
 By default, Cogeto is released as open source under the **GNU Affero General Public License v3.0 (AGPLv3)**. See [`LICENSE`](LICENSE). You are free to use, modify, and self‑host Cogeto under those terms, which include the obligation to make the complete corresponding source available to users who interact with the software over a network.
 
-For organizations that cannot operate under the AGPL, a **separate commercial license (an AGPL exemption)** is available from the copyright holder, **MVT Solutions Group d.o.o.** (the "Maintainer"). This page explains when you need one and how to obtain it.
+For organizations that cannot operate under the AGPL, a **separate commercial license (an AGPL exemption)** is available from the copyright holder, **MCTO Advisory d.o.o.** (the "Maintainer"). This page explains when you need one and how to obtain it.
 
 ---
 
@@ -48,8 +48,8 @@ Cogeto contributors sign a **Contributor License Agreement** (see [`CLA.md`](CLA
 
 Contact the Maintainer to discuss terms:
 
-> **MVT Solutions Group d.o.o.**
-> Podolje 11A, 10000 Zagreb, Croatia
+> **MCTO Advisory d.o.o.**
+> Bregana Pisarovinska 37, 10451 Bregana Pisarovinska, Croatia
 > **Email:** legal@cogeto.eu
 
 To help us propose appropriate terms quickly, please include:
@@ -64,4 +64,4 @@ We will respond with a proposal tailored to your use. Commercial terms are negot
 
 ---
 
-*Cogeto and the Cogeto logo are trademarks of MVT Solutions Group d.o.o. All rights reserved. The AGPLv3 text governs open‑source use and prevails over any informal summary on this page.*
+*Cogeto and the Cogeto logo are trademarks of MCTO Advisory d.o.o. All rights reserved. The AGPLv3 text governs open‑source use and prevails over any informal summary on this page.*

@@ -16,7 +16,7 @@ import { REWRITE_TIMEOUT_MS } from './retrieval-config';
  * chrono resolver, never by the model. Any failure → default mode ('personal'
  * question class — the memory-question path), never an error.
  */
-export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0006' } as const;
+export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0007' } as const;
 
 export interface ConversationTurn {
   role: 'user' | 'assistant';

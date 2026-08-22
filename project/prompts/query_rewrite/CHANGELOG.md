@@ -6,6 +6,20 @@ self-contained search query + entity list, so multi-turn questions ("who is
 she?") retrieve their referent. Runs on the pipeline tier, bounded, with a
 graceful fallback to the raw query on timeout/error.
 
+## v0007 - 2026-08-22 (legal cleanup, no instruction change)
+
+The USER CONTEXT few-shot named a real third-party company. v0007 is v0006 with
+that name replaced by the fictional "Vela Consulting" in the context line and in
+the expected rewrite and entity list, plus the possessive corrected to read
+"Vela Consulting's". No rule, format or classification changes, and the case
+still exercises exactly what it did: USER CONTEXT resolves "my company". A new
+version for the same reason recorded in the answer family's v0010 entry: the
+boot-time content-hash check makes an in-place edit of a registered version
+fail the boot.
+
+The retired v0005 and v0006 carry the same replacement in place; neither is
+loaded once this version is active.
+
 ## v0006 — 2026-07-28 (V2.0 item 3.1 — task removal)
 
 Open loops are memory-backed (decision 0060), and the rewriter is the one

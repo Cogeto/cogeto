@@ -1,6 +1,6 @@
 # Trademark Policy
 
-The **"Cogeto"** name and the Cogeto **logo** (the "Marks") are trademarks of **MVT Solutions Group d.o.o.**, Podolje 11A, 10000 Zagreb, Croatia (the "Maintainer"). The Maintainer uses and claims these as trademarks and **intends to register them, with the European Union Intellectual Property Office (EUIPO) first**, and in other priority markets thereafter.
+The **"Cogeto"** name and the Cogeto **logo** (the "Marks") are trademarks of **MCTO Advisory d.o.o.**, Bregana Pisarovinska 37, 10451 Bregana Pisarovinska, Croatia (the "Maintainer"). The Maintainer uses and claims these as trademarks and **intends to register them, with the European Union Intellectual Property Office (EUIPO) first**, and in other priority markets thereafter.
 
 Until registration is granted, the Marks are used with the **™** symbol; the **®** symbol will be used only in jurisdictions where the relevant Mark is registered.
 
@@ -39,7 +39,7 @@ If you need brand rights beyond the nominative use described above, for example 
 
 For trademark permissions or questions, contact the Maintainer:
 
-> **MVT Solutions Group d.o.o.**
+> **MCTO Advisory d.o.o.**
 > **Email:** legal@cogeto.eu
 
 The Maintainer may update this policy from time to time. This policy is not legal advice, and nothing in it limits any rights the Maintainer holds under applicable trademark or unfair‑competition law.

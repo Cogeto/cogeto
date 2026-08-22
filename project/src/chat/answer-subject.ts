@@ -11,7 +11,7 @@ import type { AmbiguityDecisionDto } from '@cogeto/shared';
  * `chat_message.ambiguity` for diagnostics and then dropped before the answer
  * call. This reads it back out.
  *
- * Design: docs/features/ambiguity.md and the prompt artifact answer/v0009.
+ * Design: docs/features/ambiguity.md and the prompt artifact answer/v0010.
  */
 
 /**
@@ -74,7 +74,7 @@ function subjectNamedThisTurn(decision: AmbiguityDecisionDto | null): string | n
  *    the last thing the conversation was about is the working assumption. The
  *    prompt renders it as carried over, so the answerer treats it as
  *    correctable rather than as something the user just said.
- * 3. **Nothing.** No subject line is emitted, and answer/v0009 tells the model
+ * 3. **Nothing.** No subject line is emitted, and answer/v0010 tells the model
  *    to choose from the question and facts AND to say which subject it chose.
  *    Silence here is honest; a guess dressed as a decision is not.
  */

@@ -275,7 +275,7 @@ place** so no surface invents its own phrasing:
    model knowledge.
 2. Context is **never presented as remembered**. "Where do I work?" answers from
    memory with citations when memory covers it, because facts always win. When only
-   the settings know, the answer names its origin in words ("You've set MVT Solutions
+   the settings know, the answer names its origin in words ("You've set Vela Consulting
    as your company in Settings"), with no chip and never a fabricated citation.
 3. **Absent context is invisible.** With nothing set, behaviour is exactly what it
    was before the feature existed, and the model never remarks on unset fields.
