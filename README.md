@@ -4,20 +4,47 @@
 
 # Cogeto
 
-Cogeto turns your documents into **verified, provable institutional memory**: it
-reads document sets including scans, verifies every fact against its own source
-sentence before storing it, reports where your documents contradict each other, and
-produces a signed findings report a third party can verify. Runs EU hosted, self
-hosted, or fully offline. Open source under **AGPLv3**.
+You know that feeling. Where did I read that? Which version is the real one? What
+did we agree to? Everything you know is written down somewhere, you cannot find it,
+and half of it quietly disagrees with the other half. We think this is the biggest
+unsolved problem in how people work.
 
-Every trust claim is backed by an **inspectable artifact**: a signed receipt, a
-verification verdict, a validity interval, a source link. Never just a promise. It is
-single-tenant by design and model-sovereign, with an optional local redaction tier so
-PII never leaves your machine.
+Cogeto is memory that earns your trust. It reads your documents, checks every fact
+against its source, shows you where your files contradict each other, and points
+every answer to the exact line it came from. It runs on your machine, in Europe, or
+fully offline. Open source, and your own tools and agents can query the same
+verified memory over its API, with direct connectors for Claude and ChatGPT next on
+the roadmap. For researchers, teams and companies who want their knowledge to
+compound instead of evaporate.
 
 > **Models are rented. Knowledge is owned.**
 
+## Who it is for
+
+- **Researchers and analysts** working a literature or evidence base that has grown
+  past what one person can hold. Every claim keeps its citation, superseded findings
+  keep their history, and where two papers disagree you are told rather than handed
+  whichever one the model saw last.
+- **Teams** whose decisions live scattered across specifications, mail, minutes and
+  scans. The corpus is reconciled against itself, so the contradiction surfaces
+  before it reaches a customer.
+- **Companies under an audit or quality obligation**, who need not just the answer
+  but the artifact: a signed findings report a third party can verify, and deletion
+  that proves itself.
+
+The common thread is that none of them can afford an answer that sounds right. The
+whole design follows from that.
+
 ## What makes it different
+
+Precisely: Cogeto turns document sets into **verified, provable institutional
+memory**. It reads them including scans, verifies every fact against its own source
+sentence before storing it, reports where documents contradict each other, and
+produces a signed findings report a third party can verify. Every trust claim is
+backed by an **inspectable artifact**: a signed receipt, a verification verdict, a
+validity interval, a source link. Never just a promise. It is single-tenant by
+design and model-sovereign, with an optional local redaction tier so PII never
+leaves your machine. Open source under **AGPLv3**.
 
 - **Contradiction findings.** Every new fact is reconciled against everything already
   known, across the whole corpus: the specification against the mail against the
@@ -104,6 +131,19 @@ per-instance secret into a `600` `.env`, brings the stack up, and prints the DNS
 records, backup settings and verification steps it cannot do for you. Full
 procedure, including backups and upgrades:
 [docs/deployment.md](docs/deployment.md).
+
+### Or let us run it: my.cogeto.eu
+
+A **managed instance** at [my.cogeto.eu](https://my.cogeto.eu): the same single-tenant
+deployment, operated for you. No install script, no server to keep patched. Updates
+and security fixes land as they ship, model providers arrive configured and tuned
+rather than as an empty form, and backups with a rehearsed restore are somebody
+else's job. EU hosted.
+
+Self-hosting is not the lesser path and never becomes one: it is the same code under
+the same licence, and everything above works without us. The managed instance is for
+people who would rather spend the afternoon on their documents than on a VM. Terms
+for the hosted service are at [cogeto.eu/legal](https://cogeto.eu/legal).
 
 ### The Ana sandbox
 

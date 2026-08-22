@@ -2,8 +2,17 @@
   "name": "cogeto",
   "version": "1.10.1",
   "private": true,
-  "description": "Verified institutional memory for your documents: verification before storage, contradiction findings, a signed findings report",
+  "description": "The end of institutional amnesia. For researchers, teams and audited companies, Cogeto makes a document set into memory you can prove: source-verified facts, contradictions reported, findings signed. Models are rented. Knowledge is owned.",
   "license": "AGPL-3.0-only",
+  "author": "MCTO Advisory d.o.o. <hi@cogeto.eu> (https://cogeto.eu)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cogeto/cogeto.git"
+  },
+  "homepage": "https://cogeto.eu",
+  "bugs": {
+    "url": "https://github.com/Cogeto/cogeto/issues"
+  },
   "engines": {
     "node": ">=24"
   },

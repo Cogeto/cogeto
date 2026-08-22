@@ -4,6 +4,16 @@
   "private": true,
   "description": "DTOs and enums shared between the Cogeto backend and frontend",
   "license": "AGPL-3.0-only",
+  "author": "MCTO Advisory d.o.o. <hi@cogeto.eu> (https://cogeto.eu)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cogeto/cogeto.git",
+    "directory": "project/shared"
+  },
+  "homepage": "https://cogeto.eu",
+  "bugs": {
+    "url": "https://github.com/Cogeto/cogeto/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

@@ -264,7 +264,7 @@ check_dry_run_install() {
   assert_contains "$log" 'WHAT YOU MUST DO NOW' 'the run ends with the operator checklist'
   assert_contains "$log" "app A record:      ${SMOKE_DOMAIN}." 'the checklist names the app A record with the real domain'
   assert_contains "$log" "s3.${SMOKE_DOMAIN}." 'the checklist names the presign-origin A record'
-  assert_contains "$log" 'Automated Backup' 'the checklist names the backup the script cannot enable itself'
+  assert_contains "$log" 'enable automated instance backups' 'the checklist names the backup the script cannot enable itself'
   assert_contains "$log" 'operator vault' 'the checklist names the vault step'
   # The step that replaced the dead model-key step (F2). It must name the place
   # the configuration actually lives.
