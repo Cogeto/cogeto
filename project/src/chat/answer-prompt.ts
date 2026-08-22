@@ -15,7 +15,7 @@ import type { OpenLoop, RetrievalMode } from '../retrieval/index';
  * The answer prompt family (spec §12.3): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0009' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0010' } as const;
 
 /** A transient attachment's contribution to the answer input (V2.2 item 5.1). */
 export interface AnswerAttachment {

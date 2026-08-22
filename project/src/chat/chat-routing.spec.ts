@@ -114,7 +114,7 @@ describe('routing_matrix', () => {
     expect(TEMPORAL_HINT_RE.test('what did we previously decide about the platform?')).toBe(true);
     expect(TEMPORAL_HINT_RE.test('when is the workshop?')).toBe(false);
     expect(OPEN_LOOPS_HINT_RE.test('što je još otvoreno oko Adriatic Foodsa?')).toBe(true);
-    // To-do wording still reaches the open-loops path (query_rewrite/v0006)
+    // To-do wording still reaches the open-loops path (query_rewrite/v0007)
     // it is how people ask, not the name of a feature.
     expect(OPEN_LOOPS_HINT_RE.test("what's on my to-do list?")).toBe(true);
     expect(OPEN_LOOPS_HINT_RE.test('koji su mi zadaci otvoreni?')).toBe(true);

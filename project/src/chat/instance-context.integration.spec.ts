@@ -132,7 +132,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     await userContext.update(owner, {
       displayName: 'Ivan',
       roleTitle: 'CTO',
-      company: 'MVT Solutions',
+      company: 'Vela Consulting',
       timezone: 'America/Los_Angeles',
     });
     gateway.structured = [rewriteOf('What is due for the migration?')];
@@ -155,7 +155,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
       expect(input).not.toContain('(Europe/Zagreb)');
     }
     // The profile, phrased plainly, reaches the answer input.
-    expect(answerInput).toContain('The user is Ivan, CTO at MVT Solutions.');
+    expect(answerInput).toContain('The user is Ivan, CTO at Vela Consulting.');
     // The rewriter gets context but no LANGUAGE line (its output is JSON).
     expect(rewriterInput).toContain('USER CONTEXT');
     expect(rewriterInput).not.toContain('LANGUAGE:');
@@ -182,16 +182,16 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
   });
 
   it('context_not_cited: a settings-grounded answer stores no citation; memory still cites', async () => {
-    await userContext.update(owner, { company: 'MVT Solutions' });
+    await userContext.update(owner, { company: 'Vela Consulting' });
 
     // No facts on record: with profile context set, the model answers (the
     // zero-retrieval constant would hide the honest settings phrasing).
     gateway.structured = [rewriteOf('Where do I work?')];
-    gateway.streamText = 'You have set MVT Solutions as your company in Settings.';
+    gateway.streamText = 'You have set Vela Consulting as your company in Settings.';
     nextMemories = [];
     const settingsEvents = await collect(chat.ask(owner, 'Where do I work?', conversationId));
     const settingsDone = doneOf(settingsEvents);
-    expect(settingsDone.content).toContain('MVT Solutions');
+    expect(settingsDone.content).toContain('Vela Consulting');
     expect(settingsDone.content).not.toContain('{{cite:');
     expect(settingsDone.citationViolations).toBe(0);
 

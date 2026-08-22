@@ -35,8 +35,8 @@ describe('buildContextBlock', () => {
     expect(block).not.toMatch(/company/i);
     expect(block).not.toMatch(/USER CONTEXT/);
 
-    const partial = formatUserContext(record({ company: 'MVT Solutions' }));
-    expect(partial).toBe('The user works at MVT Solutions.');
+    const partial = formatUserContext(record({ company: 'Vela Consulting' }));
+    expect(partial).toBe('The user works at Vela Consulting.');
     expect(partial).not.toMatch(/name|role|about/i);
   });
 
@@ -45,7 +45,7 @@ describe('buildContextBlock', () => {
       record({
         displayName: 'Ivan',
         roleTitle: 'CTO',
-        company: 'MVT Solutions',
+        company: 'Vela Consulting',
         aboutWork: 'fractional CTO work for industrial SMEs',
       }),
       NOW,
@@ -53,7 +53,7 @@ describe('buildContextBlock', () => {
     );
     expect(block).toContain(
       "USER CONTEXT (from the user's settings, not from memory — never cite): " +
-        'The user is Ivan, CTO at MVT Solutions. ' +
+        'The user is Ivan, CTO at Vela Consulting. ' +
         'About their work: fractional CTO work for industrial SMEs',
     );
   });

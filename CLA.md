@@ -1,9 +1,9 @@
 # Cogeto Contributor License Agreement (CLA)
 
 **Project:** Cogeto
-**Steward / Licensee:** MVT Solutions Group d.o.o., a limited liability company (*društvo s ograničenom odgovornošću*) established under the laws of the Republic of Croatia, with its registered office at Podolje 11A, 10000 Zagreb, Croatia; court register number (MBS) 081063617; company registration number (MB) 04642244; VAT ID HR85300439344 (together with its successors and assigns, **"Cogeto"**, **"We"**, or **"Us"**).
-**Version:** 1.0
-**Effective date of this version:** 1 July 2026
+**Steward / Licensee:** MCTO Advisory d.o.o., a limited liability company (*društvo s ograničenom odgovornošću*) established under the laws of the Republic of Croatia, with its registered office at Bregana Pisarovinska 37, 10451 Bregana Pisarovinska, Croatia; court register number (MBS) 081690324 (Commercial Court in Zagreb); company registration number (MB) 06211399; VAT ID HR74348605691 (together with its successors and assigns, **"Cogeto"**, **"We"**, or **"Us"**).
+**Version:** 1.1
+**Effective date of this version:** 22 August 2026
 
 ---
 

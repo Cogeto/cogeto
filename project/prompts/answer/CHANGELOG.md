@@ -4,6 +4,22 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0010 - 2026-08-22 (legal cleanup, no instruction change)
+
+The USER CONTEXT example named a real third-party company. v0010 is v0009 with
+that one token replaced by the fictional "Vela Consulting", matching the house
+convention for sample entities (Adriatic Foods, Velum Industrial). Nothing else
+differs: no rule, no format, no instruction, no section. A new version rather
+than an edit because spec 12.3 makes a released family immutable and the worker
+enforces it by content hash at boot, so an in-place edit would fail the boot of
+every instance that already registered v0009.
+
+The retired versions v0006, v0007, v0008 and v0009 carry the same replacement,
+applied in place. They are never loaded or re-registered (only the active refs in
+`ingestion/prompt-versions.ts`, `ANSWER_PROMPT` and the four chat refs are), so
+no instance can observe the change, and leaving a third party's name in a
+published artifact was the thing being fixed.
+
 ## v0008 — 2026-08-05 (V2.2 item 5.1 — chat-centric capture)
 
 Transient chat attachments. A new optional `ATTACHED FILES` block carries the
