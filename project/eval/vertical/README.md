@@ -89,7 +89,7 @@ licence that permits redistribution of the work in whole or in part:
 |---|---|
 | Commission Decision 2011/833/EU (EUR-Lex and TED reuse, with source acknowledged) | the MDR, its amending act, both tender notices |
 | Work of the United States Government, 17 U.S.C. section 105 | NIST SP 800-171 r2 and r3, NBS SP 250-3 |
-| CC BY-ND 4.0, which grants reproduction and sharing **in whole or in part** | the RP2040 and RP2350 datasheets |
+| CC BY-ND 4.0, which grants reproduction and sharing **in whole or in part**, on condition the attribution travels with the material | the RP2040 and RP2350 datasheets |
 | Not subject to copyright: Zakon o autorskom pravu i srodnim pravima (NN 111/21) article 18(3), official texts published for official public information | both Narodne novine regulations |
 
 A document whose licence did not permit an excerpt would have been referenced by
@@ -106,6 +106,28 @@ Ltd, licensed CC BY-ND 4.0. EUR-Lex and TED content, copyright European Union,
 reused under Decision 2011/833/EU; only EU legislation printed in the paper
 edition of the Official Journal is deemed authentic.
 
+**The attribution travels with the excerpt, not only with this page.** Every
+case directory that reproduces a document whose licence conditions
+redistribution on attribution carries an `ATTRIBUTION.md` beside the file that
+reproduces it: the creator, the title, the licence with its URI, a link back to
+the original, and the page range the excerpt came from. Two things make the
+per-directory copy worth the duplication. A licence that requires attribution
+requires it to reach whoever receives the material, and a case directory is
+copied, quoted and read on its own far more often than this README is. And this
+repository declares `AGPL-3.0-only`, so absent a notice a reader would
+reasonably take a third party's datasheet for AGPL material; it is not, and
+nothing here can relicense it.
+
+Which documents need one is derived from the `licence` field in
+`documents.json`, never from a list, and
+`entrypoints/corpus-attribution.spec.ts` fails the build when a case
+reproducing such a document has no notice, when a notice omits the creator, the
+title or the licence URI, or when a notice sits in a directory that reproduces
+nothing restricted. Adding a case from a new attribution-required document
+therefore cannot land without its notice. The notice file is inert to the
+harness, which reads `source.txt` and `expected.json` from a case directory and
+ignores everything else, so it is legal metadata and never model input.
+
 ## Layout
 
 ```
@@ -117,6 +139,8 @@ project/eval/vertical/
   CHANGELOG.md       one line per label change
   cases/             THE CORPUS THE HARNESS LOADS
     en/  hr/  xl/    extraction cases and pair cases
+                     a case reproducing an attribution-required document
+                     also carries ATTRIBUTION.md, inert to the harness
   authority/         authored, PENDING, deliberately outside cases/
 ```
 
