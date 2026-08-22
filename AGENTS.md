@@ -219,11 +219,10 @@ before adding any of them, or before making a module global.
 ## Working rules
 
 - [ ] **Never run git commands unless the owner explicitly asks.**
-- [ ] **Commits and pull requests are always authored as the owner**, Ivan Golubic
-      `<ivan@themrcto.com>`. Never a bot identity, never a `Co-authored-by` trailer,
-      never an AI-authorship or "generated with" line in any git artifact. Issue,
-      branch, and pull-request operations go through `gh` as the owner. Delivery
-      loop: [`docs/engineering-workflow.md`](docs/engineering-workflow.md).
+- [ ] **Commits and pull requests are authored by the maintainer**, Ivan Golubic
+      `<ivan@themrcto.com>`, never a bot identity. Issue, branch, and
+      pull-request operations go through `gh` as the maintainer. Delivery loop:
+      [`docs/engineering-workflow.md`](docs/engineering-workflow.md).
 - [ ] Application tests live under `project/src/`, next to the code they exercise
       (Vitest).
 - [ ] New dependencies, frameworks, and the specification deviations need owner sign-off

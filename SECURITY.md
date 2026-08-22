@@ -19,13 +19,14 @@ Croatian are both fine.
 
 ## What to expect
 
-- **Acknowledgement within 3 business days**, from a human.
-- We triage, keep you informed of progress, and aim to ship a fix for
-  confirmed vulnerabilities **within 90 days** (faster for anything actively
-  dangerous). Coordinated disclosure: we ask you to hold public details until
-  a fix is released; we'll credit you in the release notes unless you prefer
-  otherwise. There is currently no bug bounty, and we would rather say so plainly
-  than imply one. Reports are genuinely valued and acted on.
+A human reads every report, triages it, and keeps you informed of progress.
+We practise coordinated disclosure: we ask you to hold public details until a
+fix is released, and we credit you in the release notes unless you prefer
+otherwise. There is currently no bug bounty, and we would rather say so plainly
+than imply one. Reports are genuinely valued and acted on.
+
+The formal policy, including response and remediation terms, is published at
+<https://cogeto.eu/legal>.
 
 ## Scope
 

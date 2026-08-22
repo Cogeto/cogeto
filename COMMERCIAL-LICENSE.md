@@ -64,4 +64,4 @@ We will respond with a proposal tailored to your use. Commercial terms are negot
 
 ---
 
-*Cogeto and the Cogeto logo are trademarks of MCTO Advisory d.o.o. All rights reserved. The AGPLv3 text governs open‑source use and prevails over any informal summary on this page.*
+*Cogeto and the Cogeto logo are trademarks of MCTO Advisory d.o.o. All rights reserved. The AGPLv3 text governs open‑source use and prevails over any informal summary on this page. Terms for the hosted service are published separately at <https://cogeto.eu/legal>.*
