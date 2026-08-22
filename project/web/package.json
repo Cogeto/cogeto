@@ -4,6 +4,16 @@
   "private": true,
   "description": "Cogeto chat + dashboard SPA (static build served by Caddy)",
   "license": "AGPL-3.0-only",
+  "author": "MCTO Advisory d.o.o. <hi@cogeto.eu> (https://cogeto.eu)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cogeto/cogeto.git",
+    "directory": "project/web"
+  },
+  "homepage": "https://cogeto.eu",
+  "bugs": {
+    "url": "https://github.com/Cogeto/cogeto/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -2,8 +2,18 @@
   "name": "@cogeto/server",
   "version": "0.1.0",
   "private": true,
-  "description": "Cogeto modular monolith — app and worker entrypoints over DDD bounded contexts",
+  "description": "Cogeto modular monolith: app and worker entrypoints over DDD bounded contexts",
   "license": "AGPL-3.0-only",
+  "author": "MCTO Advisory d.o.o. <hi@cogeto.eu> (https://cogeto.eu)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cogeto/cogeto.git",
+    "directory": "project/src"
+  },
+  "homepage": "https://cogeto.eu",
+  "bugs": {
+    "url": "https://github.com/Cogeto/cogeto/issues"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests"
