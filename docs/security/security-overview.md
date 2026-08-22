@@ -37,7 +37,7 @@ rest:
 |---|---|---|
 | Data is provably deleted | Deletion saga + hash-chained signed receipts + nightly integrity sweep. Every content-bearing table is in the cascade, including the suppressed-fact log added in V2.0 item 3.3 | [deletion-and-receipts](deletion-and-receipts.md) |
 | Every claim traces to a source | NOT-NULL provenance + admission checkpoint + orphan detection | [provenance-and-integrity](provenance-and-integrity.md) |
-| Data stays in the instance | Single model seam, EU-hosted provider, optional fail-closed redaction | [data-sovereignty-and-redaction](data-sovereignty-and-redaction.md) |
+| Data stays in the instance | Single model seam, provider of your choosing, optional fail-closed redaction | [data-sovereignty-and-redaction](data-sovereignty-and-redaction.md) |
 | Agents never act unilaterally | Server-side approval state machine; execution is worker-only | [agent-approval-gate](agent-approval-gate.md) |
 | Users see only what they should | Single-tenant boundary + `own OR shared` scope gate + OIDC auth | [isolation-and-access](isolation-and-access.md) |
 | Forged email cannot inject memory | Envelope-based routing gated on SPF | [inbound-email-anti-spoofing](inbound-email-anti-spoofing.md) |

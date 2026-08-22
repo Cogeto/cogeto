@@ -135,7 +135,7 @@ describe('operator script — CLI contract', () => {
     expect(out).toContain('NOTHING IS RUNNING');
   });
 
-  it('backup-info prints the OVHcloud settings (D4) and performs nothing', () => {
+  it('backup-info prints the provider backup settings (D4) and performs nothing', () => {
     const { status, out } = runScript(['backup-info']);
     expect(status).toBe(0);
     expect(out).toContain('Automated Backup');
@@ -207,11 +207,11 @@ describe('operator script — install --check dry run', () => {
     // point real mail at something that is not there. What is on the checklist
     // is how to turn it on.
     expect(out).not.toContain('IN MX 10');
-    expect(out).not.toContain('Edit the reverse');
+    expect(out).not.toContain('reverse DNS (PTR)');
     expect(out).toContain('Email capture is OFF on this instance');
     expect(out).toContain('cogeto features enable mail');
     expect(out).toContain('allow inbound TCP 80 and 443');
-    expect(out).toContain('Automated Backup');
+    expect(out).toContain('enable automated instance backups');
     // The step that now matters: models are configured in the interface after
     // login. The checklist names it, with the surface and the consequence.
     expect(out).toContain('Configure a model provider');

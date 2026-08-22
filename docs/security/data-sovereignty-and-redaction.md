@@ -1,9 +1,9 @@
 # Data sovereignty and PII redaction
 
 Cogeto is built so your data stays in your instance. This document explains the
-single seam through which any data can reach an external model, the EU-hosted
-default, and the optional redaction layer that pseudonymizes personal data before
-it ever leaves the box, including its honest limits.
+single seam through which any data can reach an external model, who decides
+which model that is, and the optional redaction layer that pseudonymizes
+personal data before it ever leaves the box, including its honest limits.
 
 ## One seam, no side doors
 
@@ -17,14 +17,15 @@ Your durable data never leaves the instance regardless: Postgres, Qdrant, and
 MinIO all run inside your deployment. The only outbound traffic is the model calls
 themselves, and those all pass through the seam.
 
-## The EU-hosted default
+## Which models an instance calls
 
 Which models an instance calls is **its own choice, made in the interface**
 (Providers, then Models) and stored in its own database; the environment
-carries no model configuration at all. The recommended default is the
-**Mistral API** under EU-hosted, zero-retention DPA terms, and an instance can
-equally run every tier against a self-hosted endpoint, in which case no model
-call leaves the box at all. Per-tier assignment keeps cost and exposure
+carries no model configuration at all. Cogeto endorses no provider and ships
+no default one: an instance can run every tier against a self-hosted endpoint,
+in which case no model call leaves the box at all, or against any supported
+hosted API, in which case the terms that govern that data are the ones you
+agree with that provider. Per-tier assignment keeps cost and exposure
 proportionate: a cheaper model for high-volume ingestion, a stronger one for
 the answers you read. Whatever the choice,
 **nothing about the architecture phones home**: there is no telemetry channel

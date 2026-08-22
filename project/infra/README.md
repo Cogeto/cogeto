@@ -9,7 +9,7 @@ a fresh clone must reach a usable login, or the build is broken.
  works on a fresh clone with zero steps (S1-A; see `docker/README.md`).
 - `deploy/`: the **pull-only customer-instance stack**: the
  compose file + production Caddyfile the operator script
- (`scripts/operator/cogeto`) installs on a fresh OVHcloud instance. No
+ (`scripts/operator/cogeto`) installs on a fresh Ubuntu server. No
  `build:` keys, customer instances pull the cosign-signed release images
  (`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`, and
  `cogeto/cogeto-redaction` when that capability is on) and never build. Mirror root-compose changes here (the operator spec enforces it).

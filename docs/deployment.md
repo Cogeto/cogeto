@@ -104,7 +104,7 @@ How the artifact is produced, and the contract the shape carries for anything
 automating installs: [`release-process.md`](release-process.md).
 
 TLS is automatic (Let's Encrypt via Caddy) as soon as the printed DNS records
-resolve. Self-hosters not on OVHcloud: the runbook's OVH panel steps map
+resolve. The runbook's cloud-panel steps map
 one-to-one to any provider's DNS/PTR/firewall equivalents.
 
 ## Verifying a release image

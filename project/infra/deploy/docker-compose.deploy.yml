@@ -1130,7 +1130,7 @@ volumes:
   qdrant-data:
   minio-data:
   # The receipt-signing keypair lives ONLY here (generated on first boot by
-  # migrate) — it is covered by OVHcloud volume backups, never by files on disk.
+  # migrate) — it is covered by the provider's volume backups, never by files on disk.
   instance-keys:
   instance-pubkey:
   zitadel-machinekey:
