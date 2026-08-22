@@ -204,7 +204,3 @@ Some stewards prefer full **copyright assignment** rather than a broad license. 
 > **A.2 (assignment variant).** You hereby assign to Us all right, title, and interest worldwide in and to the copyright in Your Contribution. To the extent such assignment is or becomes invalid or unenforceable under applicable law, You grant Us the exclusive, perpetual, worldwide, royalty‑free, irrevocable, sublicensable license set out in the license variant above, and You further grant Us a license‑back to use Your Contribution for Your own purposes. We may, at Our discretion, license the Contribution back to You under the AGPLv3.
 
 The license variant in the main body (retain copyright, grant broad relicensable license) is recommended for most projects because it is far less likely to deter contributors while still enabling dual‑licensing.
-
----
-
-*This document is provided for use with the Cogeto project. It is a template and must be reviewed and adapted by qualified legal counsel in the relevant jurisdiction before use. It is not legal advice.*
