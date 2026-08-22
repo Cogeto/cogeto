@@ -6,9 +6,9 @@
     "answer": "mistral-medium-latest",
     "embedding": "mistral-embed"
   },
-  "recorded_at": "2026-08-11T09:30:47.085Z",
+  "recorded_at": "2026-08-22T19:25:30.612Z",
   "counts": {
-    "text": 443,
-    "embeddings": 1036
+    "text": 447,
+    "embeddings": 1047
   }
 }

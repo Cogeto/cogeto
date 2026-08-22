@@ -3305,3 +3305,42 @@ ambiguity branches over 47 turn(s): dominant=16 silent=5 fan_out=4 none=22 · fa
 | who_is_ana | PASS | 43% | PASS | PASS | PASS |  |  |  |  |  | PASS | FAIL |
 
 ambiguity branches over 47 turn(s): dominant=16 silent=5 fan_out=4 none=22 · fan-out rate 8.5%
+
+## 2026-08-22, extraction/v0006 + verification/v0006 (thresholds v1, 102 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 50 | 83.6% (92/110) | 96.4% (81/84) | 93.9% (46/49) |
+| hr | 52 | 83.5% (86/103) | 94.0% (78/83) | 86.0% (43/50) |
+| aggregate | 102 | 83.6% (178/213) | 95.2% (159/167) | 89.9% (89/99) |
+
+## 2026-08-22, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 75.0% (6/8) | 85.7% (6/7) | 60.0% (3/5) | 2 |
+| hr | 5 | 87.5% (7/8) | 21 | 87.5% (7/8) | 100.0% (7/7) | 75.0% (3/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 81.3% (13/16) | 92.9% (13/14) | 66.7% (6/9) | 4 |
+
+## 2026-08-22, query_rewrite/v0007 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 75.0% (12/16) |
+| aggregate | 32 | 87.5% (28/32) |
+
+## 2026-08-22, VERTICAL corpus (real documents, 20 cases + 24 pairs)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 12 | 50.7% (108/213) | 97.3% (108/111) | 91.7% (11/12) |
+| hr | 8 | 48.3% (56/116) | 90.3% (56/62) | 87.5% (7/8) |
+| aggregate | 20 | 49.8% (164/329) | 94.8% (164/173) | 90.0% (18/20) |
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 8 | 0.0% (0/2) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| hr | 2 | 50.0% (2/4, 1 FALSE MERGE) | 5 | 0.0% (0/1) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| xl | 1 | 100.0% (1/1) | 4 | 100.0% (0/0) | 0.0% (0/2) | 0.0% (0/1) | 1 |
+| aggregate | 7 | 81.8% (9/11, 1 FALSE MERGE) | 17 | 0.0% (0/3) | 0.0% (0/2) | 0.0% (0/5) | 7 |
